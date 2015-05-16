@@ -1,0 +1,89 @@
+kmer_file = open("ERR431384.k63_cutoff3_shuf", "r")
+
+kmer_hash = {}
+no_left_neighbor = 0
+branching = 0
+
+size_k = 63
+
+for line in kmer_file:
+	kmer_hash[line[:size_k]] = [0, 0, [], []]
+
+kmer_file.close()
+
+## Cplx nodes detection and marking
+
+for kmer in kmer_hash:
+
+	if 'A' + kmer[:size_k-1] in kmer_hash:
+		kmer_hash[kmer][0] += 1
+		kmer_hash[kmer][2].append('A')
+	if 'C' + kmer[:size_k-1] in kmer_hash:
+		kmer_hash[kmer][0] += 1
+		kmer_hash[kmer][2].append('C')
+	if 'G' + kmer[:size_k-1] in kmer_hash:
+		kmer_hash[kmer][0] += 1
+		kmer_hash[kmer][2].append('G')
+	if 'T' + kmer[:size_k-1] in kmer_hash:
+		kmer_hash[kmer][0] += 1
+		kmer_hash[kmer][2].append('T')
+
+	if kmer[1:] + 'A' in kmer_hash:
+		kmer_hash[kmer][1] += 1
+		kmer_hash[kmer][3].append('A')
+	if kmer[1:] + 'C' in kmer_hash:
+		kmer_hash[kmer][1] += 1
+		kmer_hash[kmer][3].append('C')
+	if kmer[1:] + 'G' in kmer_hash:
+		kmer_hash[kmer][1] += 1
+		kmer_hash[kmer][3].append('G')
+	if kmer[1:] + 'T' in kmer_hash:
+		kmer_hash[kmer][1] += 1
+		kmer_hash[kmer][3].append('T')
+
+	if kmer_hash[kmer][1] > 1:
+		branching += 1
+	elif kmer_hash[kmer][0] != 1:
+		no_left_neighbor += 1
+
+print("# right branching nodes = " + str(branching))
+print("# nodes without left neighbors which are not right branching = " + str(no_left_neighbor))
+print("# complex nodes = " + str(branching+no_left_neighbor))
+print("# distinct k-mers in total = " + str(len(kmer_hash)))
+print("")
+
+## Deletion of annotations
+
+deleted_annot = 0
+kmer_processed = 0
+count = 0
+
+for kmer in kmer_hash:
+
+	if kmer_hash[kmer][1] > 1 or kmer_hash[kmer][0] != 1:
+
+		for neigh in kmer_hash[kmer][3]:
+
+			kmer_right = kmer[1:] + neigh
+
+			count += 1
+
+			while kmer_hash[kmer_right][1] == 1 and kmer_hash[kmer_right][0] == 1:
+
+				kmer_right_right = kmer_right[1:] + kmer_hash[kmer_right][3][0]
+
+				if kmer_hash[kmer_right_right][1] == 1 and kmer_hash[kmer_right_right][0] == 1:
+
+					deleted_annot += 1
+
+				kmer_right = kmer_right_right
+
+
+	kmer_processed += 1
+
+	if kmer_processed%1000000 == 0:
+
+		print(str(kmer_processed) + " kmers processed")
+
+print("# nodes for which the annotation can be deleted = " + str(deleted_annot))
+print("count = " + str(count))
