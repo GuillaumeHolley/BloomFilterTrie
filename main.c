@@ -45,6 +45,9 @@ void insertKmers(Root* restrict root,
 void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer);
 void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer);
 
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
+int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
+
 int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root,
                                         ptrs_on_func* func_on_types, annotation_inform* ann_inf);
 Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
@@ -59,7 +62,9 @@ int main(int argc, char *argv[])
     Root* root = NULL;
 
     int i = 0;
+    int cpt = 0;
     int size_kmer = 27;
+    int binary_files = 0;
     int nb_files_2_read = 0;
 
     char* str_tmp;
@@ -70,7 +75,7 @@ int main(int argc, char *argv[])
     FILE* file_input = NULL;
     FILE* file_tmp = NULL;
 
-    if (argc < 4) ERROR("Usage: ./bft k {fastx|kmers|kmers_comp} list_files_to_insert [-query_kmers list_kmers_files] [-query_branching list_kmers_files]\n")
+    if (argc < 4) ERROR("Usage: ./bft k {fastx|kmers|kmers_comp} list_files_to_insert [-query_kmers {kmers|kmers_comp} list_kmers_files] [-query_branching {kmers|kmers_comp} list_kmers_files]\n")
     else {
 
         size_kmer = atoi(argv[1]); //Length k argument reading
@@ -102,20 +107,59 @@ int main(int argc, char *argv[])
 
         fclose(file_input);
 
-        for (i=4; i<argc; i+=2){ //Test if we can open the files for querying the k-mers/branching vertices
+        for (i=4; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
             if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
-                if ((file_tmp = fopen(argv[i+1], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
-                fclose(file_tmp);
+
+                if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                    ERROR("Unrecognized type of input files for -query_kmers.\nChoice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+
+                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+
+                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+
+                    buffer[strcspn(buffer, "\r\n")] = 0;
+
+                    if ((file_tmp = fopen(buffer, "r")) == NULL){
+                        fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    cpt++;
+
+                    fclose(file_tmp);
+                }
+
+                fclose(file_input);
             }
             else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
-                if ((file_tmp = fopen(argv[i+1], "r")) == NULL) ERROR("Invalid k-mer branching queries file.\n")
-                fclose(file_tmp);
+                if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                    ERROR("Unrecognized type of input files for -query_branching.\nChoice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+
+                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching queries file.\n")
+
+                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+
+                    buffer[strcspn(buffer, "\r\n")] = 0;
+
+                    if ((file_tmp = fopen(buffer, "r")) == NULL){
+                        fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    cpt++;
+
+                    fclose(file_tmp);
+                }
+
+                fclose(file_input);
             }
             else{
                 fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                 exit(EXIT_FAILURE);
             }
+
+            cpt = 0;
         }
 
         if ((file_input = fopen(argv[3], "r")) == NULL) ERROR("Invalid file for the list of files to insert.\n")
@@ -156,6 +200,42 @@ int main(int argc, char *argv[])
         else if (strcmp("fastx", argv[2]) == 0) insert_Genomes_from_FASTxFiles(root, paths_and_names, size_kmer);
         else
             ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+
+        for (i=4; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
+
+            binary_files = 0;
+
+            if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
+
+                if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries files list.\n")
+
+                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+
+                    buffer[strcspn(buffer, "\r\n")] = 0;
+                    printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, size_kmer));
+                }
+
+                fclose(file_input);
+            }
+            else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for k-mers
+
+                if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer queries files list.\n")
+
+                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+
+                    buffer[strcspn(buffer, "\r\n")] = 0;
+                    printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, size_kmer));
+                }
+
+                fclose(file_input);
+            }
+            else{
+                fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
+                exit(EXIT_FAILURE);
+            }
+        }
 
         freeRoot(root);
     }
@@ -240,21 +320,21 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
     ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
 
-    uint8_t* tab_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
-    ASSERT_NULL_PTR(tab_kmers,"insert_Genomes_from_KmerFiles()")
+    uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
+    ASSERT_NULL_PTR(array_kmers,"insert_Genomes_from_KmerFiles()")
 
     uint8_t* kmer;
 
     char* line = calloc(100, sizeof(char));
     ASSERT_NULL_PTR(line,"insert_Genomes_from_KmerFiles()")
 
-    uint16_t** skip_node_root;
+    uint16_t** skip_node_root = NULL;
 
     int i = 0;
     int j = 0;
     int k = 0;
-    int nb_cell = CEIL(size_kmer*2, SIZE_CELL);
-    int nb_kmer_in_buf = SIZE_BUFFER/nb_cell;
+    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
 
     size_t return_fread;
 
@@ -283,75 +363,34 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
             if (fgets(line, 100, file) != NULL) printf("%d %d-mers in the file\n\n", atoi(line), k);
             else ERROR("Cannot read header of the file")
 
-            //if (i != NB_FILE_2_READ-1){
+            while ((!ferror(file)) && (!feof(file))){
 
-                while ((!ferror(file)) && (!feof(file))){
+                return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file);
 
-                    return_fread = fread(tab_kmers, (size_t)nb_cell, (size_t)nb_kmer_in_buf, file);
+                insertKmers(root, array_kmers, size_kmer, return_fread, i, func_on_types, ann_inf, res);
 
-                    insertKmers(root, tab_kmers, size_kmer, return_fread, i, func_on_types, ann_inf, res);
+                memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
 
-                    memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
-
-                    if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS)){
-                        printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
-                    }
-
-                    kmers_read += return_fread;
-                }
-            /*}
-            else{
-
-                struct timeval tval_before, tval_after, tval_result;
-                gettimeofday(&tval_before, NULL);
-
-                int nb_branching_node = 0;
-                int count_branching_node = 0;
-
-                skip_node_root = build_skip_nodes(&(root->node), size_kmer, func_on_types);
-
-                while ((!ferror(file)) && (!feof(file))){
-
-                    return_fread = fread(tab_kmers, (size_t)nb_cell, (size_t)nb_kmer_in_buf, file);
-
-                    for (k=0; k<return_fread; k++){
-
-                        count_branching_node = 0;
-
-                        if (isBranchingRight(&(root->node), &(tab_kmers[k*nb_cell]), size_kmer, func_on_types, skip_node_root) > 1) count_branching_node++;
-                        if (isBranchingLeft(&(root->node), &(tab_kmers[k*nb_cell]), size_kmer, func_on_types, skip_node_root) > 1) count_branching_node++;
-                        if (count_branching_node > 0) nb_branching_node++;
-                    }
-
-                    memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+                if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS)){
+                    printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
                 }
 
-                gettimeofday(&tval_after, NULL);
-
-                tval_result.tv_sec = tval_after.tv_sec - tval_before.tv_sec;
-                tval_result.tv_usec = tval_after.tv_usec - tval_before.tv_usec;
-                if (tval_result.tv_usec < 0) {
-                    --tval_result.tv_sec;
-                    tval_result.tv_usec += 1000000;
-                }
-
-                printf("Nb complex nodes: %d\n", nb_branching_node);
-                printf("Elapsed time for querying complex nodes: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
-            }*/
+                kmers_read += return_fread;
+            }
         }
         else {
             while (fgets(line, 100, file) != NULL){
 
-                if (parseKmerCount(line, size_kmer, tab_kmers, k) == 1){
-                    k += nb_cell;
+                if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+                    k += nb_bytes_kmer;
                     j++;
 
                     if (j == nb_kmer_in_buf){
-                        insertKmers(root, tab_kmers, size_kmer, nb_kmer_in_buf, i, func_on_types, ann_inf, res);
+                        insertKmers(root, array_kmers, size_kmer, nb_kmer_in_buf, i, func_on_types, ann_inf, res);
 
                         j = 0;
                         k = 0;
-                        memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+                        memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
 
                         if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS)){
                             printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
@@ -362,10 +401,10 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
                 }
             }
 
-            insertKmers(root, tab_kmers, size_kmer, j, i, func_on_types, ann_inf, res);
+            insertKmers(root, array_kmers, size_kmer, j, i, func_on_types, ann_inf, res);
             kmers_read += j;
 
-            memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+            memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
         }
 
         fclose(file);
@@ -429,7 +468,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
         gettimeofday(&tval_after, NULL);
 
         time_spent(&tval_last, &tval_after, &tval_result);
-        printf("Elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+        printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
         time_spent(&tval_before, &tval_after, &tval_result);
         printf("Total elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
@@ -449,7 +488,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     free(mem);
 
     free(line);
-    free(tab_kmers);
+    free(array_kmers);
 
     free(func_on_types);
     free(ann_inf);
@@ -598,6 +637,8 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer)
         kseq_destroy(seq);
         close(fp);
 
+        gettimeofday(&tval_after, NULL);
+
         time_spent(&tval_last, &tval_after, &tval_result);
         printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
@@ -624,6 +665,239 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer)
     free(tab_kmers);
 
     return;
+}
+
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer){
+
+    ASSERT_NULL_PTR(root,"queryBFT_kmerPresences_from_KmerFiles()")
+    ASSERT_NULL_PTR(query_filename,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
+
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int nb_kmers_present = 0;
+    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
+
+    uint64_t kmers_read = 0;
+
+    FILE* file;
+
+    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
+
+    resultPresence* res;
+
+    size_t return_fread;
+
+    uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
+    ASSERT_NULL_PTR(array_kmers,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    char* line = calloc(100, sizeof(char));
+    ASSERT_NULL_PTR(line,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    file = fopen(query_filename, "r");
+    ASSERT_NULL_PTR(file,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    printf("\nQuerying BFT for k-mers in %s\n\n", query_filename);
+
+    if (binary_file){
+
+        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
+        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
+
+        while ((!ferror(file)) && (!feof(file))){
+
+            return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file);
+
+            for (k=0; k<(int)return_fread; k++){
+
+                res = isKmerPresent(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types);
+                if (res->link_child != NULL) nb_kmers_present++;
+                free(res);
+            }
+
+            if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS))
+                printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
+
+            kmers_read += return_fread;
+
+            memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+        }
+    }
+    else{
+
+        while (fgets(line, 100, file) != NULL){
+
+            if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+                k += nb_bytes_kmer;
+                j++;
+
+                if (j == nb_kmer_in_buf){
+
+                    for (i=0; i<nb_kmer_in_buf; i++){
+
+                        res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
+                        if (res->link_child != NULL) nb_kmers_present++;
+                        free(res);
+                    }
+
+                    j = 0;
+                    k = 0;
+                    memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+
+                    if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS))
+                        printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
+
+                    kmers_read += nb_kmer_in_buf;
+                }
+            }
+        }
+
+        for (i=0; i<j; i++){
+
+            res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
+            if (res->link_child != NULL) nb_kmers_present++;
+            free(res);
+        }
+
+        memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+    }
+
+    fclose(file);
+
+    free(array_kmers);
+    free(line);
+
+    gettimeofday(&tval_after, NULL);
+    time_spent(&tval_before, &tval_after, &tval_result);
+    printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+    return nb_kmers_present;
+}
+
+int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer){
+
+    ASSERT_NULL_PTR(root,"queryBFT_kmerBranching_from_KmerFiles()")
+    ASSERT_NULL_PTR(query_filename,"queryBFT_kmerBranching_from_KmerFiles()")
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
+
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int count_branching_node = 0;
+    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
+
+    uint64_t kmers_read = 0;
+
+    FILE* file;
+
+    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
+
+    size_t return_fread;
+
+    uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
+    ASSERT_NULL_PTR(array_kmers,"queryBFT_kmerBranching_from_KmerFiles()")
+
+    char* line = calloc(100, sizeof(char));
+    ASSERT_NULL_PTR(line,"queryBFT_kmerBranching_from_KmerFiles()")
+
+    uint16_t** skip_node_root = build_skip_nodes(&(root->node), size_kmer, func_on_types);
+
+    file = fopen(query_filename, "r");
+    ASSERT_NULL_PTR(file,"queryBFT_kmerBranching_from_KmerFiles()")
+
+    printf("\nQuerying BFT for branching k-mers in %s\n\n", query_filename);
+
+    if (binary_file){
+
+        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
+        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
+
+        while ((!ferror(file)) && (!feof(file))){
+
+            return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file);
+
+            for (k=0; k<(int)return_fread; k++){
+
+                if (isBranchingRight(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                    count_branching_node++;
+                }
+                else if (isBranchingLeft(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                    count_branching_node++;
+                }
+            }
+
+            if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS))
+                printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
+
+            kmers_read += return_fread;
+
+            memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+        }
+    }
+    else{
+
+        while (fgets(line, 100, file) != NULL){
+
+            if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+                k += nb_bytes_kmer;
+                j++;
+
+                if (j == nb_kmer_in_buf){
+
+                    for (i=0; i<nb_kmer_in_buf; i++){
+
+                        if (isBranchingRight(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                            count_branching_node++;
+                        }
+                        else if (isBranchingLeft(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                            count_branching_node++;
+                        }
+                    }
+
+                    j = 0;
+                    k = 0;
+                    memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+
+                    if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS))
+                        printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
+
+                    kmers_read += nb_kmer_in_buf;
+                }
+            }
+        }
+
+        for (i=0; i<j; i++){
+
+            if (isBranchingRight(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                count_branching_node++;
+            }
+            else if (isBranchingLeft(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                count_branching_node++;
+            }
+        }
+
+        memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+    }
+
+    fclose(file);
+
+    free(array_kmers);
+    free(line);
+
+    if (skip_node_root != NULL) free_skip_nodes(&(root->node), skip_node_root);
+
+    gettimeofday(&tval_after, NULL);
+    time_spent(&tval_before, &tval_after, &tval_result);
+    printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+    return count_branching_node;
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
