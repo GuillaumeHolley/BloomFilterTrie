@@ -43,8 +43,10 @@ typedef struct {
 // TODO: Include the file names associated to each genome ID
 typedef struct {
     Node node;
+    annotation_array_elem* comp_set_colors;
     char** filenames;
     int nb_genomes;
+    int length_comp_set_colors;
 } Root;
 
 //resultPresence is a structure produced by presenceKmer(). It contains information about the presence of a prefix p into a given node.
@@ -122,7 +124,7 @@ inline void initiateNode(Node* node){
 /* ---------------------------------------------------------------------------------------------------------------
 *  createRoot()
 *  ---------------------------------------------------------------------------------------------------------------
-*  Create the root node of the tree
+*  Create the root of a BFT
 *  ---------------------------------------------------------------------------------------------------------------
 *  ---------------------------------------------------------------------------------------------------------------
 */
@@ -132,29 +134,22 @@ inline Root* createRoot(char** filenames, int nb_files){
     ASSERT_NULL_PTR(root,"createRoot()")
 
     initiateNode(&(root->node));
+
     root->filenames = filenames;
     root->nb_genomes = nb_files;
+    root->comp_set_colors = NULL;
+    root->length_comp_set_colors = 0;
 
     return root;
 }
 
 inline resultPresence* create_resultPresence(){
 
-    resultPresence* res = malloc(sizeof(resultPresence));
+    resultPresence* res = calloc(1,sizeof(resultPresence));
     ASSERT_NULL_PTR(res,"create_resultPresence()")
 
     res->container = NULL;
     res->link_child = NULL;
-    res->bucket = 0;
-    res->pos_sub_bucket = 0;
-    res->presBF = 0;
-    res->presFilter2 = 0;
-    res->presFilter3 = 0;
-    res->count_children = 0;
-    res->count_nodes = 0;
-    res->pos_children = 0;
-    res->children_type_leaf = 0;
-    res->container_is_UC = 0;
     res->posFilter2 = INT_MAX;
     res->posFilter3 = INT_MAX;
     res->pos_extra_filter3 = INT_MAX;

@@ -177,8 +177,9 @@ typedef struct{
 inline CC* createCC(int nb_bits_bf);
 inline void initiateCC(CC* cc, int nb_bits_bf);
 
-inline void freeCC(CC* cc);
 inline void freeNode(Node* node);
+inline void freeRoot(Root* root);
+inline void freeCC(CC* cc);
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  createCC(nb_bits_bf)
@@ -296,6 +297,31 @@ inline void freeNode(Node* restrict node){
     }
 
     if (node->UC_array.suffixes != NULL) free(node->UC_array.suffixes);
+
+    return;
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+*  freeRoot()
+*  ---------------------------------------------------------------------------------------------------------------
+*  Free the root of a BFT
+*  ---------------------------------------------------------------------------------------------------------------
+*  ---------------------------------------------------------------------------------------------------------------
+*/
+inline void freeRoot(Root* root){
+
+    ASSERT_NULL_PTR(root,"freeRoot()")
+
+    if (root->filenames != NULL){
+        int i = 0;
+        for (i=0; i<root->nb_genomes; i++) free(root->filenames[i]);
+        free(root->filenames);
+    }
+
+    free_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors);
+
+    freeNode(&(root->node));
+    free(root);
 
     return;
 }

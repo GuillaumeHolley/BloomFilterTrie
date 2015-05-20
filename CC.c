@@ -12,6 +12,7 @@ DEFINE_STRUCT_AND_FUNC(9);
 extern CC* createCC(int nb_bits_bf);
 extern void initiateCC(CC* cc, int nb_bits_bf);
 extern void freeCC(CC* cc);
+extern void freeNode(Node* node);
 
 extern void initializeUC(UC* uc);
 

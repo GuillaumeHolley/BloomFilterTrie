@@ -40,25 +40,23 @@ void insertKmers(Root* restrict root,
                  int id_genome,
                  ptrs_on_func* restrict func_on_types,
                  annotation_inform* ann_inf,
-                 resultPresence* res,
-                 annotation_array_elem* annot_sorted);
+                 resultPresence* res);
 
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, annotation_array_elem** ptr_ptr_annot_sorted);
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, annotation_array_elem** ptr_ptr_annot_sorted);
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer);
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer);
 
-int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
-                                        annotation_inform* ann_inf);
-Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, annotation_array_elem** ptr_annot_sorted,
-                                   ptrs_on_func* func_on_types, annotation_inform* ann_inf, resultPresence* res);
+int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root,
+                                        ptrs_on_func* func_on_types, annotation_inform* ann_inf);
+Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
+                                   annotation_inform* ann_inf, resultPresence* res);
 
-extern void freeNode(Node* restrict node);
+extern void freeRoot(Root* root);
 extern void time_spent(struct timeval *start_time, struct timeval *end_time, struct timeval *resulting_time);
 
 int main(int argc, char *argv[])
 {
 
-    Root* tree = NULL; //Create the tree by creating an empty root node
-    annotation_array_elem* annot_sorted = NULL;
+    Root* root = NULL;
 
     int i = 0;
     int size_kmer = 27;
@@ -150,24 +148,16 @@ int main(int argc, char *argv[])
 
         fclose(file_input);
 
-        tree = createRoot(filenames, nb_files_2_read); //Create the root of the BFT with the filenames
+        root = createRoot(filenames, nb_files_2_read); //Create a BFT
 
         //Read and test if the type of input files is valid
-        if (strcmp("kmers_comp", argv[2]) == 0) insert_Genomes_from_KmerFiles(tree, paths_and_names, 1, size_kmer, &annot_sorted);
-        else if (strcmp("kmers", argv[2]) == 0) insert_Genomes_from_KmerFiles(tree, paths_and_names, 0, size_kmer, &annot_sorted);
-        else if (strcmp("fastx", argv[2]) == 0) insert_Genomes_from_FASTxFiles(tree, paths_and_names, size_kmer, &annot_sorted);
+        if (strcmp("kmers_comp", argv[2]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 1, size_kmer);
+        else if (strcmp("kmers", argv[2]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 0, size_kmer);
+        else if (strcmp("fastx", argv[2]) == 0) insert_Genomes_from_FASTxFiles(root, paths_and_names, size_kmer);
         else
             ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
 
-        for (i=0; i<nb_files_2_read; i++){
-            free(tree->filenames[i]);
-            free(paths_and_names[i]);
-        }
-
-        free(tree->filenames);
-
-        freeNode(&(tree->node));
-        free(tree);
+        freeRoot(root);
     }
 
     return EXIT_SUCCESS;
@@ -186,7 +176,6 @@ int main(int argc, char *argv[])
 *  func_on_types: ptr to ptrs_on_func structure, used to manipulate compressed container field children_type
 *  ann_inf: ptr to annotation_inform structure, used to make the transition between reading and modifying an annot
 *  res: ptr to resultPresence structure, used to store information about the presence of a suffix prefix in a CC
-*  annot_sorted: ptr to annotation_array_elem structure, contains unique annotations of a BFT
 *  ---------------------------------------------------------------------------------------------------------------
 */
 void insertKmers(Root* restrict root,
@@ -196,8 +185,7 @@ void insertKmers(Root* restrict root,
                  int id_genome,
                  ptrs_on_func* restrict func_on_types,
                  annotation_inform* ann_inf,
-                 resultPresence* res,
-                 annotation_array_elem* annot_sorted){
+                 resultPresence* res){
 
     ASSERT_NULL_PTR(root,"insertKmers()")
     ASSERT_NULL_PTR(func_on_types,"insertKmers()")
@@ -214,7 +202,7 @@ void insertKmers(Root* restrict root,
         memcpy(kmer, &(array_kmers[i*nb_bytes]), nb_bytes * sizeof(uint8_t));
 
         insertKmer_Node(&(root->node), &(root->node), &(array_kmers[i*nb_bytes]), size_kmers,
-                        kmer, size_kmers, id_genome, func_on_types, ann_inf, res, annot_sorted);
+                        kmer, size_kmers, id_genome, func_on_types, ann_inf, res, root->comp_set_colors);
     }
 }
 
@@ -227,14 +215,12 @@ void insertKmers(Root* restrict root,
 *  filenames: array of filenames. The files contains the k-mers to insert.
 *  binary_files: Indicate if the files contains k-mers (ASCII) or compressed k-mers (2 bits per nuc.)
 *  size_kmer: length k of k-mers in files
-*  ptr_ptr_annot_sorted: ptr to ptr to annotation_array_elem structure, contains some unique annotations of a BFT
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, annotation_array_elem** ptr_ptr_annot_sorted){
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_KmerFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_KmerFiles()")
-    ASSERT_NULL_PTR(ptr_ptr_annot_sorted,"insert_Genomes_from_KmerFiles()")
 
     struct timeval tval_before, tval_after, tval_last, tval_result;
     gettimeofday(&tval_before, NULL);
@@ -245,8 +231,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     Pvoid_t PJArray = (PWord_t)NULL;
     Word_t Rc_word;
 
-    annotation_array_elem* annot_sorted = *ptr_ptr_annot_sorted;
-    annotation_array_elem* old_annot_sorted = NULL;
+    annotation_array_elem* comp_set_colors_tmp = NULL;
 
     annotation_inform* ann_inf = calloc(1,sizeof(annotation_inform));
     ASSERT_NULL_PTR(ann_inf,"insert_Genomes_from_FASTx()")
@@ -272,8 +257,8 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     int nb_kmer_in_buf = SIZE_BUFFER/nb_cell;
 
     size_t return_fread;
-    int size_annot_sorted;
-    int size_old_annot_sorted;
+
+    int length_comp_set_colors_tmp = 0;
 
     double count = 0;
 
@@ -304,7 +289,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
                     return_fread = fread(tab_kmers, (size_t)nb_cell, (size_t)nb_kmer_in_buf, file);
 
-                    insertKmers(root, tab_kmers, size_kmer, return_fread, i, func_on_types, ann_inf, res, annot_sorted);
+                    insertKmers(root, tab_kmers, size_kmer, return_fread, i, func_on_types, ann_inf, res);
 
                     memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
 
@@ -362,7 +347,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
                     j++;
 
                     if (j == nb_kmer_in_buf){
-                        insertKmers(root, tab_kmers, size_kmer, nb_kmer_in_buf, i, func_on_types, ann_inf, res, annot_sorted);
+                        insertKmers(root, tab_kmers, size_kmer, nb_kmer_in_buf, i, func_on_types, ann_inf, res);
 
                         j = 0;
                         k = 0;
@@ -377,7 +362,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
                 }
             }
 
-            insertKmers(root, tab_kmers, size_kmer, j, i, func_on_types, ann_inf, res, annot_sorted);
+            insertKmers(root, tab_kmers, size_kmer, j, i, func_on_types, ann_inf, res);
             kmers_read += j;
 
             memset(tab_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
@@ -387,16 +372,16 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
         if ((i > 5) && (i%TRESH_DEL_ANNOT == 0)){
 
-            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, annot_sorted);
+            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
 
-            old_annot_sorted = annot_sorted;
-            size_old_annot_sorted = size_annot_sorted;
+            comp_set_colors_tmp = root->comp_set_colors;
+            length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-            annot_sorted = sort_annotations(&PJArray, &size_annot_sorted);
+            root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
 
-            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, old_annot_sorted);
+            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
 
-            free_annotation_array_elem(old_annot_sorted, size_old_annot_sorted);
+            free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
 
             JSLFA(Rc_word, PJArray);
         }
@@ -481,10 +466,9 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 *  root: ptr to the root of a BFT
 *  filenames: array of FASTx filenames
 *  size_kmer: length k of k-mers to extract from the FASTx files
-*  ptr_ptr_annot_sorted: ptr to ptr to annotation_array_elem structure, contains some unique annotations of a BFT
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, annotation_array_elem** ptr_ptr_annot_sorted){
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_FASTxFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_FASTxFiles()")
@@ -496,9 +480,10 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
     int i = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
     int nb_kmers_buf = 0;
+    int length_comp_set_colors_tmp = 0;
     int nb_cell_kmer = CEIL(size_kmer*2, SIZE_CELL); //Size of kmers in bytes
-    int size_annot_sorted;
-    int size_old_annot_sorted;
+
+    annotation_array_elem* comp_set_colors_tmp = NULL;
 
     annotation_inform* ann_inf = calloc(1,sizeof(annotation_inform)); //Initialize structure to pass information between reading and modifying an annotation
     ASSERT_NULL_PTR(ann_inf,"insert_Genomes_from_FASTxFiles()")
@@ -509,9 +494,6 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
 
     Pvoid_t PJArray = (PWord_t)NULL;
     Word_t Rc_word;
-
-    annotation_array_elem* annot_sorted = *ptr_ptr_annot_sorted;
-    annotation_array_elem* old_annot_sorted = NULL;
 
     char* buf_tmp = calloc((size_kmer-1)*2, sizeof(char)); //Allocate temporary buffer
     ASSERT_NULL_PTR(buf_tmp,"insert_Genomes_from_FASTxFiles()")
@@ -563,7 +545,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
                     int nb_kmers = size_buf_tmp - size_kmer + 1;
                     if (nb_kmers > 0){
                         parseSequenceBuffer(buf_tmp, tab_kmers, &nb_kmers, size_kmer, nb_cell_kmer); //Read buf_tmp, extract the kmers in tab_kmers
-                        insertKmers(root, tab_kmers, size_kmer, nb_kmers, i, func_on_types, ann_inf, res, annot_sorted); //Insert the kmers into the tree
+                        insertKmers(root, tab_kmers, size_kmer, nb_kmers, i, func_on_types, ann_inf, res); //Insert the kmers into the tree
                         memset(tab_kmers, 0, nb_kmers*nb_cell_kmer*sizeof(uint8_t)); //Reinit tab_kmers
                         tmp_kmers_read = nb_kmers;
                     }
@@ -582,7 +564,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
                 //Extraction of buffer's kmers. Insertion in the tree.
                 if (nb_kmers_buf > 0){
                     parseSequenceBuffer(seq->seq.s, tab_kmers, &nb_kmers_buf, size_kmer, nb_cell_kmer);
-                    insertKmers(root, tab_kmers, size_kmer, nb_kmers_buf, i, func_on_types, ann_inf, res, annot_sorted);
+                    insertKmers(root, tab_kmers, size_kmer, nb_kmers_buf, i, func_on_types, ann_inf, res);
                     memset(tab_kmers, 0, nb_kmers_buf*nb_cell_kmer*sizeof(uint8_t));
                     tmp_kmers_read += nb_kmers_buf;
                 }
@@ -599,16 +581,16 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
 
         if ((i > 5) && (i%TRESH_DEL_ANNOT == 0)){
 
-            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, annot_sorted);
+            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
 
-            old_annot_sorted = annot_sorted;
-            size_old_annot_sorted = size_annot_sorted;
+            comp_set_colors_tmp = root->comp_set_colors;
+            length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-            annot_sorted = sort_annotations(&PJArray, &size_annot_sorted);
+            root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
 
-            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, old_annot_sorted);
+            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
 
-            free_annotation_array_elem(old_annot_sorted, size_old_annot_sorted);
+            free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
 
             JSLFA(Rc_word, PJArray);
         }
@@ -790,8 +772,8 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
     return count_branching /*+ count_without_left_n*/;
 }
 
-Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, annotation_array_elem** ptr_annot_sorted,
-                                   ptrs_on_func* func_on_types, annotation_inform* ann_inf, resultPresence* res){
+Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
+                                   annotation_inform* ann_inf, resultPresence* res){
 
     ASSERT_NULL_PTR(tree,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(tree->filenames,"get_nb_cplx_nodes_from_FASTx()")
@@ -859,7 +841,7 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
                         for (j=0; j < nb_kmers * nb_cell_kmer; j += nb_cell_kmer){
                             if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) > 1) ||
                                 (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) != 1))
-                                   insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res, *ptr_annot_sorted);
+                                   insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res);
                         }
 
                         memset(tab_kmers, 0, nb_kmers*nb_cell_kmer*sizeof(uint8_t)); //Reinit tab_kmers
@@ -884,7 +866,7 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
                     for (j=0; j< nb_kmers_buf * nb_cell_kmer; j += nb_cell_kmer){
                         if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) > 1) ||
                             (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) != 1))
-                                insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res, *ptr_annot_sorted);
+                                insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res);
                     }
 
                     memset(tab_kmers, 0, nb_kmers_buf*nb_cell_kmer*sizeof(uint8_t));
