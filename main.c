@@ -1,6 +1,5 @@
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <sys/resource.h>
 
 #include <stdio.h>
@@ -53,6 +52,7 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
                                    ptrs_on_func* func_on_types, annotation_inform* ann_inf, resultPresence* res);
 
 extern void freeNode(Node* restrict node);
+extern void time_spent(struct timeval *start_time, struct timeval *end_time, struct timeval *resulting_time);
 
 int main(int argc, char *argv[])
 {
@@ -236,13 +236,14 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_KmerFiles()")
     ASSERT_NULL_PTR(ptr_ptr_annot_sorted,"insert_Genomes_from_KmerFiles()")
 
+    struct timeval tval_before, tval_after, tval_last, tval_result;
+    gettimeofday(&tval_before, NULL);
+    tval_last = tval_before;
+
     FILE* file;
 
     Pvoid_t PJArray = (PWord_t)NULL;
     Word_t Rc_word;
-
-    time_t start = time(NULL);
-    time_t last_start = time(NULL);
 
     annotation_array_elem* annot_sorted = *ptr_ptr_annot_sorted;
     annotation_array_elem* old_annot_sorted = NULL;
@@ -309,7 +310,6 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
                     if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS)){
                         printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
-                        //break;
                     }
 
                     kmers_read += return_fread;
@@ -441,12 +441,18 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
         if (annot_sorted != NULL) free(annot_sorted);*/
 
-        printf("\nElapsed time: %.2f s\n", (double)(time(NULL) - last_start));
-        printf("Total elapsed time: %.2f s\n", (double)(time(NULL) - start));
+        gettimeofday(&tval_after, NULL);
+
+        time_spent(&tval_last, &tval_after, &tval_result);
+        printf("Elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+        time_spent(&tval_before, &tval_after, &tval_result);
+        printf("Total elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
         printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
         printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
 
-        last_start = time(NULL);
+        tval_last = tval_after;
     }
 
     memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);
@@ -482,6 +488,10 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_FASTxFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_FASTxFiles()")
+
+    struct timeval tval_before, tval_after, tval_last, tval_result;
+    gettimeofday(&tval_before, NULL);
+    tval_last = tval_before;
 
     int i = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
@@ -605,6 +615,17 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
 
         kseq_destroy(seq);
         close(fp);
+
+        time_spent(&tval_last, &tval_after, &tval_result);
+        printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+        time_spent(&tval_before, &tval_after, &tval_result);
+        printf("Total elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+        printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
+        printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
+
+        tval_last = tval_after;
     }
 
     memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);

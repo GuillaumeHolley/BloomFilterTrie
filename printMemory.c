@@ -39,18 +39,19 @@ void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2){
     mem1->size_biggest_annot = MAX(mem1->size_biggest_annot, mem2->size_biggest_annot);
 
     mem1->kmers_in_CC63 += mem2->kmers_in_CC63;
-    mem1->nb_CC63 += mem2->nb_CC63;
     mem1->kmers_in_CC54 += mem2->kmers_in_CC54;
-    mem1->nb_CC54 += mem2->nb_CC54;
     mem1->kmers_in_CC45 += mem2->kmers_in_CC45;
-    mem1->nb_CC45 += mem2->nb_CC45;
     mem1->kmers_in_CC36 += mem2->kmers_in_CC36;
-    mem1->nb_CC36 += mem2->nb_CC36;
     mem1->kmers_in_CC27 += mem2->kmers_in_CC27;
-    mem1->nb_CC27 += mem2->nb_CC27;
     mem1->kmers_in_CC18 += mem2->kmers_in_CC18;
-    mem1->nb_CC18 += mem2->nb_CC18;
     mem1->kmers_in_CC9 += mem2->kmers_in_CC9;
+
+    mem1->nb_CC63 += mem2->nb_CC63;
+    mem1->nb_CC54 += mem2->nb_CC54;
+    mem1->nb_CC45 += mem2->nb_CC45;
+    mem1->nb_CC36 += mem2->nb_CC36;
+    mem1->nb_CC27 += mem2->nb_CC27;
+    mem1->nb_CC18 += mem2->nb_CC18;
     mem1->nb_CC9 += mem2->nb_CC9;
 }
 
@@ -233,20 +234,22 @@ void printMemory(memory_Used* mem){
     printf("Nb pointers used = %f\n", mem->nb_pointers_used);
     printf("Size greatest annotation (bytes) = %f\n", mem->size_biggest_annot);
 
-    printf("Nb of CC63s = %f\n", mem->nb_CC63);
-    printf("Nb k-mers in CC63s = %f\n", mem->kmers_in_CC63);
+    printf("\nNb of CC63s = %f\n", mem->nb_CC63);
     printf("Nb of CC54s = %f\n", mem->nb_CC54);
-    printf("Nb k-mers in CC54s = %f\n", mem->kmers_in_CC54);
     printf("Nb of CC45s = %f\n", mem->nb_CC45);
-    printf("Nb k-mers in CC45s = %f\n", mem->kmers_in_CC45);
     printf("Nb of CC36s = %f\n", mem->nb_CC36);
-    printf("Nb k-mers in CC36s = %f\n", mem->kmers_in_CC36);
     printf("Nb of CC27s = %f\n", mem->nb_CC27);
-    printf("Nb k-mers in CC27s = %f\n", mem->kmers_in_CC27);
     printf("Nb of CC18s = %f\n", mem->nb_CC18);
-    printf("Nb k-mers in CC18s = %f\n", mem->kmers_in_CC18);
     printf("Nb of CC9s = %f\n", mem->nb_CC9);
+
+    printf("\nNb k-mers in CC63s = %f\n", mem->kmers_in_CC63);
+    printf("Nb k-mers in CC54s = %f\n", mem->kmers_in_CC54);
+    printf("Nb k-mers in CC45s = %f\n", mem->kmers_in_CC45);
+    printf("Nb k-mers in CC36s = %f\n", mem->kmers_in_CC36);
+    printf("Nb k-mers in CC27s = %f\n", mem->kmers_in_CC27);
+    printf("Nb k-mers in CC18s = %f\n", mem->kmers_in_CC18);
     printf("Nb k-mers in CC9s = %f\n\n", mem->kmers_in_CC9);
+
     //printf("\nTest purpose only = %f\n", mem->memory);
 
     return;
