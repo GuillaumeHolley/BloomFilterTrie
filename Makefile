@@ -35,9 +35,9 @@ OBJDIR_RELEASE = obj/Release
 DEP_RELEASE = 
 OUT_RELEASE = bin/Release/bft
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/src/getRSS.o $(OBJDIR_DEBUG)/src/CC.o $(OBJDIR_DEBUG)/src/UC.o $(OBJDIR_DEBUG)/src/UC_annotation.o $(OBJDIR_DEBUG)/src/annotation.o $(OBJDIR_DEBUG)/src/annotation_special_nodes.o $(OBJDIR_DEBUG)/src/branchingNode.o $(OBJDIR_DEBUG)/src/deleteColorsNode.o $(OBJDIR_DEBUG)/src/fasta.o $(OBJDIR_DEBUG)/src/insertNode.o $(OBJDIR_DEBUG)/src/log2.o $(OBJDIR_DEBUG)/src/main.o $(OBJDIR_DEBUG)/src/marking.o $(OBJDIR_DEBUG)/src/presenceNode.o $(OBJDIR_DEBUG)/src/printMemory.o $(OBJDIR_DEBUG)/src/quicksort.o $(OBJDIR_DEBUG)/src/replaceAnnotation.o $(OBJDIR_DEBUG)/src/retrieveAnnotation.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/src/insertNode.o $(OBJDIR_DEBUG)/src/CC.o $(OBJDIR_DEBUG)/src/UC.o $(OBJDIR_DEBUG)/src/UC_annotation.o $(OBJDIR_DEBUG)/src/annotation.o $(OBJDIR_DEBUG)/src/annotation_special_nodes.o $(OBJDIR_DEBUG)/src/branchingNode.o $(OBJDIR_DEBUG)/src/deleteColorsNode.o $(OBJDIR_DEBUG)/src/fasta.o $(OBJDIR_DEBUG)/src/getRSS.o $(OBJDIR_DEBUG)/src/log2.o $(OBJDIR_DEBUG)/src/main.o $(OBJDIR_DEBUG)/src/marking.o $(OBJDIR_DEBUG)/src/presenceNode.o $(OBJDIR_DEBUG)/src/printMemory.o $(OBJDIR_DEBUG)/src/quicksort.o $(OBJDIR_DEBUG)/src/replaceAnnotation.o $(OBJDIR_DEBUG)/src/retrieveAnnotation.o $(OBJDIR_DEBUG)/src/write_to_disk.o
 
-OBJ_RELEASE = $(OBJDIR_RELEASE)/src/getRSS.o $(OBJDIR_RELEASE)/src/CC.o $(OBJDIR_RELEASE)/src/UC.o $(OBJDIR_RELEASE)/src/UC_annotation.o $(OBJDIR_RELEASE)/src/annotation.o $(OBJDIR_RELEASE)/src/annotation_special_nodes.o $(OBJDIR_RELEASE)/src/branchingNode.o $(OBJDIR_RELEASE)/src/deleteColorsNode.o $(OBJDIR_RELEASE)/src/fasta.o $(OBJDIR_RELEASE)/src/insertNode.o $(OBJDIR_RELEASE)/src/log2.o $(OBJDIR_RELEASE)/src/main.o $(OBJDIR_RELEASE)/src/marking.o $(OBJDIR_RELEASE)/src/presenceNode.o $(OBJDIR_RELEASE)/src/printMemory.o $(OBJDIR_RELEASE)/src/quicksort.o $(OBJDIR_RELEASE)/src/replaceAnnotation.o $(OBJDIR_RELEASE)/src/retrieveAnnotation.o
+OBJ_RELEASE = $(OBJDIR_RELEASE)/src/insertNode.o $(OBJDIR_RELEASE)/src/CC.o $(OBJDIR_RELEASE)/src/UC.o $(OBJDIR_RELEASE)/src/UC_annotation.o $(OBJDIR_RELEASE)/src/annotation.o $(OBJDIR_RELEASE)/src/annotation_special_nodes.o $(OBJDIR_RELEASE)/src/branchingNode.o $(OBJDIR_RELEASE)/src/deleteColorsNode.o $(OBJDIR_RELEASE)/src/fasta.o $(OBJDIR_RELEASE)/src/getRSS.o $(OBJDIR_RELEASE)/src/log2.o $(OBJDIR_RELEASE)/src/main.o $(OBJDIR_RELEASE)/src/marking.o $(OBJDIR_RELEASE)/src/presenceNode.o $(OBJDIR_RELEASE)/src/printMemory.o $(OBJDIR_RELEASE)/src/quicksort.o $(OBJDIR_RELEASE)/src/replaceAnnotation.o $(OBJDIR_RELEASE)/src/retrieveAnnotation.o $(OBJDIR_RELEASE)/src/write_to_disk.o
 
 all: debug release
 
@@ -54,8 +54,8 @@ debug: before_debug out_debug after_debug
 out_debug: before_debug $(OBJ_DEBUG) $(DEP_DEBUG)
 	$(LD) $(LIBDIR_DEBUG) -o $(OUT_DEBUG) $(OBJ_DEBUG)  $(LDFLAGS_DEBUG) $(LIB_DEBUG)
 
-$(OBJDIR_DEBUG)/src/getRSS.o: src/getRSS.c
-	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/getRSS.c -o $(OBJDIR_DEBUG)/src/getRSS.o
+$(OBJDIR_DEBUG)/src/insertNode.o: src/insertNode.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/insertNode.c -o $(OBJDIR_DEBUG)/src/insertNode.o
 
 $(OBJDIR_DEBUG)/src/CC.o: src/CC.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/CC.c -o $(OBJDIR_DEBUG)/src/CC.o
@@ -81,8 +81,8 @@ $(OBJDIR_DEBUG)/src/deleteColorsNode.o: src/deleteColorsNode.c
 $(OBJDIR_DEBUG)/src/fasta.o: src/fasta.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/fasta.c -o $(OBJDIR_DEBUG)/src/fasta.o
 
-$(OBJDIR_DEBUG)/src/insertNode.o: src/insertNode.c
-	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/insertNode.c -o $(OBJDIR_DEBUG)/src/insertNode.o
+$(OBJDIR_DEBUG)/src/getRSS.o: src/getRSS.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/getRSS.c -o $(OBJDIR_DEBUG)/src/getRSS.o
 
 $(OBJDIR_DEBUG)/src/log2.o: src/log2.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/log2.c -o $(OBJDIR_DEBUG)/src/log2.o
@@ -108,6 +108,9 @@ $(OBJDIR_DEBUG)/src/replaceAnnotation.o: src/replaceAnnotation.c
 $(OBJDIR_DEBUG)/src/retrieveAnnotation.o: src/retrieveAnnotation.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/retrieveAnnotation.c -o $(OBJDIR_DEBUG)/src/retrieveAnnotation.o
 
+$(OBJDIR_DEBUG)/src/write_to_disk.o: src/write_to_disk.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/write_to_disk.c -o $(OBJDIR_DEBUG)/src/write_to_disk.o
+
 clean_debug: 
 	rm -f $(OBJ_DEBUG) $(OUT_DEBUG)
 	rm -rf bin/Debug
@@ -124,8 +127,8 @@ release: before_release out_release after_release
 out_release: before_release $(OBJ_RELEASE) $(DEP_RELEASE)
 	$(LD) $(LIBDIR_RELEASE) -o $(OUT_RELEASE) $(OBJ_RELEASE)  $(LDFLAGS_RELEASE) $(LIB_RELEASE)
 
-$(OBJDIR_RELEASE)/src/getRSS.o: src/getRSS.c
-	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/getRSS.c -o $(OBJDIR_RELEASE)/src/getRSS.o
+$(OBJDIR_RELEASE)/src/insertNode.o: src/insertNode.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/insertNode.c -o $(OBJDIR_RELEASE)/src/insertNode.o
 
 $(OBJDIR_RELEASE)/src/CC.o: src/CC.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/CC.c -o $(OBJDIR_RELEASE)/src/CC.o
@@ -151,8 +154,8 @@ $(OBJDIR_RELEASE)/src/deleteColorsNode.o: src/deleteColorsNode.c
 $(OBJDIR_RELEASE)/src/fasta.o: src/fasta.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/fasta.c -o $(OBJDIR_RELEASE)/src/fasta.o
 
-$(OBJDIR_RELEASE)/src/insertNode.o: src/insertNode.c
-	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/insertNode.c -o $(OBJDIR_RELEASE)/src/insertNode.o
+$(OBJDIR_RELEASE)/src/getRSS.o: src/getRSS.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/getRSS.c -o $(OBJDIR_RELEASE)/src/getRSS.o
 
 $(OBJDIR_RELEASE)/src/log2.o: src/log2.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/log2.c -o $(OBJDIR_RELEASE)/src/log2.o
@@ -177,6 +180,9 @@ $(OBJDIR_RELEASE)/src/replaceAnnotation.o: src/replaceAnnotation.c
 
 $(OBJDIR_RELEASE)/src/retrieveAnnotation.o: src/retrieveAnnotation.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/retrieveAnnotation.c -o $(OBJDIR_RELEASE)/src/retrieveAnnotation.o
+
+$(OBJDIR_RELEASE)/src/write_to_disk.o: src/write_to_disk.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/write_to_disk.c -o $(OBJDIR_RELEASE)/src/write_to_disk.o
 
 clean_release: 
 	rm -f $(OBJ_RELEASE) $(OUT_RELEASE)

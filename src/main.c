@@ -23,6 +23,7 @@ const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 #include "./../lib/fasta.h"
 #include "./../lib/printMemory.h"
 #include "./../lib/replaceAnnotation.h"
+#include "./../lib/write_to_disk.h"
 
 #define PRINT_EVERY_X_KMERS 1000000
 
@@ -42,8 +43,8 @@ void insertKmers(Root* restrict root,
                  annotation_inform* ann_inf,
                  resultPresence* res);
 
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer);
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer);
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
 
 int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
 int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
     Root* root = NULL;
 
     int i = 0;
+    int j = 0;
     int cpt = 0;
     int size_kmer = 27;
     int binary_files = 0;
@@ -72,175 +74,391 @@ int main(int argc, char *argv[])
     char** filenames = NULL;
     char** paths_and_names = NULL;
 
+    char buffer[2048];
+
     FILE* file_input = NULL;
     FILE* file_tmp = NULL;
 
-    if (argc < 4) ERROR("Usage: ./bft k {fastx|kmers|kmers_comp} list_files_to_insert [-query_kmers {kmers|kmers_comp} list_kmers_files] [-query_branching {kmers|kmers_comp} list_kmers_files]\n")
+    ptrs_on_func* func_on_types = NULL;
+
+    if (argc == 1){
+        ERROR("\nUsage:\n"
+              "./bft build k {fastx|kmers|kmers_comp} list_genome_files output_file [Options]\n"
+              "./bft load file_bft [-add_genomes {fastx|kmers|kmers_comp} list_genome_files output_file] [Options]\n"
+              "\nOptions:\n"
+              "[-query_kmers {kmers|kmers_comp} list_kmer_files]\n"
+              "[-query_branching {kmers|kmers_comp} list_kmer_files]\n\n")
+    }
     else {
 
-        size_kmer = atoi(argv[1]); //Length k argument reading
+        if (strcmp("build", argv[1]) == 0){
 
-        //Test if k is valid
-        if (size_kmer < 0) ERROR("Provided length k (for k-mers) is < 0\n")
-        else if (size_kmer == 0) ERROR("Provided length k (for k-mers) either 0 or not a number\n")
-        else if (size_kmer > 63) ERROR("Length k (for k-mers) cannot be superior to 63\n")
-        else if (size_kmer%SIZE_SEED != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
+            size_kmer = atoi(argv[2]); //Length k argument reading
 
-        //Open the file containing the input files
-        if ((file_input = fopen(argv[3], "r")) == NULL) ERROR("Invalid file for the list of files to insert.\n")
+            //Test if k is valid
+            if (size_kmer < 0) ERROR("Provided length k (for k-mers) is < 0\n")
+            else if (size_kmer == 0) ERROR("Provided length k (for k-mers) either 0 or not a number\n")
+            else if (size_kmer > 63) ERROR("Length k (for k-mers) cannot be superior to 63\n")
+            else if (size_kmer%SIZE_SEED != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
 
-        char buffer[2048];
+            //Open the file containing the input files
+            if ((file_input = fopen(argv[4], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
 
-        while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+            while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-            buffer[strcspn(buffer, "\r\n")] = 0;
+                buffer[strcspn(buffer, "\r\n")] = 0;
 
-            if ((file_tmp = fopen(buffer, "r")) == NULL){
-                fprintf(stderr, "Invalid input file at line %d of the list of files to insert.\n", nb_files_2_read);
-                exit(EXIT_FAILURE);
+                if ((file_tmp = fopen(buffer, "r")) == NULL){
+                    fprintf(stderr, "Invalid input file at line %d of list_genome_files.\n", nb_files_2_read);
+                    exit(EXIT_FAILURE);
+                }
+
+                nb_files_2_read++;
+
+                fclose(file_tmp);
             }
 
-            nb_files_2_read++;
+            fclose(file_input);
 
-            fclose(file_tmp);
-        }
+            for (i=6; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-        fclose(file_input);
+                if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
 
-        for (i=4; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                        ERROR("Unrecognized type of input files for -query_kmers.\n"
+                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
 
-            if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
 
-                if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                    ERROR("Unrecognized type of input files for -query_kmers.\nChoice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+                        buffer[strcspn(buffer, "\r\n")] = 0;
 
-                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+                        if ((file_tmp = fopen(buffer, "r")) == NULL){
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            exit(EXIT_FAILURE);
+                        }
 
-                    buffer[strcspn(buffer, "\r\n")] = 0;
+                        cpt++;
 
-                    if ((file_tmp = fopen(buffer, "r")) == NULL){
-                        fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
-                        exit(EXIT_FAILURE);
+                        fclose(file_tmp);
                     }
 
-                    cpt++;
-
-                    fclose(file_tmp);
+                    fclose(file_input);
                 }
+                else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                        ERROR("Unrecognized type of input files for -query_branching.\n"
+                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
 
-                fclose(file_input);
-            }
-            else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
-                if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                    ERROR("Unrecognized type of input files for -query_branching.\nChoice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching query file.\n")
 
-                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching queries file.\n")
+                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-                while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+                        buffer[strcspn(buffer, "\r\n")] = 0;
 
-                    buffer[strcspn(buffer, "\r\n")] = 0;
+                        if ((file_tmp = fopen(buffer, "r")) == NULL){
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            exit(EXIT_FAILURE);
+                        }
 
-                    if ((file_tmp = fopen(buffer, "r")) == NULL){
-                        fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
-                        exit(EXIT_FAILURE);
+                        cpt++;
+
+                        fclose(file_tmp);
                     }
 
-                    cpt++;
-
-                    fclose(file_tmp);
+                    fclose(file_input);
+                }
+                else{
+                    fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
+                    exit(EXIT_FAILURE);
                 }
 
-                fclose(file_input);
-            }
-            else{
-                fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
-                exit(EXIT_FAILURE);
+                cpt = 0;
             }
 
-            cpt = 0;
+            if ((file_input = fopen(argv[4], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
+
+            filenames = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of filenames
+            ASSERT_NULL_PTR(filenames,"main()")
+            paths_and_names = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of paths + filenames
+            ASSERT_NULL_PTR(paths_and_names,"main()")
+
+            i = 0;
+
+            while (fgets(buffer, 2048, file_input)){ //Copy the filenames in an array, the paths and filenames in another array
+
+                str_tmp = basename(buffer);
+
+                filenames[i] = malloc((strlen(str_tmp)+1)*sizeof(char));
+                ASSERT_NULL_PTR(filenames[i],"main()")
+
+                strcpy(filenames[i], str_tmp);
+
+                paths_and_names[i] = malloc((strlen(buffer)+1)*sizeof(char));
+                ASSERT_NULL_PTR(paths_and_names[i],"main()")
+
+                strcpy(paths_and_names[i], buffer);
+
+                paths_and_names[i][strcspn(paths_and_names[i], "\r\n")] = 0;
+
+                i++;
+            }
+
+            fclose(file_input);
+
+            root = createRoot(filenames, nb_files_2_read, size_kmer); //Create a BFT
+            func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
+
+            //Read and test if the type of input files is valid
+            //Insert k-mers of the input files in the BFT
+            if (strcmp("kmers_comp", argv[3]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, 0, func_on_types);
+            else if (strcmp("kmers", argv[3]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, 0, func_on_types);
+            else if (strcmp("fastx", argv[3]) == 0) insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, 0, func_on_types);
+            else
+                ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
+                      "'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+
+            write_Root(root, argv[5], func_on_types);
+
+            for (i=6; i<argc; i+=3){
+
+                binary_files = 0;
+
+                if (strcmp("-query_kmers", argv[i]) == 0){
+
+                    if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer query files list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        //Query the BFT for presence of k-mer queries
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, root->k));
+                    }
+
+                    fclose(file_input);
+                }
+                else if (strcmp("-query_branching", argv[i]) == 0){
+
+                    if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer query file list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        //Query the BFT for the number of k-mer queries that are branching vertices
+                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, root->k));
+                    }
+
+                    fclose(file_input);
+                }
+                else{
+                    fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            if (paths_and_names != NULL){
+                int i = 0;
+                for (i=0; i<root->nb_genomes; i++) free(paths_and_names[i]);
+                free(paths_and_names);
+            }
+
+            freeRoot(root);
+            free(func_on_types);
         }
+        else if (strcmp("load", argv[1]) == 0){
 
-        if ((file_input = fopen(argv[3], "r")) == NULL) ERROR("Invalid file for the list of files to insert.\n")
+            root = read_Root(argv[2]);
 
-        filenames = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of filenames
-        ASSERT_NULL_PTR(filenames,"main()")
-        paths_and_names = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of paths + filenames
-        ASSERT_NULL_PTR(paths_and_names,"main()")
+            for (i=3; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-        i = 0;
+                if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
 
-        while (fgets(buffer, 2048, file_input)){ //Copy the filenames in an array, the paths and filenames in another array
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                        ERROR("Unrecognized type of input files for -query_kmers.\n"
+                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
 
-            str_tmp = basename(buffer);
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
 
-            filenames[i] = malloc((strlen(str_tmp)+1)*sizeof(char));
-            ASSERT_NULL_PTR(filenames[i],"main()")
+                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-            strcpy(filenames[i], str_tmp);
+                        buffer[strcspn(buffer, "\r\n")] = 0;
 
-            paths_and_names[i] = malloc((strlen(buffer)+1)*sizeof(char));
-            ASSERT_NULL_PTR(paths_and_names[i],"main()")
+                        if ((file_tmp = fopen(buffer, "r")) == NULL){
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            exit(EXIT_FAILURE);
+                        }
 
-            strcpy(paths_and_names[i], buffer);
+                        cpt++;
 
-            paths_and_names[i][strcspn(paths_and_names[i], "\r\n")] = 0;
+                        fclose(file_tmp);
+                    }
 
-            i++;
-        }
+                    fclose(file_input);
+                }
+                else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
 
-        fclose(file_input);
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
+                        ERROR("Unrecognized type of input files for -query_branching.\n"
+                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
 
-        root = createRoot(filenames, nb_files_2_read); //Create a BFT
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching query file.\n")
 
-        //Read and test if the type of input files is valid
-        //Insert k-mers of the input files in the BFT
-        if (strcmp("kmers_comp", argv[2]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 1, size_kmer);
-        else if (strcmp("kmers", argv[2]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 0, size_kmer);
-        else if (strcmp("fastx", argv[2]) == 0) insert_Genomes_from_FASTxFiles(root, paths_and_names, size_kmer);
-        else
-            ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-        for (i=4; i<argc; i+=3){
+                        buffer[strcspn(buffer, "\r\n")] = 0;
 
-            binary_files = 0;
+                        if ((file_tmp = fopen(buffer, "r")) == NULL){
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            exit(EXIT_FAILURE);
+                        }
 
-            if (strcmp("-query_kmers", argv[i]) == 0){
+                        cpt++;
 
-                if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
-                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries files list.\n")
+                        fclose(file_tmp);
+                    }
 
-                while (fgets(buffer, 2048, file_input)){
+                    fclose(file_input);
+                }
+                else if (strcmp("-add_genomes", argv[i]) == 0){
 
-                    buffer[strcspn(buffer, "\r\n")] = 0;
-                    //Query the BFT for presence of k-mer queries
-                    printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, size_kmer));
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
+
+                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
+
+                        buffer[strcspn(buffer, "\r\n")] = 0;
+
+                        if ((file_tmp = fopen(buffer, "r")) == NULL){
+                            fprintf(stderr, "Invalid input file at line %d of list_genome_files.\n", nb_files_2_read);
+                            exit(EXIT_FAILURE);
+                        }
+
+                        nb_files_2_read++;
+
+                        fclose(file_tmp);
+                    }
+
+                    fclose(file_input);
+
+                    i++;
+                }
+                else{
+                    fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
+                    exit(EXIT_FAILURE);
                 }
 
-                fclose(file_input);
+                cpt = 0;
             }
-            else if (strcmp("-query_branching", argv[i]) == 0){
 
-                if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
-                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer queries files list.\n")
+            for (i=3; i<argc; i+=3){
 
-                while (fgets(buffer, 2048, file_input)){
+                binary_files = 0;
 
-                    buffer[strcspn(buffer, "\r\n")] = 0;
-                    //Query the BFT for the number of k-mer queries that are branching vertices
-                    printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, size_kmer));
+                if (strcmp("-query_kmers", argv[i]) == 0){
+
+                    if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer query files list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        //Query the BFT for presence of k-mer queries
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, root->k));
+                    }
+
+                    fclose(file_input);
                 }
+                else if (strcmp("-query_branching", argv[i]) == 0){
 
-                fclose(file_input);
+                    if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer query file list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        //Query the BFT for the number of k-mer queries that are branching vertices
+                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, root->k));
+                    }
+
+                    fclose(file_input);
+                }
+                else if (strcmp("-add_genomes", argv[i]) == 0){
+
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
+
+                    paths_and_names = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of paths + filenames
+                    ASSERT_NULL_PTR(paths_and_names,"main()")
+                    root->filenames = realloc(root->filenames, (root->nb_genomes + nb_files_2_read) * sizeof(char*)); //Allocate the array of paths + filenames
+                    ASSERT_NULL_PTR(root->filenames,"main()")
+
+                    j = 0;
+
+                    while (fgets(buffer, 2048, file_input)){ //Copy the filenames in an array, the paths and filenames in another array
+
+                        str_tmp = basename(buffer);
+
+                        root->filenames[j + root->nb_genomes] = malloc((strlen(str_tmp)+1)*sizeof(char));
+                        ASSERT_NULL_PTR(root->filenames[j + root->nb_genomes],"main()")
+
+                        strcpy(root->filenames[j + root->nb_genomes], str_tmp);
+
+                        paths_and_names[j] = malloc((strlen(buffer)+1)*sizeof(char));
+                        ASSERT_NULL_PTR(paths_and_names[j],"main()")
+
+                        strcpy(paths_and_names[j], buffer);
+
+                        paths_and_names[j][strcspn(paths_and_names[j], "\r\n")] = 0;
+
+                        j++;
+                    }
+
+                    fclose(file_input);
+
+                    func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
+
+                    root->nb_genomes += nb_files_2_read;
+
+                    //Read and test if the type of input files is valid
+                    //Insert k-mers of the input files in the BFT
+                    if (strcmp("kmers_comp", argv[i+1]) == 0){
+                        insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                    }
+                    else if (strcmp("kmers", argv[i+1]) == 0){
+                        insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                    }
+                    else if (strcmp("fastx", argv[i+1]) == 0){
+                        insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                    }
+                    else
+                        ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
+                              "'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+
+                    write_Root(root, argv[i+3], func_on_types);
+
+                    free(func_on_types);
+
+                    i++;
+                }
+                else{
+                    fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
+                    exit(EXIT_FAILURE);
+                }
             }
-            else{
-                fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
-                exit(EXIT_FAILURE);
+
+            if (paths_and_names != NULL){
+                int i = 0;
+                for (i=0; i<nb_files_2_read; i++) free(paths_and_names[i]);
+                free(paths_and_names);
             }
+
+            freeRoot(root);
         }
-
-        freeRoot(root);
+        else{
+            fprintf(stderr, "Unrecognized command %s.\n", argv[1]);
+            exit(EXIT_FAILURE);
+        }
     }
 
     return EXIT_SUCCESS;
@@ -300,7 +518,7 @@ void insertKmers(Root* restrict root,
 *  size_kmer: length k of k-mers in files
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer){
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_KmerFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_KmerFiles()")
@@ -322,8 +540,6 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     ASSERT_NULL_PTR(ann_inf,"insert_Genomes_from_FASTx()")
 
     resultPresence* res = create_resultPresence();
-
-    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
 
     //Buffer used to store k-mers read in the input files
     uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
@@ -350,16 +566,16 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
     uint64_t kmers_read;
 
-    for (i=0; i<root->nb_genomes; i++){ //For each file in input
+    for (i=id_start_genome; i<root->nb_genomes; i++){ //For each file in input
 
         kmers_read = 0;
         k = 0;
         j = 0;
 
-        file = fopen(filenames[i], "r");
+        file = fopen(filenames[i-id_start_genome], "r");
         ASSERT_NULL_PTR(file,"insert_Genomes_from_KmerFiles()")
 
-        printf("\nFile %d: %s\n\n", i, filenames[i]);
+        printf("\nFile %d: %s\n\n", i, filenames[i-id_start_genome]);
 
         if (binary_files){
 
@@ -379,6 +595,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
                 if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS)){
                     printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
+                    //break;
                 }
 
                 kmers_read += return_fread;
@@ -440,7 +657,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
         printf("\nGetting complex nodes\n");
 
-        count = get_nb_cplx_nodes_from_KmerCounting(root, filenames[i], size_kmer, skip_node_root, &annot_sorted, func_on_types, ann_inf);
+        count = get_nb_cplx_nodes_from_KmerCounting(root, filenames[i-id_start_genome], size_kmer, skip_node_root, &annot_sorted, func_on_types, ann_inf);
 
         if (count/((double)kmers_read) <= TRESH_DEL_ANNOT){
 
@@ -496,7 +713,6 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     free(line);
     free(array_kmers);
 
-    free(func_on_types);
     free(ann_inf);
     free(res);
 
@@ -513,7 +729,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 *  size_kmer: length k of k-mers to extract from the FASTx files
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer){
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_FASTxFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_FASTxFiles()")
@@ -535,8 +751,6 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer)
 
     resultPresence* res = create_resultPresence();
 
-    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
-
     Pvoid_t PJArray = (PWord_t)NULL;
     Word_t Rc_word;
 
@@ -549,17 +763,17 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer)
     uint64_t kmers_read = 0;
     uint64_t tmp_kmers_read = 0;
 
-    for (i=0; i<root->nb_genomes; i++){ //For each file in input
+    for (i=id_start_genome; i<root->nb_genomes; i++){ //For each file in input
         size_buf_tmp = 0;
         kmers_read = 0;
         tmp_kmers_read = 0;
         nb_kmers_buf = 0;
 
-        int fp = open(filenames[i], O_RDONLY); //Open it
+        int fp = open(filenames[i-id_start_genome], O_RDONLY); //Open it
         kseq_t *seq = kseq_init(fp); //initialize the parser for this file
         int size_seq = kseq_read(seq, -1); //Start reading file, seq contains a buffer with a part of a sequence from the file
 
-        printf("\nFile : %s\n\n", filenames[i]);
+        printf("\nFile : %s\n\n", filenames[i-id_start_genome]);
 
         while (size_seq > -1) { //While the end of the file is not reached
 
@@ -663,7 +877,6 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer)
 
     free(mem);
 
-    free(func_on_types);
     free(ann_inf);
     free(res);
 
@@ -1062,7 +1275,7 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
     ASSERT_NULL_PTR(ann_inf,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(res,"get_nb_cplx_nodes_from_FASTx()")
 
-    Root* bft_cplx_nodes = createRoot(NULL,0);
+    Root* bft_cplx_nodes = createRoot(NULL, 0, size_kmer);
 
     int i = 0, j = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
