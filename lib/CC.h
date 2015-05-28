@@ -126,7 +126,7 @@ typedef struct{
     // children_Node_container is an array of the current CC children nodes
     Node* restrict children_Node_container;
 
-    uint16_t type; //8bits -> size BF in bytes, 5bits -> v(length of p_v), 1bit: undefined, 1bit: 1 if the CC is the last one of its node
+    uint16_t type; //8bits -> size BF in bytes, 5bits -> v(length of p_v), 1bit: full or not, 1bit: 1 if the CC is the last one of its node
     uint16_t nb_elem; //Number of prefix stored in the CC
     uint16_t nb_Node_children; //Number of nodes in children_Node_container
 } __attribute__ ((__packed__)) CC;

@@ -224,7 +224,9 @@ void transform2CC(UC* restrict uc, CC* restrict cc, int size_suffix, ptrs_on_fun
             if (annot_sizes[new_order[i]] != 0){
 
                 if ((annot_extend != NULL) && (annot_extend[new_order[i]] != NULL) && (annot_extend[new_order[i]][0] != 0)){
-                    memcpy(&(uc_tmp->suffixes[(k%NB_CHILDREN_PER_SKP) * uc_tmp->size_annot]), &(uc->suffixes[real_pos_i_uc + nb_cell]), (annot_sizes[new_order[i]]-1) * sizeof(uint8_t));
+                    memcpy(&(uc_tmp->suffixes[(k%NB_CHILDREN_PER_SKP) * uc_tmp->size_annot]),
+                           &(uc->suffixes[real_pos_i_uc + nb_cell]),
+                           (annot_sizes[new_order[i]]-1) * sizeof(uint8_t));
                     uc_tmp->suffixes[(k%NB_CHILDREN_PER_SKP) * uc_tmp->size_annot + annot_sizes[new_order[i]] - 1] = annot_extend[new_order[i]][0];
                 }
                 else memcpy(&(uc_tmp->suffixes[(k%NB_CHILDREN_PER_SKP) * uc_tmp->size_annot]), &(uc->suffixes[real_pos_i_uc + nb_cell]), annot_sizes[new_order[i]] * sizeof(uint8_t));
@@ -569,6 +571,7 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
     CC* cc = pres->container;
 
     uint16_t size_bf = cc->type >> 8; //Bloom filter size in bytes
+
     uint8_t suf = (cc->type >> 2) & 0x3f; //Length v of p_v
     uint8_t pref = SIZE_SEED*2-suf; //Length u of p_u
 
@@ -594,7 +597,9 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
 
         //Set the position to 1 in filter2, eventually increment one cell in SkipFilter2 if it exists
         cc->BF_filter2[size_bf+posFilter2/SIZE_CELL] |= MASK_POWER_8[posFilter2%SIZE_CELL];
-        if ((cc->nb_elem >= NB_SUBSTRINGS_TRANSFORM) && (skip_posfilter2 < skip_filter2)) cc->BF_filter2[size_filter2+skip_posfilter2]++;
+
+        if ((cc->nb_elem >= NB_SUBSTRINGS_TRANSFORM) && (skip_posfilter2 < skip_filter2))
+            cc->BF_filter2[size_filter2+skip_posfilter2]++;
 
         //Compute the Hamming weight between position 0 and the position set to 1 in filter2
         //To know how many p_u are lexicographically inferior or equal to the one we insert

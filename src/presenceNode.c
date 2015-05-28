@@ -1146,13 +1146,13 @@ void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int siz
 *  func_on_types: ptr on ptrs_on_func structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, ptrs_on_func* restrict func_on_types, resultPresence* res){
+void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, int posCC_start_search, ptrs_on_func* restrict func_on_types, resultPresence* res){
 
     if (size_kmer == 0) ERROR("presenceKmer(): this case should not happen")
     ASSERT_NULL_PTR(node,"presenceKmer()")
     ASSERT_NULL_PTR(kmer,"presenceKmer()")
 
-    int i = -1;
+    int i = posCC_start_search-1;
     int cpt_node_tmp = -1;
 
     CC* cc;
@@ -1183,12 +1183,12 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, pt
             if ((cc->BF_filter2[hash1_v/SIZE_CELL] & MASK_POWER_8[hash1_v%SIZE_CELL]) == 0) continue;
             if ((cc->BF_filter2[hash2_v/SIZE_CELL] & MASK_POWER_8[hash2_v%SIZE_CELL]) == 0) continue;
 
+            res->container = &(((CC*)node->CC_array)[i]);
+            res->presBF = 1;
+
             res->substring[0] = (substring_prefix >> 6) & 0xff;
             res->substring[1] = (substring_prefix << 2) | (res->substring[2] >> 6);
             res->substring[2] = (substring_prefix >> 8) & 0xc0;
-
-            res->container = &(((CC*)node->CC_array)[i]);
-            res->presBF = 1;
 
             //At this point, this prefix is said present by the BF, maybe it's a True Positive, maybe it's a False Positive
             //If it is a FP, the prefix will have to be inserted in this CC (FP recycling)
@@ -1625,7 +1625,8 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
     resultPresence* res = malloc(sizeof(resultPresence));
     ASSERT_NULL_PTR(res,"isKmerPresent()")
 
-    presenceKmer(node, kmer_tmp, size_kmer, &(func_on_types[level]), res);
+    //We want to start the search at the beginning of the node so 4th argument is 0
+    presenceKmer(node, kmer_tmp, size_kmer, 0, &(func_on_types[level]), res);
 
     if (size_kmer == SIZE_SEED) return res;
     else{

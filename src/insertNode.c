@@ -24,13 +24,15 @@ void insertKmer_Node(Node* restrict node, Node* restrict root, uint8_t* restrict
     if (node->CC_array == NULL) if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
 
     int level = (size_suffix/SIZE_SEED)-1;
+    int node_nb_elem = -1;
 
     UC* uc;
 
     __builtin_prefetch (&(func_on_types[level]), 0, 0);
 
     //We search for the first prefix of the suffix contained in the parameter kmer
-    presenceKmer(node, suffix, size_suffix, &(func_on_types[level]), res);
+    //We want to start the search at the beginning of the node so 4th argument is 0
+    presenceKmer(node, suffix, size_suffix, 0, &(func_on_types[level]), res);
 
     //If the prefix is present, we insert the suffix into the corresponding child
     if (res->link_child != NULL){
@@ -74,49 +76,94 @@ void insertKmer_Node(Node* restrict node, Node* restrict root, uint8_t* restrict
             if (res->children_type_leaf == 0){ //If the container of result_presence is not a leaf (basically, a CC->children array)
                 // If it is not a UC also, we continue insertion of the suffix into the child container, which can only be a node
                 if (res->container_is_UC == 0){
-                    insertKmer_Node((Node*)res->link_child, root, suffix, size_suffix-SIZE_SEED, kmer, size_kmer, id_genome, func_on_types, ann_inf, res, annot_sorted);
+                    insertKmer_Node((Node*)res->link_child, root, suffix, size_suffix-SIZE_SEED, kmer,
+                                    size_kmer, id_genome, func_on_types, ann_inf, res, annot_sorted);
                 }
                 else{ // If it is a UC, we modify the annotation like usual (computation new size, realloc old annotation, modification of it)
                     uc = (UC*)res->container;
                     nb_elem = uc->nb_children >> 1;
 
-                    modify_annotations(root, uc, nb_cell, nb_elem, res->pos_sub_bucket, id_genome, kmer, size_kmer, func_on_types, ann_inf, annot_sorted, 1);
+                    modify_annotations(root, uc, nb_cell, nb_elem, res->pos_sub_bucket, id_genome,
+                                       kmer, size_kmer, func_on_types, ann_inf, annot_sorted, 1);
                 }
             }
             else{ //If the container of result_resence is a leaf (basically, a CC->children array), we modify it
 
-                Node* new_node = insertKmer_Node_special(root, res, suffix, size_suffix-SIZE_SEED, kmer, size_kmer, id_genome, func_on_types, ann_inf, annot_sorted);
+                Node* new_node = insertKmer_Node_special(root, res, suffix, size_suffix-SIZE_SEED, kmer, size_kmer,
+                                                        id_genome, func_on_types, ann_inf, annot_sorted);
 
                 if (new_node != NULL)
-                    insertKmer_Node(new_node, root, suffix, size_suffix-SIZE_SEED, kmer, size_kmer, id_genome, func_on_types, ann_inf, res, annot_sorted);
+                    insertKmer_Node(new_node, root, suffix, size_suffix-SIZE_SEED, kmer, size_kmer,
+                                    id_genome, func_on_types, ann_inf, res, annot_sorted);
             }
         }
     }
-    //Else if the prefix is resent only as a false positive into a CC
+    //Else if the prefix is present only as a false positive into a CC
     else if (res->presBF == 1){
 
         //We insert the prefix into the CC
         insertSP_CC(res, suffix, size_suffix, id_genome, &(func_on_types[level]), ann_inf, annot_sorted);
 
         //If the CC, after insertion, stores NB_SUBSTRINGS_TRANSFORM prefixes, it is ready for recomputation
-        if (((CC*)res->container)->nb_elem == NB_SUBSTRINGS_TRANSFORM) transform_Filter2n3((CC*)res->container, 14, 4, &(func_on_types[level]));
+        if (((CC*)res->container)->nb_elem == NB_SUBSTRINGS_TRANSFORM)
+            transform_Filter2n3((CC*)res->container, 14, 4, &(func_on_types[level]));
     }
     //Else the prefix is not resent at all
     else{
 
-        //We just insert the suffix in the UC
-        if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
-        insertKmer_UC(&(node->UC_array), suffix, id_genome, size_suffix, ann_inf, annot_sorted);
+        if (node->CC_array != NULL){
+
+            node_nb_elem = 0;
+            while ((((CC*)node->CC_array)[node_nb_elem].type & 0x1) == 0) node_nb_elem++;
+            node_nb_elem++;
+
+            if (((CC*)node->CC_array)[node_nb_elem-1].nb_elem < func_on_types[level].nb_kmers_per_cc){
+
+                CC* cc_tmp = &(((CC*)node->CC_array)[node_nb_elem-1]);
+
+                uint8_t sp_sub1 = reverse_word_8(suffix[0]) & 0x3f;
+                uint8_t sp_sub2 = reverse_word_8(suffix[1]);
+
+                uint16_t hash1_v = dbj2(sp_sub2, sp_sub1, MODULO_HASH);
+                uint16_t hash2_v = sdbm(sp_sub2, sp_sub1, MODULO_HASH);
+
+                cc_tmp->BF_filter2[hash1_v/SIZE_CELL] |= MASK_POWER_8[hash1_v%SIZE_CELL];
+                cc_tmp->BF_filter2[hash2_v/SIZE_CELL] |= MASK_POWER_8[hash2_v%SIZE_CELL];
+
+                presenceKmer(node, suffix, size_suffix, node_nb_elem-1, &(func_on_types[level]), res);
+
+                //We insert the prefix into the CC
+                insertSP_CC(res, suffix, size_suffix, id_genome, &(func_on_types[level]), ann_inf, annot_sorted);
+
+                //If the CC, after insertion, stores NB_SUBSTRINGS_TRANSFORM prefixes, it is ready for recomputation
+                if (((CC*)res->container)->nb_elem == NB_SUBSTRINGS_TRANSFORM)
+                    transform_Filter2n3((CC*)res->container, 14, 4, &(func_on_types[level]));
+            }
+            else{
+
+                if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
+                insertKmer_UC(&(node->UC_array), suffix, id_genome, size_suffix, ann_inf, annot_sorted);
+            }
+        }
+        else {
+            //We just insert the suffix in the UC
+            if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
+            insertKmer_UC(&(node->UC_array), suffix, id_genome, size_suffix, ann_inf, annot_sorted);
+        }
     }
 
     //If the last container is UC_ptr and is full, it is transformed into a CC
     if ((node->UC_array.suffixes != NULL) && ((node->UC_array.nb_children >> 1) == func_on_types[level].nb_kmers_per_cc)){
-        int node_nb_elem = 0;
 
         if (node->CC_array != NULL){
-            while ((((CC*)node->CC_array)[node_nb_elem].type & 0x1) == 0) node_nb_elem++;
-            node_nb_elem++;
+
+            if (node_nb_elem == -1){
+                node_nb_elem = 0;
+                while ((((CC*)node->CC_array)[node_nb_elem].type & 0x1) == 0) node_nb_elem++;
+                node_nb_elem++;
+            }
         }
+        else node_nb_elem = 0;
 
         node->CC_array = realloc(node->CC_array, (node_nb_elem+1)*sizeof(CC));
         ASSERT_NULL_PTR(node->CC_array,"insertKmer_Node()")

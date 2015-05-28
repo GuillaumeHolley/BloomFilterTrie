@@ -25,7 +25,7 @@
 
 void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int size_kmer, ptrs_on_func* restrict func_on_types, resultPresence* res, uint16_t** skip_node_root);
 void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size_kmer, ptrs_on_func* restrict func_on_types, resultPresence* res, uint16_t** skip_node_root);
-void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, ptrs_on_func* restrict func_on_types, resultPresence* res);
+void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, int posCC_start_search, ptrs_on_func* restrict func_on_types, resultPresence* res);
 resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int size_kmer, ptrs_on_func* restrict func_on_types);
 
 #endif
