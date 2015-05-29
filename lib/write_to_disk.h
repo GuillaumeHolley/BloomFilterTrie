@@ -19,12 +19,12 @@
 
 void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func_on_types);
 void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
-void write_UC(UC* uc, FILE* file, int size_substring, int nb_children);
+void write_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children);
 void write_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
 
 Root* read_Root(char* filename);
 void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
-void read_UC(UC* uc, FILE* file, int size_substring, int is_uc_of_a_vertex);
+void read_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children);
 void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
 
 #endif

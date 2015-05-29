@@ -51,6 +51,113 @@ void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func
     return;
 }
 
+void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
+
+    ASSERT_NULL_PTR(node,"write_Node()")
+    ASSERT_NULL_PTR(func_on_types,"write_Node()")
+
+    uint8_t flags = 0;
+
+    int i = -1;
+
+    if ((CC*)node->CC_array != NULL){
+        do {
+            i++;
+
+            flags = CC_VERTEX;
+            if (node->UC_array.suffixes != NULL) flags |= UC_PRESENT;
+
+            fwrite(&flags, sizeof(uint8_t), 1, file);
+            flags = 0;
+
+            write_CC(&(((CC*)node->CC_array)[i]), file, size_kmer, func_on_types);
+        }
+        while ((((CC*)node->CC_array)[i].type & 0x1) == 0);
+    }
+
+    if (node->UC_array.suffixes != NULL){
+        flags = UC_VERTEX | UC_PRESENT;
+        fwrite(&flags, sizeof(uint8_t), 1, file);
+        write_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, node->UC_array.nb_children >> 1);
+    }
+
+    return;
+}
+
+void write_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children){
+
+    ASSERT_NULL_PTR(uc, "write_UC()")
+
+    fwrite(&(uc->nb_children), sizeof(uint16_t), 1, file);
+    fwrite(&(uc->size_annot), sizeof(uint8_t), 1, file);
+    fwrite(&(uc->size_annot_cplx_nodes), sizeof(uint8_t), 1, file);
+    fwrite(&(uc->nb_extended_annot), sizeof(uint16_t), 1, file);
+    fwrite(&(uc->nb_cplx_nodes), sizeof(uint16_t), 1, file);
+
+    if (uc->suffixes != NULL){
+        fwrite(uc->suffixes, sizeof(uint8_t), nb_children * (size_substring + uc->size_annot) + uc->nb_extended_annot
+               * SIZE_BYTE_EXT_ANNOT + uc->nb_cplx_nodes * (uc->size_annot_cplx_nodes + SIZE_BYTE_CPLX_N), file);
+    }
+
+    return;
+}
+
+void write_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
+
+    ASSERT_NULL_PTR(cc,"write_CC()")
+
+    UC* uc;
+
+    int i;
+
+    int level = (size_kmer/SIZE_SEED)-1;
+    int nb_skp = CEIL(cc->nb_elem, NB_CHILDREN_PER_SKP);
+
+    uint16_t size_bf = cc->type >> 8;
+
+    uint8_t s = (cc->type >> 2) & 0x3f;
+    uint8_t p = SIZE_SEED*2-s;
+
+    fwrite(&(cc->type), sizeof(uint16_t), 1, file);
+    fwrite(&(cc->nb_elem), sizeof(uint16_t), 1, file);
+    fwrite(&(cc->nb_Node_children), sizeof(uint16_t), 1, file);
+
+    fwrite(cc->BF_filter2, sizeof(uint8_t), size_bf + (MASK_POWER_16[p]/SIZE_CELL), file);
+
+    if (s == 8) fwrite(cc->filter3, sizeof(uint8_t), cc->nb_elem, file);
+    else if (IS_ODD(cc->nb_elem)) fwrite(cc->filter3, sizeof(uint8_t), (cc->nb_elem/2)+1, file);
+    else fwrite(cc->filter3, sizeof(uint8_t), cc->nb_elem/2, file);
+
+    if (func_on_types[level].level_min == 1)
+        fwrite(cc->extra_filter3, sizeof(uint8_t), CEIL(cc->nb_elem,SIZE_CELL), file);
+
+    if (size_kmer != SIZE_SEED){
+
+        if (((uint8_t*)cc->children_type)[0] == 8){
+            fwrite(cc->children_type, sizeof(uint8_t), cc->nb_elem+1, file);
+        }
+        else fwrite(cc->children_type, sizeof(uint8_t), CEIL(cc->nb_elem,2)+1, file);
+
+        for (i = 0; i < nb_skp; i++){
+
+            uc = &(((UC*)cc->children)[i]);
+            write_UC(uc, file, func_on_types[level].size_kmer_in_bytes_minus_1, uc->nb_children);
+        }
+    }
+    else{
+        for (i = 0; i < nb_skp; i++){
+
+            if (i != nb_skp-1) write_UC(&(((UC*)cc->children)[i]), file, 0, NB_CHILDREN_PER_SKP);
+            else write_UC(&(((UC*)cc->children)[i]), file, 0, cc->nb_elem - i * NB_CHILDREN_PER_SKP);
+        }
+    }
+
+    for (i = 0; i < cc->nb_Node_children; i++)
+        write_Node(&(cc->children_Node_container[i]), file, size_kmer-SIZE_SEED, func_on_types);
+
+    return;
+}
+
 Root* read_Root(char* filename){
 
     ASSERT_NULL_PTR(filename,"read_Root()")
@@ -123,113 +230,6 @@ Root* read_Root(char* filename){
     return root;
 }
 
-void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
-
-    ASSERT_NULL_PTR(node,"write_Node()")
-    ASSERT_NULL_PTR(func_on_types,"write_Node()")
-
-    uint8_t flags = 0;
-
-    int i = -1;
-
-    if ((CC*)node->CC_array != NULL){
-        do {
-            i++;
-
-            flags = CC_VERTEX;
-            if (node->UC_array.suffixes != NULL) flags |= UC_PRESENT;
-
-            fwrite(&flags, sizeof(uint8_t), 1, file);
-            flags = 0;
-
-            write_CC(&(((CC*)node->CC_array)[i]), file, size_kmer, func_on_types);
-        }
-        while ((((CC*)node->CC_array)[i].type & 0x1) == 0);
-    }
-
-    if (node->UC_array.suffixes != NULL){
-        flags = UC_VERTEX | UC_PRESENT;
-        fwrite(&flags, sizeof(uint8_t), 1, file);
-        write_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, node->UC_array.nb_children >> 1);
-    }
-
-    return;
-}
-
-void write_UC(UC* uc, FILE* file, int size_substring, int nb_children){
-
-    ASSERT_NULL_PTR(uc, "write_UC()")
-
-    fwrite(&(uc->size_annot), sizeof(uint8_t), 1, file);
-    fwrite(&(uc->size_annot_cplx_nodes), sizeof(uint8_t), 1, file);
-    fwrite(&(uc->nb_extended_annot), sizeof(uint16_t), 1, file);
-    fwrite(&(uc->nb_cplx_nodes), sizeof(uint16_t), 1, file);
-    fwrite(&(uc->nb_children), sizeof(uint16_t), 1, file);
-
-    if (uc->suffixes != NULL){
-        fwrite(uc->suffixes, sizeof(uint8_t), nb_children * (size_substring + uc->size_annot) + uc->nb_extended_annot
-               * SIZE_BYTE_EXT_ANNOT + uc->nb_cplx_nodes * (uc->size_annot_cplx_nodes + SIZE_BYTE_CPLX_N), file);
-    }
-
-    return;
-}
-
-void write_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
-
-    ASSERT_NULL_PTR(cc,"write_CC()")
-
-    UC* uc;
-
-    int i;
-
-    int level = (size_kmer/SIZE_SEED)-1;
-    int nb_skp = CEIL(cc->nb_elem, NB_CHILDREN_PER_SKP);
-
-    uint16_t size_bf = cc->type >> 8;
-
-    uint8_t s = (cc->type >> 2) & 0x3f;
-    uint8_t p = SIZE_SEED*2-s;
-
-    fwrite(&(cc->type), sizeof(uint16_t), 1, file);
-    fwrite(&(cc->nb_elem), sizeof(uint16_t), 1, file);
-    fwrite(&(cc->nb_Node_children), sizeof(uint16_t), 1, file);
-
-    fwrite(cc->BF_filter2, sizeof(uint8_t), size_bf + (MASK_POWER_16[p]/SIZE_CELL), file);
-
-    if (s == 8) fwrite(cc->filter3, sizeof(uint8_t), cc->nb_elem, file);
-    else if (IS_ODD(cc->nb_elem)) fwrite(cc->filter3, sizeof(uint8_t), (cc->nb_elem/2)+1, file);
-    else fwrite(cc->filter3, sizeof(uint8_t), cc->nb_elem/2, file);
-
-    if (func_on_types[level].level_min == 1)
-        fwrite(cc->extra_filter3, sizeof(uint8_t), CEIL(cc->nb_elem,SIZE_CELL), file);
-
-    if (size_kmer != SIZE_SEED){
-
-        if (((uint8_t*)cc->children_type)[0] == 8){
-            fwrite(cc->children_type, sizeof(uint8_t), cc->nb_elem+1, file);
-        }
-        else fwrite(cc->children_type, sizeof(uint8_t), CEIL(cc->nb_elem,2)+1, file);
-
-        for (i = 0; i < nb_skp; i++){
-
-            uc = &(((UC*)cc->children)[i]);
-            write_UC(uc, file, func_on_types[level].size_kmer_in_bytes_minus_1, uc->nb_children);
-        }
-    }
-    else{
-        for (i = 0; i < nb_skp; i++){
-
-            if (i != nb_skp-1) write_UC(&(((UC*)cc->children)[i]), file, 0, NB_CHILDREN_PER_SKP);
-            else write_UC(&(((UC*)cc->children)[i]), file, 0, cc->nb_elem - i * NB_CHILDREN_PER_SKP);
-        }
-    }
-
-    for (i = 0; i < cc->nb_Node_children; i++)
-        write_Node(&(cc->children_Node_container[i]), file, size_kmer-SIZE_SEED, func_on_types);
-
-    return;
-}
-
 void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
 
     ASSERT_NULL_PTR(node,"read_Node()")
@@ -238,6 +238,8 @@ void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* res
     int i = 0;
 
     uint8_t flags = 0;
+
+    uint16_t nb_children;
 
     if (fread(&flags, sizeof(uint8_t), 1, file) != 1) ERROR("read_Node()")
 
@@ -256,7 +258,10 @@ void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* res
                 if ((flags & UC_PRESENT) != 0){
 
                     if (fread(&flags, sizeof(uint8_t), 1, file) != 1) ERROR("read_Node()")
-                    read_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, 1);
+                    if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_Node()")
+
+                    read_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, nb_children >> 1);
+                    node->UC_array.nb_children = nb_children;
                 }
 
                 break;
@@ -268,28 +273,27 @@ void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* res
         }
     }
     else {
+
+        if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_Node()")
+
         node->CC_array = NULL;
-        read_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, 1);
+        read_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, nb_children >> 1);
+        node->UC_array.nb_children = nb_children;
     }
 
     return;
 }
 
-void read_UC(UC* uc, FILE* file, int size_substring, int is_uc_of_a_vertex){
+void read_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children){
 
     ASSERT_NULL_PTR(uc, "read_UC()")
 
     size_t size_uc_suffixes;
-    int nb_children;
 
     if (fread(&(uc->size_annot), sizeof(uint8_t), 1, file) != 1) ERROR("read_UC()")
     if (fread(&(uc->size_annot_cplx_nodes), sizeof(uint8_t), 1, file) != 1) ERROR("read_UC()")
     if (fread(&(uc->nb_extended_annot), sizeof(uint16_t), 1, file) != 1) ERROR("read_UC()")
     if (fread(&(uc->nb_cplx_nodes), sizeof(uint16_t), 1, file) != 1) ERROR("read_UC()")
-    if (fread(&(uc->nb_children), sizeof(uint16_t), 1, file) != 1) ERROR("read_UC()")
-
-    if (is_uc_of_a_vertex == 1) nb_children = uc->nb_children >> 1;
-    else nb_children = uc->nb_children;
 
     if (nb_children != 0){
 
@@ -315,18 +319,14 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
     int level = (size_kmer/SIZE_SEED)-1;
     int inc = 0xf8/SIZE_CELL;
-
     int it_children = 0;
     int it_nodes = 0;
-
-    int pos_uc = -1;
-
     int size_line = 0;
-
     int count_1 = 0;
     int nb_elt = 0;
+    int pos_uc = -1;
 
-    uint16_t size_bf;
+    uint16_t size_bf, nb_children;
 
     uint8_t s, p, tmp_uint8;
 
@@ -397,8 +397,11 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
         for (i = 0; i < nb_skp; i++){
 
+            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
+
             uc = &(((UC*)cc->children)[i]);
-            read_UC(uc, file, func_on_types[level].size_kmer_in_bytes_minus_1, 0);
+            read_UC(uc, file, func_on_types[level].size_kmer_in_bytes_minus_1, nb_children);
+            uc->nb_children = nb_children;
         }
     }
     else{
@@ -406,8 +409,12 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
         for (i = 0; i < nb_skp; i++){
 
-            if (i != nb_skp-1) read_UC(&(((UC*)cc->children)[i]), file, 0, 0);
-            else read_UC(&(((UC*)cc->children)[i]), file, 0, 0);
+            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
+
+            if (i != nb_skp-1) read_UC(&(((UC*)cc->children)[i]), file, 0, NB_CHILDREN_PER_SKP);
+            else read_UC(&(((UC*)cc->children)[i]), file, 0, cc->nb_elem - i * NB_CHILDREN_PER_SKP);
+
+            ((UC*)cc->children)[i].nb_children = nb_children;
         }
     }
 
