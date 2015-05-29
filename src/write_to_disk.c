@@ -10,7 +10,6 @@ void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func
     ASSERT_NULL_PTR(file, "write_Root")
 
     int i = 0;
-    int pos = 0;
 
     uint16_t str_len = 0;
 
@@ -26,13 +25,22 @@ void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func
             fwrite(&(root->comp_set_colors[i].size_annot), sizeof(uint8_t), 1, file);
 
             if (root->comp_set_colors[i].annot_array != NULL){
-                fwrite(root->comp_set_colors[i].annot_array,
-                       sizeof(uint8_t),
-                       (root->comp_set_colors[i].last_index - pos + 1) * root->comp_set_colors[i].size_annot,
-                       file);
-            }
 
-            if (root->comp_set_colors[i].last_index != -1) pos = root->comp_set_colors[i].last_index;
+                if (i == 0){
+
+                    fwrite(root->comp_set_colors[i].annot_array,
+                           sizeof(uint8_t),
+                           (root->comp_set_colors[i].last_index + 1) * root->comp_set_colors[i].size_annot,
+                           file);
+                }
+                else{
+
+                    fwrite(root->comp_set_colors[i].annot_array,
+                           sizeof(uint8_t),
+                           (root->comp_set_colors[i].last_index - root->comp_set_colors[i-1].last_index) * root->comp_set_colors[i].size_annot,
+                           file);
+                }
+            }
         }
     }
 
@@ -163,14 +171,13 @@ Root* read_Root(char* filename){
     ASSERT_NULL_PTR(filename,"read_Root()")
 
     int i = 0;
-    int pos = 0;
 
     size_t tmp = 0;
 
     uint16_t str_len = 0;
 
     FILE* file = fopen(filename, "r");
-    ASSERT_NULL_PTR(file, "read_Root()")
+    ASSERT_NULL_PTR(file, "read_Root() 1")
 
     Root* root = createRoot(NULL, 0, 0);
 
@@ -185,24 +192,23 @@ Root* read_Root(char* filename){
     if (root->length_comp_set_colors != 0){
 
         root->comp_set_colors = malloc(root->length_comp_set_colors * sizeof(annotation_array_elem));
-        ASSERT_NULL_PTR(root->comp_set_colors, "read_Root()")
+        ASSERT_NULL_PTR(root->comp_set_colors, "read_Root() 2")
 
         for (i=0; i<root->length_comp_set_colors; i++){
 
             if (fread(&(root->comp_set_colors[i].last_index), sizeof(int64_t), 1, file) != 1) ERROR("read_Root()")
             if (fread(&(root->comp_set_colors[i].size_annot), sizeof(uint8_t), 1, file) != 1) ERROR("read_Root()")
 
-            if (root->comp_set_colors[i].last_index != -1){
+            if (i == 0) tmp = (root->comp_set_colors[i].last_index + 1) * root->comp_set_colors[i].size_annot;
+            else tmp = (root->comp_set_colors[i].last_index - root->comp_set_colors[i-1].last_index) * root->comp_set_colors[i].size_annot;
 
-                tmp = (root->comp_set_colors[i].last_index - pos + 1) * root->comp_set_colors[i].size_annot;
+            if (tmp != 0){
 
                 root->comp_set_colors[i].annot_array = malloc(tmp * sizeof(uint8_t));
-                ASSERT_NULL_PTR(root->comp_set_colors[i].annot_array, "read_Root()")
+                ASSERT_NULL_PTR(root->comp_set_colors[i].annot_array, "read_Root() 3")
 
                 if (fread(root->comp_set_colors[i].annot_array, sizeof(uint8_t), tmp, file) != tmp)
                     ERROR("read_Root()")
-
-                pos = root->comp_set_colors[i].last_index;
             }
             else root->comp_set_colors[i].annot_array = NULL;
         }
@@ -210,7 +216,7 @@ Root* read_Root(char* filename){
     else root->comp_set_colors = NULL;
 
     root->filenames = malloc(root->nb_genomes * sizeof(char*));
-    ASSERT_NULL_PTR(root->filenames, "read_Root()")
+    ASSERT_NULL_PTR(root->filenames, "read_Root() 4")
 
     for (i=0; i<root->nb_genomes; i++){
 
@@ -373,8 +379,12 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
     cc->children = malloc(nb_skp * sizeof(UC));
     ASSERT_NULL_PTR(cc->children,"read_CC()")
-    cc->children_Node_container = malloc(cc->nb_Node_children * sizeof(Node));
-    if (cc->nb_Node_children != 0) ASSERT_NULL_PTR(cc->children_Node_container,"read_CC() 6")
+
+    if (cc->nb_Node_children != 0){
+        cc->children_Node_container = malloc(cc->nb_Node_children * sizeof(Node));
+        ASSERT_NULL_PTR(cc->children_Node_container,"read_CC() 6")
+    }
+    else cc->children_Node_container = NULL;
 
     if (size_kmer != SIZE_SEED){
 
@@ -418,12 +428,14 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
         }
     }
 
-    for (i = 0; i < cc->nb_Node_children; i++)
+    for (i = 0; i < cc->nb_Node_children; i++){
+        initiateNode(&(cc->children_Node_container[i]));
         read_Node(&(cc->children_Node_container[i]), file, size_kmer-SIZE_SEED, func_on_types);
+    }
 
     if (func_on_types[level].level_min == 1){
 
-        for (i = 0, j = BF_filter2 + skipFilter2; i < tmp; i += inc, j++)
+        for (i = 0, j = BF_filter2 + skipFilter2; i < cc->nb_elem/0xf8; i += inc, j++)
             cc->BF_filter2[j] = popcnt_8_par(cc->extra_filter3, i, i+inc);
     }
     else{
