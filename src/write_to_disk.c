@@ -172,7 +172,7 @@ Root* read_Root(char* filename){
 
     int i = 0;
 
-    size_t tmp = 0;
+    int64_t tmp = 0;
 
     uint16_t str_len = 0;
 
@@ -328,15 +328,15 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
     int it_children = 0;
     int it_nodes = 0;
     int size_line = 0;
-    int count_1 = 0;
     int nb_elt = 0;
     int pos_uc = -1;
 
     uint16_t size_bf, nb_children;
 
     uint8_t s, p, tmp_uint8;
+    uint8_t count_1 = 0;
 
-    size_t tmp, BF_filter2;
+    size_t tmp, bf_filter2;
 
     if (fread(&(cc->type), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
     if (fread(&(cc->nb_elem), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
@@ -347,17 +347,17 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
     s = (cc->type >> 2) & 0x3f;
     p = SIZE_SEED*2-s;
 
-    BF_filter2 = size_bf + (MASK_POWER_16[p]/SIZE_CELL); // BF + Filter2
+    bf_filter2 = size_bf + (MASK_POWER_16[p]/SIZE_CELL); // BF + Filter2
     skipFilter3 = cc->nb_elem/0xf8;
     if (cc->nb_elem >= NB_SUBSTRINGS_TRANSFORM) skipFilter2 = MASK_POWER_16[p]/0xf8; //SkipFilter2
     else skipFilter2 = 0;
 
-    cc->BF_filter2 = malloc((BF_filter2 + skipFilter3 + skipFilter2) * sizeof(uint8_t));
+    cc->BF_filter2 = malloc((bf_filter2 + skipFilter3 + skipFilter2) * sizeof(uint8_t));
     ASSERT_NULL_PTR(cc->BF_filter2,"read_CC()")
-    if (fread(cc->BF_filter2, sizeof(uint8_t), BF_filter2, file) != BF_filter2) ERROR("read_CC()")
+    if (fread(cc->BF_filter2, sizeof(uint8_t), bf_filter2, file) != bf_filter2) ERROR("read_CC()")
 
     if (cc->nb_elem >= NB_SUBSTRINGS_TRANSFORM){
-        for (i = size_bf, j = BF_filter2; i < BF_filter2; i += inc, j++)
+        for (i = size_bf, j = bf_filter2; i < bf_filter2; i += inc, j++)
             cc->BF_filter2[j] = popcnt_8_par(cc->BF_filter2, i, i+inc);
     }
 
@@ -433,15 +433,18 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
         read_Node(&(cc->children_Node_container[i]), file, size_kmer-SIZE_SEED, func_on_types);
     }
 
+    j = bf_filter2 + skipFilter2;
+
     if (func_on_types[level].level_min == 1){
 
-        for (i = 0, j = BF_filter2 + skipFilter2; i < cc->nb_elem/0xf8; i += inc, j++)
+        for (i = 0; i < skipFilter3*inc; i += inc){
             cc->BF_filter2[j] = popcnt_8_par(cc->extra_filter3, i, i+inc);
+            j++;
+        }
     }
     else{
-        j = BF_filter2 + skipFilter2;
 
-        for (i=0; i<(cc->nb_elem/0xf8)*0xf8; i++){
+        for (i=0; i<skipFilter3*0xf8; i++){
 
             if (i%NB_CHILDREN_PER_SKP == 0){
                 pos_uc++;
