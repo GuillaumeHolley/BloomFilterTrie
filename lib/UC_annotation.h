@@ -26,6 +26,11 @@
 
 static const uint8_t MASK_POWER_8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 
+static const char* presence_genomes[16] = {"0,0,0,0,", "1,0,0,0,", "0,1,0,0,", "1,1,0,0,",
+                                    "0,0,1,0,", "1,0,1,0,", "0,1,1,0,", "1,1,1,0,",
+                                    "0,0,0,1,", "1,0,0,1,", "0,1,0,1,", "1,1,0,1,",
+                                    "0,0,1,1,", "1,0,1,1,", "0,1,1,1,", "1,1,1,1,"};
+
 typedef struct {
     //Represent the genomes IDs stored in the annotation, doesn't matter if they are present or not
     uint16_t id_stored[NB_MAX_ID_GENOMES];
@@ -213,6 +218,9 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
 
 annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1, uint8_t* annot_sup1, int size_annot_sup1, uint8_t* annot2,
                             int size_annot2, uint8_t* annot_sup2, int size_annot_sup2, int id_genome_max, annotation_array_elem* annot_sorted);
+
+void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint8_t* annot_sup, int size_annot_sup,
+                         int id_genome_max, annotation_array_elem* annot_sorted);
 
 annotation_array_elem* sort_annotations(Pvoid_t* PJArray, int* size_array);
 

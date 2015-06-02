@@ -1593,6 +1593,8 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                 res->pos_sub_bucket = k/size_line;
                 res->container_is_UC = 1;
                 res->posFilter2 = nb_cell;
+
+                res->posFilter3 = node->UC_array.nb_children >> 1;
                 return;
             }
         }
@@ -1669,6 +1671,9 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
                             res->container = uc;
                             res->pos_sub_bucket = j/size_line;
                             res->posFilter2 = nb_cell;
+
+                            res->posFilter3 = uc->nb_children;
+
                             return res;
                         }
                     }
@@ -1681,6 +1686,9 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
                                 res->container = uc;
                                 res->pos_sub_bucket = j/size_line;
                                 res->posFilter2 = nb_cell;
+
+                                res->posFilter3 = uc->nb_children;
+
                                 return res;
                             }
                         }

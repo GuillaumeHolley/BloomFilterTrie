@@ -21,7 +21,7 @@
 #define ASSERT_NULL_PTR(_p,_f)                                      \
 if( (_p) == NULL )                                                  \
 {                                                                   \
-     fprintf(stderr,"usage of a null pointer in function %s", _f);  \
+     fprintf(stderr,"usage of a null pointer in function %s \n", _f);  \
      exit(EXIT_FAILURE);                                            \
 }
 

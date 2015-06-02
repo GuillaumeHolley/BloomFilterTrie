@@ -1283,7 +1283,7 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
     int flag1, flag2;
 
     int i = 0;
-    int size_annot_flag0 = MAX(CEIL(id_genome_max, SIZE_CELL), 1);
+    int size_annot_flag0 = MAX(CEIL(id_genome_max+3, SIZE_CELL), 1);
     int size1 = size_annot1+size_annot_sup1;
     int size2 = size_annot2+size_annot_sup2;
 
@@ -1475,4 +1475,150 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
     ann_arr_elem->size_annot = size_annot_flag0;
 
     return ann_arr_elem;
+}
+
+void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint8_t* annot_sup,
+                         int size_annot_sup, int id_genome_max, annotation_array_elem* annot_sorted){
+
+    const char zero_comma[2] = "0,";
+    const char one_comma[2] = "1,";
+    const char zero_end[2] = "0\n";
+    const char one_end[2] = "1\n";
+
+    int flag;
+
+    int i = 0;
+    int size_annot_flag0 = MAX(CEIL(id_genome_max+3, SIZE_CELL), 1);
+    int size = size_annot+size_annot_sup;
+
+    uint8_t* annot_real = annot;
+
+    uint8_t* annot_flag0 = calloc(size_annot_flag0, sizeof(uint8_t));
+    ASSERT_NULL_PTR(annot_flag0, "printAnnotation_CSV()")
+
+    if (annot != NULL){
+
+        if ((annot[0] & 0x3) == 3){
+
+            int position = 0;
+            while ((i<size_annot) && (annot[i] != 0)){
+                if (i == 0) position = annot[0] >> 2;
+                else if ((annot[i] & 0x1) == 1) position |= ((int)(annot[i] >> 1)) << (6+(i-1)*7);
+                else break;
+                i++;
+            }
+
+            if ((i >= size_annot) && (annot_sup != NULL)){
+                i = 0;
+                while ((i<size_annot_sup) && (annot_sup[i] != 0)){
+                    if ((annot_sup[i] & 0x1) == 1) position |= ((int)(annot_sup[i] >> 1)) << (6+(i+size_annot-1)*7);
+                    else break;
+                    i++;
+                }
+            }
+
+            annot_real = extract_from_annotation_array_elem(annot_sorted, position, &size);
+        }
+        else if (annot_sup != NULL){
+            annot_real = malloc(size*sizeof(uint8_t));
+            memcpy(annot_real, annot, size_annot*sizeof(uint8_t));
+            annot_real[size_annot] = annot_sup[0];
+        }
+    }
+
+    i = 0;
+
+    if (annot_real != NULL){
+        flag = annot_real[0] & 0x3;
+
+        if (flag == 0) memcpy(annot_flag0, annot_real, size*sizeof(uint8_t));
+        else if (flag == 1){
+
+            uint16_t start, stop, z;
+
+            while (i<size){
+
+                if ((annot_real[i] & 0x3) == 1){
+                    start = annot_real[i] >> 2;
+                    i++;
+
+                    if ((i<size) && ((annot_real[i] & 0x3) == 2)){
+                        start = (start << 6) | (annot_real[i] >> 2);
+                        i++;
+                    }
+                }
+
+                if ((annot_real[i] & 0x3) == 1){
+                    stop = annot_real[i] >> 2;
+                    i++;
+
+                    if ((i<size) && ((annot_real[i] & 0x3) == 2)){
+                        stop = (stop << 6) | (annot_real[i] >> 2);
+                        i++;
+                    }
+                }
+
+                for (z=start; z<=stop; z++) annot_flag0[(z+2)/SIZE_CELL] |= MASK_POWER_8[(z+2)%SIZE_CELL];
+            }
+        }
+        else if (flag == 2){
+            uint16_t pos;
+
+            while (i<size){
+                if ((annot_real[i] & 0x3) == 2){
+                    pos = annot_real[i] >> 2;
+                    i++;
+
+                    if ((i<size) && ((annot_real[i] & 0x3) == 1)){
+                        pos = (pos << 6) | (annot_real[i] >> 2);
+                        i++;
+                    }
+                }
+
+                annot_flag0[(pos+2)/SIZE_CELL] |= MASK_POWER_8[(pos+2)%SIZE_CELL];
+            }
+        }
+    }
+
+    if (id_genome_max <= 5){
+
+        for (i = 2; i <= id_genome_max + 1; i++){
+            if ((annot_flag0[i/SIZE_CELL] & MASK_POWER_8[i%SIZE_CELL]) != 0){
+                fwrite(&one_comma, sizeof(char), 2, file_output);
+            }
+            else fwrite(&zero_comma, sizeof(char), 2, file_output);
+        }
+    }
+    else{
+
+        for (i = 2; i < SIZE_CELL; i++){
+            if ((annot_flag0[i/SIZE_CELL] & MASK_POWER_8[i%SIZE_CELL]) != 0){
+                fwrite(&one_comma, sizeof(char), 2, file_output);
+            }
+            else fwrite(&zero_comma, sizeof(char), 2, file_output);
+        }
+
+        for (i=1; i<size_annot_flag0-1; i++){
+            fwrite(presence_genomes[annot_flag0[i] & 0xf], sizeof(char), 8, file_output);
+            fwrite(presence_genomes[annot_flag0[i] >> 4], sizeof(char), 8, file_output);
+        }
+
+        for (i = (size_annot_flag0 - 1) * SIZE_CELL; i <= id_genome_max + 1; i++){
+            if ((annot_flag0[i/SIZE_CELL] & MASK_POWER_8[i%SIZE_CELL]) != 0){
+                fwrite(&one_comma, sizeof(char), 2, file_output);
+            }
+            else fwrite(&zero_comma, sizeof(char), 2, file_output);
+        }
+    }
+
+    if ((annot_flag0[i/SIZE_CELL] & MASK_POWER_8[i%SIZE_CELL]) != 0){
+        fwrite(&one_end, sizeof(char), 2, file_output);
+    }
+    else fwrite(&zero_end, sizeof(char), 2, file_output);
+
+    if (((annot[0] & 0x3) != 3) && (annot_sup != NULL)) free(annot_real);
+
+    free(annot_flag0);
+
+    return;
 }

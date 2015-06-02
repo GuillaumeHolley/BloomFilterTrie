@@ -43,11 +43,15 @@ void insertKmers(Root* restrict root,
                  annotation_inform* ann_inf,
                  resultPresence* res);
 
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files,
+                                   int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
+                                    int id_start_genome, ptrs_on_func* func_on_types);
 
-int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
-int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer);
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename,
+                                          int binary_file, char* output_filename, int size_kmer);
+int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename,
+                                          int binary_file, int size_kmer);
 
 int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root,
                                         ptrs_on_func* func_on_types, annotation_inform* ann_inf);
@@ -69,12 +73,16 @@ int main(int argc, char *argv[])
     int binary_files = 0;
     int nb_files_2_read = 0;
 
+    const char csv_ext[5] = ".csv\0";
+
+    char buffer[2048];
+
+    char* dot;
     char* str_tmp;
+    char* filename_output;
 
     char** filenames = NULL;
     char** paths_and_names = NULL;
-
-    char buffer[2048];
 
     FILE* file_input = NULL;
     FILE* file_tmp = NULL;
@@ -122,11 +130,18 @@ int main(int argc, char *argv[])
 
             for (i=6; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-                if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
+                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0)){ //User wants to query the BFT for k-mers
 
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                        ERROR("Unrecognized type of input files for -query_kmers.\n"
-                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
+                        if (strcmp("-query_kmers", argv[i]) == 0){
+                            ERROR("Unrecognized type of input files for -query_kmers.\n"
+                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                        }
+                        else{
+                            ERROR("Unrecognized type of input files for -query_branching.\n"
+                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                        }
+                    }
 
                     if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
 
@@ -135,30 +150,7 @@ int main(int argc, char *argv[])
                         buffer[strcspn(buffer, "\r\n")] = 0;
 
                         if ((file_tmp = fopen(buffer, "r")) == NULL){
-                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
-                            exit(EXIT_FAILURE);
-                        }
-
-                        cpt++;
-
-                        fclose(file_tmp);
-                    }
-
-                    fclose(file_input);
-                }
-                else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                        ERROR("Unrecognized type of input files for -query_branching.\n"
-                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
-
-                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching query file.\n")
-
-                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
-
-                        buffer[strcspn(buffer, "\r\n")] = 0;
-
-                        if ((file_tmp = fopen(buffer, "r")) == NULL){
-                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
                             exit(EXIT_FAILURE);
                         }
 
@@ -212,12 +204,18 @@ int main(int argc, char *argv[])
 
             //Read and test if the type of input files is valid
             //Insert k-mers of the input files in the BFT
-            if (strcmp("kmers_comp", argv[3]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, 0, func_on_types);
-            else if (strcmp("kmers", argv[3]) == 0) insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, 0, func_on_types);
-            else if (strcmp("fastx", argv[3]) == 0) insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, 0, func_on_types);
+            if (strcmp("kmers_comp", argv[3]) == 0){
+                insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, 0, func_on_types);
+            }
+            else if (strcmp("kmers", argv[3]) == 0){
+                insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, 0, func_on_types);
+            }
+            else if (strcmp("fastx", argv[3]) == 0){
+                insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, 0, func_on_types);
+            }
             else
                 ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
-                      "'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+                      "'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
 
             write_Root(root, argv[5], func_on_types);
 
@@ -228,13 +226,24 @@ int main(int argc, char *argv[])
                 if (strcmp("-query_kmers", argv[i]) == 0){
 
                     if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
-                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer query files list.\n")
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries files list.\n")
 
                     while (fgets(buffer, 2048, file_input)){
 
                         buffer[strcspn(buffer, "\r\n")] = 0;
+
+                        filename_output = malloc((strlen(basename(buffer))+4) * sizeof(char));
+                        ASSERT_NULL_PTR(filename_output, "main()")
+
+                        strcpy(filename_output, basename(buffer));
+
+                        if ((dot = strrchr(filename_output, '.')) != NULL) strcpy(dot, csv_ext);
+                        else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
+
                         //Query the BFT for presence of k-mer queries
-                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, root->k));
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output, root->k));
+
+                        free(filename_output);
                     }
 
                     fclose(file_input);
@@ -242,7 +251,7 @@ int main(int argc, char *argv[])
                 else if (strcmp("-query_branching", argv[i]) == 0){
 
                     if (strcmp("kmers_comp", argv[i+1]) == 0) binary_files = 1;
-                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer query file list.\n")
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid branching k-mer queries files list.\n")
 
                     while (fgets(buffer, 2048, file_input)){
 
@@ -274,11 +283,18 @@ int main(int argc, char *argv[])
 
             for (i=3; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-                if (strcmp("-query_kmers", argv[i]) == 0){ //User wants to query the BFT for k-mers
+                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0)){ //User wants to query the BFT for k-mers
 
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                        ERROR("Unrecognized type of input files for -query_kmers.\n"
-                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
+                        if (strcmp("-query_kmers", argv[i]) == 0){
+                            ERROR("Unrecognized type of input files for -query_kmers.\n"
+                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                        }
+                        else{
+                            ERROR("Unrecognized type of input files for -query_branching.\n"
+                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                        }
+                    }
 
                     if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
 
@@ -287,31 +303,7 @@ int main(int argc, char *argv[])
                         buffer[strcspn(buffer, "\r\n")] = 0;
 
                         if ((file_tmp = fopen(buffer, "r")) == NULL){
-                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
-                            exit(EXIT_FAILURE);
-                        }
-
-                        cpt++;
-
-                        fclose(file_tmp);
-                    }
-
-                    fclose(file_input);
-                }
-                else if (strcmp("-query_branching", argv[i]) == 0){ //User wants to query the BFT for branching vertices
-
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0))
-                        ERROR("Unrecognized type of input files for -query_branching.\n"
-                              "Choice must be 'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
-
-                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer branching query file.\n")
-
-                    while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
-
-                        buffer[strcspn(buffer, "\r\n")] = 0;
-
-                        if ((file_tmp = fopen(buffer, "r")) == NULL){
-                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer query files.\n", cpt);
+                            fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
                             exit(EXIT_FAILURE);
                         }
 
@@ -364,8 +356,19 @@ int main(int argc, char *argv[])
                     while (fgets(buffer, 2048, file_input)){
 
                         buffer[strcspn(buffer, "\r\n")] = 0;
+
+                        filename_output = malloc((strlen(basename(buffer))+5) * sizeof(char));
+                        ASSERT_NULL_PTR(filename_output, "main()")
+
+                        strcpy(filename_output, basename(buffer));
+
+                        if ((dot = strrchr(filename_output, '.')) != NULL) strcpy(dot, csv_ext);
+                        else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
+
                         //Query the BFT for presence of k-mer queries
-                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, root->k));
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output, root->k));
+
+                        free(filename_output);
                     }
 
                     fclose(file_input);
@@ -433,7 +436,7 @@ int main(int argc, char *argv[])
                     }
                     else
                         ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
-                              "'kmers' for k-mer files or 'kmers_comp' for compressed k-mer files.\n")
+                              "'kmers' for k-mers files or 'kmers_comp' for compressed k-mer files.\n")
 
                     write_Root(root, argv[i+3], func_on_types);
 
@@ -886,13 +889,20 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
     return;
 }
 
-int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer){
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, char* output_filename, int size_kmer){
 
     ASSERT_NULL_PTR(root,"queryBFT_kmerPresences_from_KmerFiles()")
     ASSERT_NULL_PTR(query_filename,"queryBFT_kmerPresences_from_KmerFiles()")
 
     struct timeval tval_before, tval_after, tval_result;
     gettimeofday(&tval_before, NULL);
+
+    const char comma = ',';
+
+    int annot_present;
+    int size_annot;
+    int size_annot_cplx;
+    int size_annot_res;
 
     int i = 0;
     int j = 0;
@@ -903,7 +913,8 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
     uint64_t kmers_read = 0;
 
-    FILE* file;
+    FILE* file_query;
+    FILE* file_output;
 
     ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
 
@@ -911,35 +922,81 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
     size_t return_fread;
 
+    uint8_t* annot;
+    uint8_t* annot_ext;
+    uint8_t* annot_cplx;
+
+    uint8_t* annot_res = calloc(CEIL(root->nb_genomes+2, SIZE_CELL), sizeof(uint8_t));
+    ASSERT_NULL_PTR(annot_res,"queryBFT_kmerPresences_from_KmerFiles()")
+
     uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
     ASSERT_NULL_PTR(array_kmers,"queryBFT_kmerPresences_from_KmerFiles()")
 
     char* line = calloc(100, sizeof(char));
     ASSERT_NULL_PTR(line,"queryBFT_kmerPresences_from_KmerFiles()")
 
-    file = fopen(query_filename, "r");
-    ASSERT_NULL_PTR(file,"queryBFT_kmerPresences_from_KmerFiles()")
+    file_query = fopen(query_filename, "r");
+    ASSERT_NULL_PTR(file_query,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    file_output = fopen(output_filename, "w");
+    ASSERT_NULL_PTR(file_output,"queryBFT_kmerPresences_from_KmerFiles()")
 
     printf("\nQuerying BFT for k-mers in %s\n\n", query_filename);
 
+    for (i=0; i<root->nb_genomes-1; i++){
+        fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i])-1, file_output);
+        fwrite(&comma, sizeof(char), 1, file_output);
+    }
+
+    fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+
     if (binary_file){
 
-        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
-        if (fgets(line, 100, file) == NULL) ERROR("Cannot read header of the file")
+        if (fgets(line, 100, file_query) == NULL) ERROR("Cannot read header of the queries file")
+        if (fgets(line, 100, file_query) == NULL) ERROR("Cannot read header of the queries file")
 
-        while ((!ferror(file)) && (!feof(file))){
+        while ((!ferror(file_query)) && (!feof(file_query))){
 
-            return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file);
+            return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file_query);
 
             for (k=0; k<(int)return_fread; k++){
 
                 res = isKmerPresent(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types);
-                if (res->link_child != NULL) nb_kmers_present++;
+
+                if (res->link_child != NULL){
+
+                    annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+
+                    if (size_annot != 0){
+                        memcpy(annot_res, annot, size_annot * sizeof(uint8_t));
+                        size_annot_res = size_annot;
+                    }
+
+                    if ((annot_ext != NULL) && (annot_ext[0] != 0)){
+                        memcpy(&(annot_res[size_annot]), annot_ext, sizeof(uint8_t));
+                        size_annot_res++;
+                    }
+
+                    if (size_annot_cplx != 0){
+                        memcpy(annot_res, annot_cplx, size_annot_cplx * sizeof(uint8_t));
+                        size_annot_res = size_annot_cplx;
+                    }
+
+                    printAnnotation_CSV(file_output, annot_res, size_annot_res, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+
+                    nb_kmers_present++;
+                }
+                else {
+                    annot_res[0] = 0;
+                    printAnnotation_CSV(file_output, annot_res, 1, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+                }
+
                 free(res);
             }
 
-            if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS))
-                printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
+            //if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS))
+            //    printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
 
             kmers_read += return_fread;
 
@@ -948,7 +1005,7 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
     }
     else{
 
-        while (fgets(line, 100, file) != NULL){
+        while (fgets(line, 100, file_query) != NULL){
 
             if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
                 k += nb_bytes_kmer;
@@ -959,7 +1016,36 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
                     for (i=0; i<nb_kmer_in_buf; i++){
 
                         res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
-                        if (res->link_child != NULL) nb_kmers_present++;
+
+                        if (res->link_child != NULL){
+
+                            annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                           &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+
+                            if (size_annot != 0){
+                                memcpy(annot_res, annot, size_annot * sizeof(uint8_t));
+                                size_annot_res = size_annot;
+                            }
+
+                            if ((annot_ext != NULL) && (annot_ext[0] != 0)){
+                                memcpy(&(annot_res[size_annot]), annot_ext, sizeof(uint8_t));
+                                size_annot_res++;
+                            }
+
+                            if (size_annot_cplx != 0){
+                                memcpy(annot_res, annot_cplx, size_annot_cplx * sizeof(uint8_t));
+                                size_annot_res = size_annot_cplx;
+                            }
+
+                            printAnnotation_CSV(file_output, annot_res, size_annot_res, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+
+                            nb_kmers_present++;
+                        }
+                        else {
+                            annot_res[0] = 0;
+                            printAnnotation_CSV(file_output, annot_res, 1, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+                        }
+
                         free(res);
                     }
 
@@ -967,8 +1053,8 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
                     k = 0;
                     memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
 
-                    if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS))
-                        printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
+                    //if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS))
+                    //    printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
 
                     kmers_read += nb_kmer_in_buf;
                 }
@@ -978,16 +1064,47 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
         for (i=0; i<j; i++){
 
             res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
-            if (res->link_child != NULL) nb_kmers_present++;
+
+            if (res->link_child != NULL){
+
+                annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+
+                if (size_annot != 0){
+                    memcpy(annot_res, annot, size_annot * sizeof(uint8_t));
+                    size_annot_res = size_annot;
+                }
+
+                if ((annot_ext != NULL) && (annot_ext[0] != 0)){
+                    memcpy(&(annot_res[size_annot]), annot_ext, sizeof(uint8_t));
+                    size_annot_res++;
+                }
+
+                if (size_annot_cplx != 0){
+                    memcpy(annot_res, annot_cplx, size_annot_cplx * sizeof(uint8_t));
+                    size_annot_res = size_annot_cplx;
+                }
+
+                printAnnotation_CSV(file_output, annot_res, size_annot_res, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+
+                nb_kmers_present++;
+            }
+            else {
+                annot_res[0] = 0;
+                printAnnotation_CSV(file_output, annot_res, 1, NULL, 0, root->nb_genomes-1, root->comp_set_colors);
+            }
+
             free(res);
         }
 
         memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
     }
 
-    fclose(file);
+    fclose(file_query);
+    fclose(file_output);
 
     free(array_kmers);
+    free(annot_res);
     free(line);
 
     gettimeofday(&tval_after, NULL);

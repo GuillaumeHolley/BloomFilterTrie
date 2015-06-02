@@ -2,7 +2,8 @@
 
 extern int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
 
-int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx, int* size_annot, int* size_annot_cplx, int size_substring, int nb_substring, int position){
+int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx,
+                   int* size_annot, int* size_annot_cplx, int size_substring, int nb_substring, int position){
 
     if (position >= nb_substring) ERROR("get_annotation(): position >= nb_substring")
 

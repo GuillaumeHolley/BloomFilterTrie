@@ -201,18 +201,21 @@ annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint
     annotation_array_elem* annot_right = NULL;
     annotation_array_elem* annot_left_right = NULL;
 
-    annot_left = retrieve_annotation_left(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, id_genome_avoid,
-                            skip_node_root, func_on_types, ann_inf, annot_sorted);
+    annot_left = retrieve_annotation_left(root, kmer_start, kmer_start_tmp, size_kmer_root,
+                                          size_kmer_array, id_genome_avoid, skip_node_root,
+                                          func_on_types, ann_inf, annot_sorted);
 
     memcpy(kmer_start, kmer_start_tmp, size_kmer_array * sizeof(uint8_t));
 
-    annot_right = retrieve_annotation_right(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix, id_genome_avoid,
-                            skip_node_root, func_on_types, ann_inf, annot_sorted);
+    annot_right = retrieve_annotation_right(root, kmer_start, kmer_start_tmp, size_kmer_root,
+                                            size_kmer_array, shifting_suffix, id_genome_avoid,
+                                            skip_node_root, func_on_types, ann_inf, annot_sorted);
 
     memcpy(kmer_start, kmer_start_tmp, size_kmer_array * sizeof(uint8_t));
 
-    annot_left_right = intersection_annotations(annot_left->annot_array, annot_left->size_annot, NULL, 0, annot_right->annot_array, annot_right->size_annot,
-                                  NULL, 0, id_genome_avoid-1, annot_sorted);
+    annot_left_right = intersection_annotations(annot_left->annot_array, annot_left->size_annot, NULL,
+                                                0, annot_right->annot_array, annot_right->size_annot,
+                                                NULL, 0, id_genome_avoid-1, annot_sorted);
 
     if (annot_left->annot_array != NULL) free(annot_left->annot_array);
     if (annot_right->annot_array != NULL) free(annot_right->annot_array);
