@@ -10,7 +10,7 @@ cd <BFT directory>
 make
 ```
 
-## Usage:
+### Usage:
 ```
 ./bft build k {fastx|kmers|kmers_comp} list_genome_files output_file [Options]
 ./bft load file_bft [-add_genomes {fastx|kmers|kmers_comp} list_genome_files output_file] [Options]
@@ -19,7 +19,7 @@ Options:
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
 [-query_branching {kmers|kmers_comp} list_kmer_files]
 ```
-## Commands
+### Commands
 
 Command **build** creates the BFT for the files listed in *list_genome_files* and writes the BFT in file *output_file*.
 
@@ -31,13 +31,15 @@ Command **load** loads a BFT from file *file_bft*.
 
 * *file_bft*: file that contains a BFT
 
-## Options:
+### Options
 
 * **-add_genomes** adds the genomes listed in *list_genome_files* to the BFT stored in *file_bft*, the new BFT is written in *output_file*
 * **-query_kmers** queries the BFT for *k*-mers written in the files of *list_kmer_files*. For each file of *list_kmer_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried *k*-mers, the intersection of a column and a row is a binary value indicating if the *k*-mer represented by the row is present in the genome represented by the column.
 * **-query_branching** queries the BFT for the number of *k*-mers written in the files of *list_kmer_files* that are branching in the colored de-Bruijn graph represented by the BFT.
 
-## Input file types
+New options will be available soon.
+
+### Input file types
 
 * *fastx*: files of *list_genome_files* are FASTA/FASTQ files. All *k*-mers are extracted from the files and inserted in the BFT.
 * *kmers*: files of *list_genome_files* are *k*-mers files. Each file contains one *k*-mer (plain text) per line, eventually followed by a count.
@@ -45,7 +47,6 @@ Command **load** loads a BFT from file *file_bft*.
 Example: ACTTGTCTG -> 11110100 11011110 00000010
 
 
+### Contact
 
-New options will be available soon.
-
-For any question, feedback or problem, please contact me at gholley[at]cebitec[dot]uni-bielefeld[dot]de
+For any question, feedback or problem, please contact me at gholley@cebitec.uni-bielefeld.de
