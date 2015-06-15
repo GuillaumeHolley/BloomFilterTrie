@@ -13,6 +13,7 @@ void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func
 
     uint16_t str_len = 0;
 
+    fwrite(&(root->treshold_compression), sizeof(int), 1, file);
     fwrite(&(root->nb_genomes), sizeof(int), 1, file);
     fwrite(&(root->length_comp_set_colors), sizeof(int), 1, file);
     fwrite(&(root->k), sizeof(int), 1, file);
@@ -179,10 +180,11 @@ Root* read_Root(char* filename){
     FILE* file = fopen(filename, "r");
     ASSERT_NULL_PTR(file, "read_Root() 1")
 
-    Root* root = createRoot(NULL, 0, 0);
+    Root* root = createRoot(NULL, 0, 0, 0);
 
     ptrs_on_func* func_on_types = NULL;
 
+    if (fread(&(root->treshold_compression), sizeof(int), 1, file) != 1) ERROR("read_Root()")
     if (fread(&(root->nb_genomes), sizeof(int), 1, file) != 1) ERROR("read_Root()")
     if (fread(&(root->length_comp_set_colors), sizeof(int), 1, file) != 1) ERROR("read_Root()")
     if (fread(&(root->k), sizeof(int), 1, file) != 1) ERROR("read_Root()")

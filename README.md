@@ -1,6 +1,6 @@
 # BloomFilterTrie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) version 0.1. A readme file and a manual will be available in few days.
+This repository contains the source code of the Bloom Filter Trie (BFT) version 0.1.
 
 To compile the code, Judy's Array and Jemalloc must be installed on your machine. For Ubuntu, they corresponds to packages *libjemalloc1* and *libjudydebian1*.
 
@@ -12,7 +12,7 @@ make
 
 ### Usage:
 ```
-./bft build k {fastx|kmers|kmers_comp} list_genome_files output_file [Options]
+./bft build k treshold_compression {fastx|kmers|kmers_comp} list_genome_files output_file [Options]
 ./bft load file_bft [-add_genomes {fastx|kmers|kmers_comp} list_genome_files output_file] [Options]
 
 Options:
@@ -24,6 +24,7 @@ Options:
 Command **build** creates the BFT for the files listed in *list_genome_files* and writes the BFT in file *output_file*.
 
 * *k*: length of *k*-mers
+* *treshold_compression*: number of genomes inserted that triggers a compression of the BFT's colors sets. This compression step will be triggered every *treshold_compression* genomes inserted and on the last genome inserted but does not start before insertion of 7 genomes. A *treshold_compression* equals to 0 means no compression of the BFT's colors sets. Example: if *treshold_compression* = 2 and 10 genomes have to be inserted, the compression step will be triggered after insertion of the 8th and 10th genomes.
 * *list_genome_files*: file that contains a list of files (one path and name per line) to be inserted in the BFT.
 * *output_file*: file where to write the BFT.
 

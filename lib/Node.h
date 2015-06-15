@@ -48,6 +48,7 @@ typedef struct {
     int nb_genomes;
     int length_comp_set_colors;
     int k;
+    int treshold_compression;
 } Root;
 
 //resultPresence is a structure produced by presenceKmer(). It contains information about the presence of a prefix p into a given node.
@@ -129,7 +130,7 @@ inline void initiateNode(Node* node){
 *  ---------------------------------------------------------------------------------------------------------------
 *  ---------------------------------------------------------------------------------------------------------------
 */
-inline Root* createRoot(char** filenames, int nb_files, int k){
+inline Root* createRoot(char** filenames, int nb_files, int k, int treshold_compression){
 
     Root* root = malloc(sizeof(Root));
     ASSERT_NULL_PTR(root,"createRoot()")
@@ -141,6 +142,7 @@ inline Root* createRoot(char** filenames, int nb_files, int k){
     root->comp_set_colors = NULL;
     root->length_comp_set_colors = 0;
     root->k = k;
+    root->treshold_compression = treshold_compression;
 
     return root;
 }

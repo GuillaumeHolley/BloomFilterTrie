@@ -28,7 +28,6 @@ const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 #define PRINT_EVERY_X_KMERS 1000000
 
 #define SIZE_BUFFER 4096 //Size of the buffer (in bytes) used to store kmers read from input files
-#define TRESH_DEL_ANNOT 43
 
 #include "./../lib/kseq.h"
 //Initialize parser for FASTx files
@@ -91,7 +90,7 @@ int main(int argc, char *argv[])
 
     if (argc == 1){
         ERROR("\nUsage:\n"
-              "./bft build k {fastx|kmers|kmers_comp} list_genome_files output_file [Options]\n"
+              "./bft build k treshold_compression {fastx|kmers|kmers_comp} list_genome_files output_file [Options]\n"
               "./bft load file_bft [-add_genomes {fastx|kmers|kmers_comp} list_genome_files output_file] [Options]\n"
               "\nOptions:\n"
               "[-query_kmers {kmers|kmers_comp} list_kmer_files]\n"
@@ -110,7 +109,7 @@ int main(int argc, char *argv[])
             else if (size_kmer%SIZE_SEED != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
 
             //Open the file containing the input files
-            if ((file_input = fopen(argv[4], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
+            if ((file_input = fopen(argv[5], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
 
             while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
@@ -128,7 +127,7 @@ int main(int argc, char *argv[])
 
             fclose(file_input);
 
-            for (i=6; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
+            for (i=7; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
                 if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0)){ //User wants to query the BFT for k-mers
 
@@ -169,7 +168,7 @@ int main(int argc, char *argv[])
                 cpt = 0;
             }
 
-            if ((file_input = fopen(argv[4], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
+            if ((file_input = fopen(argv[5], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
 
             filenames = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of filenames
             ASSERT_NULL_PTR(filenames,"main()")
@@ -199,27 +198,27 @@ int main(int argc, char *argv[])
 
             fclose(file_input);
 
-            root = createRoot(filenames, nb_files_2_read, size_kmer); //Create a BFT
+            root = createRoot(filenames, nb_files_2_read, size_kmer, atoi(argv[3])); //Create a BFT
             func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
 
             //Read and test if the type of input files is valid
             //Insert k-mers of the input files in the BFT
-            if (strcmp("kmers_comp", argv[3]) == 0){
+            if (strcmp("kmers_comp", argv[4]) == 0){
                 insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, 0, func_on_types);
             }
-            else if (strcmp("kmers", argv[3]) == 0){
+            else if (strcmp("kmers", argv[4]) == 0){
                 insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, 0, func_on_types);
             }
-            else if (strcmp("fastx", argv[3]) == 0){
+            else if (strcmp("fastx", argv[4]) == 0){
                 insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, 0, func_on_types);
             }
             else
                 ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
                       "'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
 
-            write_Root(root, argv[5], func_on_types);
+            write_Root(root, argv[6], func_on_types);
 
-            for (i=6; i<argc; i+=3){
+            for (i=7; i<argc; i+=3){
 
                 binary_files = 0;
 
@@ -280,6 +279,12 @@ int main(int argc, char *argv[])
         else if (strcmp("load", argv[1]) == 0){
 
             root = read_Root(argv[2]);
+
+            func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
+
+            memory_Used* mem = printMemoryUsedFromNode(&(root->node), root->k, func_on_types);
+            printMemory(mem);
+            free(mem);
 
             for (i=3; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
@@ -418,8 +423,6 @@ int main(int argc, char *argv[])
                     }
 
                     fclose(file_input);
-
-                    func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
 
                     root->nb_genomes += nb_files_2_read;
 
@@ -635,20 +638,22 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
         fclose(file);
 
-        if ((i > 5) && (i%TRESH_DEL_ANNOT == 0)){
+        if (root->treshold_compression != 0){
+            if ((i > 5) && ((i%root->treshold_compression == 0) || (i == root->nb_genomes-1))){
 
-            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
+                load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
 
-            comp_set_colors_tmp = root->comp_set_colors;
-            length_comp_set_colors_tmp = root->length_comp_set_colors;
+                comp_set_colors_tmp = root->comp_set_colors;
+                length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-            root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
+                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
 
-            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
+                compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
 
-            free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
+                free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
 
-            JSLFA(Rc_word, PJArray);
+                JSLFA(Rc_word, PJArray);
+            }
         }
 
         //Delete unecessary annotations
@@ -841,20 +846,22 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
             size_seq = kseq_read(seq, size_seq);
         }
 
-        if ((i > 5) && (i%TRESH_DEL_ANNOT == 0)){
+        if (root->treshold_compression != 0){
+            if ((i > 5) && (i%root->treshold_compression == 0) || (i == root->nb_genomes-1)){
 
-            load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
+                load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
 
-            comp_set_colors_tmp = root->comp_set_colors;
-            length_comp_set_colors_tmp = root->length_comp_set_colors;
+                comp_set_colors_tmp = root->comp_set_colors;
+                length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-            root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
+                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
 
-            compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
+                compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
 
-            free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
+                free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
 
-            JSLFA(Rc_word, PJArray);
+                JSLFA(Rc_word, PJArray);
+            }
         }
 
         kseq_destroy(seq);
@@ -1392,7 +1399,7 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
     ASSERT_NULL_PTR(ann_inf,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(res,"get_nb_cplx_nodes_from_FASTx()")
 
-    Root* bft_cplx_nodes = createRoot(NULL, 0, size_kmer);
+    Root* bft_cplx_nodes = createRoot(NULL, 0, size_kmer, 0);
 
     int i = 0, j = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
