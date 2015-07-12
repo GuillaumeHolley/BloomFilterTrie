@@ -874,7 +874,6 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
         if (pres->posFilter3 == INT_MAX){
             if ((pres->presFilter2 == 1) && (pos_extra_filter3 != cc->nb_elem)){
                 if (pos_children < nb_skp){
-                    //if (cpt_pv >= ((UC*)cc->children)[pos_children].nb_children){
 
                     if (pos_children == nb_skp - 1) end_tmp = cc->nb_elem - pos_children * NB_CHILDREN_PER_SKP;
                     else end_tmp = NB_CHILDREN_PER_SKP;
@@ -960,8 +959,8 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
     if (pres->presFilter2 == 1){
         if (pres->posFilter3 == pos_extra_filter3){
             if (pres->posFilter3 == INT_MAX) pres->posFilter3 = cc->nb_elem;
+            if (pres->posFilter3 < cc->nb_elem) transform_one_2_replace = 1;
             to_insert_in_extralist3 = 1;
-            transform_one_2_replace = 1;
         }
         else if (pres->posFilter3 == INT_MAX) pres->posFilter3 = cc->nb_elem;
     }
@@ -1098,9 +1097,15 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
         (*func_on_types->realloc_and_int_children_type)(pres->container, cc->nb_elem, pres->posFilter3);
 
         if (func_on_types->level_min == 0){
+
             uc->suffixes[size_line_children-1] |= to_insert_in_extralist3 << 7;
+
             if (transform_one_2_replace == 1){
-                if (((pres->posFilter3+1)%NB_CHILDREN_PER_SKP) == 0){
+
+                if ((*func_on_types->getNbElts)(cc, pres->posFilter3+1) == 0){
+                    cc->children_Node_container[(*func_on_types->count_nodes)(cc, 0, pres->posFilter3+1)].UC_array.nb_children &= 0xfffe;
+                }
+                else if (((pres->posFilter3+1)%NB_CHILDREN_PER_SKP) == 0){
                     ((UC*)cc->children)[pos_skp+1].suffixes[func_on_types->size_kmer_in_bytes_minus_1-1] &= 0x7f;
                 }
                 else uc->suffixes[size_line_children+func_on_types->size_kmer_in_bytes_minus_1+uc->size_annot-1] &= 0x7f;

@@ -972,8 +972,14 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
                 if (res->link_child != NULL){
 
-                    annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                    if (res->posFilter2 != 0){
+                        annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                       &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                    }
+                    else{
+                        annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                       &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                    }
 
                     if (size_annot != 0){
                         memcpy(annot_res, annot, size_annot * sizeof(uint8_t));
@@ -1026,8 +1032,14 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
                         if (res->link_child != NULL){
 
-                            annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                           &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                            if (res->posFilter2 != 0){
+                                annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                            }
+                            else{
+                                annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                            }
 
                             if (size_annot != 0){
                                 memcpy(annot_res, annot, size_annot * sizeof(uint8_t));
@@ -1074,8 +1086,14 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
             if (res->link_child != NULL){
 
-                annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                if (res->posFilter2 != 0){
+                    annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                }
+                else{
+                    annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                }
 
                 if (size_annot != 0){
                     memcpy(annot_res, annot, size_annot * sizeof(uint8_t));

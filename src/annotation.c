@@ -5,9 +5,9 @@ extern uint8_t* extract_from_annotation_array_elem(annotation_array_elem* annot_
 
 void shift_extended_annot(UC* uc, int size_substring, int nb_substring, int pos_insert){
 
-    ASSERT_NULL_PTR(uc,"shift_extended_annot()")
-
     if (uc->nb_extended_annot != 0){
+
+        ERROR("shift_extended_annot()")
 
         uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
         int pos = 0;
@@ -190,6 +190,10 @@ uint8_t* get_extend_annot(UC* uc, int size_substring, int nb_substring, int pos_
     ASSERT_NULL_PTR(uc,"get_extend_annot()")
 
     if (uc->nb_extended_annot != 0){
+
+        //printf("uc->nb_extended_annot = %d\n", uc->nb_extended_annot);
+        //exit(EXIT_FAILURE);
+
         uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
         int pos = 0;
         int i = 0;

@@ -386,7 +386,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket*uc->size_annot]);
                                         res[nuc2add].container = uc;
                                         res[nuc2add].posFilter2 = 0;
-                                        res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                         res[nuc2add].children_type_leaf = 1;
                                     }
                                 }
@@ -412,8 +413,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         }
                                         else{
                                             if (last_count_node == -1) res[nuc2add].link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)cc, 0, k)]);
-                                            else res[nuc2add].link_child = &(cc->children_Node_container[MAX(cpt_node_tmp-1, 0)
-                                                                             + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3, k)]);
+                                            else res[nuc2add].link_child = &(cc->children_Node_container[cpt_node_tmp
+                                                                             + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3+1, k+1) - 1]);
                                         }
                                     }
                                     else{
@@ -425,7 +426,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
                                         res[nuc2add].container = uc;
                                         res[nuc2add].posFilter2 = 0;
-                                        res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                         res[nuc2add].children_type_leaf = 1;
                                     }
 
@@ -485,7 +487,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
                                         res[nuc2add].container = uc;
                                         res[nuc2add].posFilter2 = 0;
-                                        res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                         res[nuc2add].children_type_leaf = 1;
                                     }
                                 }
@@ -515,8 +518,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         }
                                         else{
                                             if (last_count_node == -1) res[nuc2add].link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)cc, 0, k)]);
-                                            else res[nuc2add].link_child = &(cc->children_Node_container[MAX(cpt_node_tmp-1, 0)
-                                                                             + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3, k)]);
+                                            else res[nuc2add].link_child = &(cc->children_Node_container[cpt_node_tmp
+                                                                             + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3+1, k+1) - 1]);
                                         }
                                     }
                                     else{
@@ -528,7 +531,8 @@ void presenceNeighborsLeft(Node* restrict node, uint8_t* restrict kmer, int size
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
                                         res[nuc2add].container = uc;
                                         res[nuc2add].posFilter2 = 0;
-                                        res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                        res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                         res[nuc2add].children_type_leaf = 1;
                                     }
 
@@ -957,7 +961,8 @@ void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int siz
                                     res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
                                     res[nuc2add].container = uc;
                                     res[nuc2add].posFilter2 = 0;
-                                    res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                    //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                    res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                 }
                                 else if(cc->filter3[k] > next_suffix) break;
                             }
@@ -997,8 +1002,8 @@ void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int siz
                                             if (last_count_node == -1){
                                                 res[nuc2add].link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), 0, k)]);
                                             }
-                                            else res[nuc2add].link_child = &(cc->children_Node_container[MAX(cpt_node_tmp-1, 0) +
-                                                                             (*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), pos_extra_filter3, k)]);
+                                            else res[nuc2add].link_child = &(cc->children_Node_container[cpt_node_tmp +
+                                                                             (*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), pos_extra_filter3+1, k+1) - 1]);
 
                                             if (cc->nb_Node_children == 0) ERROR("presenceKmer(s=8): the count of nodes in this CC is 0, but some nodes are detected\n");
                                         }
@@ -1031,7 +1036,8 @@ void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int siz
                                     res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
                                     res[nuc2add].container = uc;
                                     res[nuc2add].posFilter2 = 0;
-                                    res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                    //res[nuc2add].posFilter3 = NB_CHILDREN_PER_SKP;
+                                    res[nuc2add].posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res[nuc2add].bucket * NB_CHILDREN_PER_SKP);
                                 }
                                 else if(tmp > next_suffix) break;
                             }
@@ -1073,8 +1079,8 @@ void presenceNeighborsRight(Node* restrict node, uint8_t* restrict kmer, int siz
                                             if (last_count_node == -1){
                                                 res[nuc2add].link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), 0, k)]);
                                             }
-                                            else res[nuc2add].link_child = &(cc->children_Node_container[MAX(cpt_node_tmp-1, 0) +
-                                                                             (*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), pos_extra_filter3, k)]);
+                                            else res[nuc2add].link_child = &(cc->children_Node_container[cpt_node_tmp +
+                                                                             (*func_on_types->count_nodes)((void*)&(((CC*)node->CC_array)[i]), pos_extra_filter3+1, k+1) - 1]);
 
                                             if (cc->nb_Node_children == 0) ERROR("presenceKmer(s=8): the count of nodes in this CC is 0, but some nodes are detected\n");
                                         }
@@ -1472,6 +1478,7 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                 //We now compare the p_vs between start position and end position in filter3 to see if
                 //the prefix we look for is present
                 if (pos_extra_filter3 < cc->nb_elem){
+
                     if (s==8){ //if the length of p_vs is 8bits
                         uint8_t suffix = (res->substring[1] << 2) | (res->substring[2] >> 6); //compute p_v
                         for (k=pos_extra_filter3; k<=pos_extra_filter3+hamming_weight_0; k++){ //iterate between start and end position
@@ -1489,9 +1496,10 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                                         res->children_type_leaf = 1;
                                     }
                                     else{
-                                        if (cpt_node_tmp == -1) res->link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)cc, 0, k)]);
+                                        int test;
+                                        if (cpt_node_tmp == -1) res->link_child = &(cc->children_Node_container[(test = (*func_on_types->count_nodes)((void*)cc, 0, k))]);
                                         else{
-                                            res->link_child = &(cc->children_Node_container[MAX(res->count_nodes-1, 0) + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3, k)]);
+                                            res->link_child = &(cc->children_Node_container[res->count_nodes + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3+1, k+1) - 1]);
                                         }
 
                                         if (cc->nb_Node_children == 0) ERROR( "presenceKmer(s=8): the count of nodes in this CC is 0, but some nodes are detected" )
@@ -1504,6 +1512,9 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                                     uc = &(((UC*)cc->children)[res->bucket]);
 
                                     res->link_child = &(uc->suffixes[res->pos_sub_bucket * uc->size_annot]);
+
+                                    res->posFilter2 = 0;
+                                    res->posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res->bucket * NB_CHILDREN_PER_SKP);
                                 }
 
                                 return;
@@ -1542,17 +1553,20 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                                     }
                                     else{
                                         if (cpt_node_tmp == -1) res->link_child = &(cc->children_Node_container[(*func_on_types->count_nodes)((void*)cc, 0, k)]);
-                                        else res->link_child = &(cc->children_Node_container[MAX(res->count_nodes-1, 0) + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3, k)]);
+                                        else res->link_child = &(cc->children_Node_container[res->count_nodes + (*func_on_types->count_nodes)((void*)cc, pos_extra_filter3+1, k+1) - 1]);
 
                                         if (cc->nb_Node_children == 0) ERROR ("presenceKmer(s=4): the count of nodes in this CC is 0, but some nodes are detected")
                                     }
                                 }
                                 else{
                                     res->bucket = k/NB_CHILDREN_PER_SKP;
-                                    uc = &(((UC*)cc->children)[res->bucket]);
-
                                     res->pos_sub_bucket = k%NB_CHILDREN_PER_SKP;
+
+                                    uc = &(((UC*)cc->children)[res->bucket]);
                                     res->link_child = &(uc->suffixes[res->pos_sub_bucket * uc->size_annot]);
+
+                                    res->posFilter2 = 0;
+                                    res->posFilter3 = MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - res->bucket * NB_CHILDREN_PER_SKP);
                                 }
 
                                 return;
@@ -1593,7 +1607,6 @@ void presenceKmer(Node* restrict node, uint8_t* restrict kmer, int size_kmer, in
                 res->pos_sub_bucket = k/size_line;
                 res->container_is_UC = 1;
                 res->posFilter2 = nb_cell;
-
                 res->posFilter3 = node->UC_array.nb_children >> 1;
                 return;
             }
@@ -1654,6 +1667,7 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
                 }
             }
             else{
+
                 cc = (CC*)res->container;
                 uc = &(((UC*)cc->children)[res->bucket]);
 
@@ -1671,7 +1685,6 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
                             res->container = uc;
                             res->pos_sub_bucket = j/size_line;
                             res->posFilter2 = nb_cell;
-
                             res->posFilter3 = uc->nb_children;
 
                             return res;
@@ -1686,7 +1699,6 @@ resultPresence* isKmerPresent(Node* restrict node, uint8_t* restrict kmer, int s
                                 res->container = uc;
                                 res->pos_sub_bucket = j/size_line;
                                 res->posFilter2 = nb_cell;
-
                                 res->posFilter3 = uc->nb_children;
 
                                 return res;

@@ -92,9 +92,10 @@ void insertKmer_Node(Node* restrict node, Node* restrict root, uint8_t* restrict
                 Node* new_node = insertKmer_Node_special(root, res, suffix, size_suffix-SIZE_SEED, kmer, size_kmer,
                                                         id_genome, func_on_types, ann_inf, annot_sorted);
 
-                if (new_node != NULL)
+                if (new_node != NULL){
                     insertKmer_Node(new_node, root, suffix, size_suffix-SIZE_SEED, kmer, size_kmer,
                                     id_genome, func_on_types, ann_inf, res, annot_sorted);
+                }
             }
         }
     }
@@ -303,7 +304,9 @@ Node* insertKmer_Node_special(Node* root, resultPresence* restrict pres, uint8_t
 
             return node;
         }
-        else{ //If the container (part of an array of CC->children) is not at its max. capacity
+        else{
+
+            //If the container (part of an array of CC->children) is not at its max. capacity
             //We insert it into the container (part of an array of CC->children)
             int pos_skp = pres->posFilter3/NB_CHILDREN_PER_SKP;
             uc = &(((UC*)cc->children)[pos_skp]);
