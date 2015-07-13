@@ -24,6 +24,7 @@ const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 #include "./../lib/printMemory.h"
 #include "./../lib/replaceAnnotation.h"
 #include "./../lib/write_to_disk.h"
+#include "./../lib/extract_kmers.h"
 
 #define PRINT_EVERY_X_KMERS 1000000
 
@@ -103,8 +104,7 @@ int main(int argc, char *argv[])
             size_kmer = atoi(argv[2]); //Length k argument reading
 
             //Test if k is valid
-            if (size_kmer < 0) ERROR("Provided length k (for k-mers) is < 0\n")
-            else if (size_kmer == 0) ERROR("Provided length k (for k-mers) either 0 or not a number\n")
+            if (size_kmer <= 0) ERROR("Provided length k (for k-mers) is either <= 0 or not a number\n")
             else if (size_kmer > 63) ERROR("Length k (for k-mers) cannot be superior to 63\n")
             else if (size_kmer%SIZE_SEED != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
 
@@ -266,6 +266,32 @@ int main(int argc, char *argv[])
                     exit(EXIT_FAILURE);
                 }
             }
+
+            // ----------- TEST ZONE ----------------
+            /*char int_to_string[12];
+            int length_string;
+            FILE* file_test;
+            if ((file_test = fopen("file_test", "w")) == NULL) ERROR("File test failed to open.\n")
+
+            uint8_t* kmer = calloc(CEIL(size_kmer*2, SIZE_CELL), sizeof(uint8_t));
+            ASSERT_NULL_PTR(kmer,"insert_Genomes_from_KmerFiles()")
+
+            length_string = sprintf(int_to_string, "%d", root->k);
+            int_to_string[length_string] = '\n';
+            fwrite(int_to_string, sizeof(char), length_string+1, file_test);
+
+            memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);
+
+            length_string = sprintf(int_to_string, "%d", (int)mem->nb_kmers_in_UCptr);
+            int_to_string[length_string] = '\n';
+            fwrite(int_to_string, sizeof(char), length_string+1, file_test);
+
+            free(mem);
+
+            extract_kmers_from_node(&(root->node), kmer, size_kmer, 0, 0, size_kmer, func_on_types, file_test);
+
+            fclose(file_test);*/
+            // ----------- END TEST ZONE ----------------
 
             if (paths_and_names != NULL){
                 int i = 0;
@@ -847,7 +873,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
         }
 
         if (root->treshold_compression != 0){
-            if ((i > 5) && (i%root->treshold_compression == 0) || (i == root->nb_genomes-1)){
+            if ((i > 5) && ((i%root->treshold_compression == 0) || (i == root->nb_genomes-1))){
 
                 load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
 
