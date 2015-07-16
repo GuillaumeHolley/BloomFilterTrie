@@ -1155,7 +1155,8 @@ void extractSuffix(uint8_t* kmer_tmp, int size_kmer, int size_kmer_array, int sh
             size_new_substring = (size_kmer-SIZE_SEED)*2-((it_substring-sizeof(uint64_t))*SIZE_CELL);
             size_new_substring_bytes = CEIL(size_new_substring, SIZE_CELL);
 
-            for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(suffix_start[(it_substring-sizeof(uint64_t))+k]);
+            for (k=0; k<size_new_substring_bytes; k++)
+                new_substring = (new_substring << 8) | reverse_word_8(suffix_start[(it_substring-sizeof(uint64_t))+k]);
 
             new_substring >>= (func_on_types->size_kmer_in_bytes_minus_1 - (it_substring-sizeof(uint64_t))) * SIZE_CELL - size_new_substring;
         }
@@ -1164,10 +1165,13 @@ void extractSuffix(uint8_t* kmer_tmp, int size_kmer, int size_kmer_array, int sh
             size_new_substring = sizeof(uint64_t)*SIZE_CELL;
             size_new_substring_bytes = sizeof(uint64_t);
 
-            for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(suffix_start[(it_substring-sizeof(uint64_t))+k]);
+            for (k=0; k<size_new_substring_bytes; k++)
+                new_substring = (new_substring << 8) | reverse_word_8(suffix_start[(it_substring-sizeof(uint64_t))+k]);
         }
 
         shifting = shifting_prefix;
+        if (shifting == 0) shifting = 8;
+        else size_new_substring_bytes++;
 
         for (k=it_bucket; k<it_bucket+size_new_substring_bytes; k++){
 
@@ -1179,7 +1183,9 @@ void extractSuffix(uint8_t* kmer_tmp, int size_kmer, int size_kmer_array, int sh
             shifting += SIZE_CELL;
         }
 
-        it_bucket+=size_new_substring_bytes;
+        if ((shifting%SIZE_CELL != 0)) size_new_substring_bytes--;
+
+        it_bucket += size_new_substring_bytes;
     }
 
     for (k=0; k<size_kmer_array; k++) kmer_tmp[k] = reverse_word_8(kmer_tmp[k]);

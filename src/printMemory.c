@@ -250,7 +250,5 @@ void printMemory(memory_Used* mem){
     printf("Nb k-mers in CC18s = %f\n", mem->kmers_in_CC18);
     printf("Nb k-mers in CC9s = %f\n\n", mem->kmers_in_CC9);
 
-    //printf("\nTest purpose only = %f\n", mem->memory);
-
     return;
 }

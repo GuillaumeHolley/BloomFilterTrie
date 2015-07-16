@@ -73,8 +73,7 @@ void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* re
         do {
             i++;
 
-            flags = CC_VERTEX;
-            if (node->UC_array.suffixes != NULL) flags |= UC_PRESENT;
+            flags = CC_VERTEX | UC_PRESENT;
 
             fwrite(&flags, sizeof(uint8_t), 1, file);
             flags = 0;
@@ -84,11 +83,9 @@ void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* re
         while ((((CC*)node->CC_array)[i].type & 0x1) == 0);
     }
 
-    if (node->UC_array.suffixes != NULL){
-        flags = UC_VERTEX | UC_PRESENT;
-        fwrite(&flags, sizeof(uint8_t), 1, file);
-        write_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, node->UC_array.nb_children >> 1);
-    }
+    flags = UC_VERTEX | UC_PRESENT;
+    fwrite(&flags, sizeof(uint8_t), 1, file);
+    write_UC(&(node->UC_array), file, func_on_types[(size_kmer/SIZE_SEED)-1].size_kmer_in_bytes, node->UC_array.nb_children >> 1);
 
     return;
 }
@@ -319,7 +316,7 @@ void read_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children){
 
 void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types){
 
-    ASSERT_NULL_PTR(cc,"read_CC() 3")
+    ASSERT_NULL_PTR(cc,"read_CC() 0")
 
     UC* uc;
 
@@ -340,9 +337,9 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
     size_t tmp, bf_filter2;
 
-    if (fread(&(cc->type), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
-    if (fread(&(cc->nb_elem), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
-    if (fread(&(cc->nb_Node_children), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
+    if (fread(&(cc->type), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC() 1")
+    if (fread(&(cc->nb_elem), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC() 2")
+    if (fread(&(cc->nb_Node_children), sizeof(uint16_t), 1, file) != 1) ERROR("read_CC() 3")
 
     nb_skp = CEIL(cc->nb_elem, NB_CHILDREN_PER_SKP);
     size_bf = cc->type >> 8;
@@ -355,8 +352,8 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
     else skipFilter2 = 0;
 
     cc->BF_filter2 = malloc((bf_filter2 + skipFilter3 + skipFilter2) * sizeof(uint8_t));
-    ASSERT_NULL_PTR(cc->BF_filter2,"read_CC()")
-    if (fread(cc->BF_filter2, sizeof(uint8_t), bf_filter2, file) != bf_filter2) ERROR("read_CC()")
+    ASSERT_NULL_PTR(cc->BF_filter2,"read_CC() 4")
+    if (fread(cc->BF_filter2, sizeof(uint8_t), bf_filter2, file) != bf_filter2) ERROR("read_CC() 5")
 
     if (cc->nb_elem >= NB_SUBSTRINGS_TRANSFORM){
         for (i = size_bf, j = bf_filter2; i < bf_filter2; i += inc, j++)
@@ -368,48 +365,48 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
     else tmp = cc->nb_elem/2;
 
     cc->filter3 = malloc(tmp * sizeof(uint8_t));
-    ASSERT_NULL_PTR(cc->filter3,"read_CC()")
-    if (fread(cc->filter3, sizeof(uint8_t), tmp, file) != tmp) ERROR("read_CC()")
+    ASSERT_NULL_PTR(cc->filter3,"read_CC()6")
+    if (fread(cc->filter3, sizeof(uint8_t), tmp, file) != tmp) ERROR("read_CC() 7")
 
     if (func_on_types[level].level_min == 1){
         tmp = CEIL(cc->nb_elem,SIZE_CELL);
         cc->extra_filter3 = malloc(tmp * sizeof(uint8_t));
-        ASSERT_NULL_PTR(cc->extra_filter3,"read_CC()")
-        if (fread(cc->extra_filter3, sizeof(uint8_t), tmp, file) != tmp) ERROR("read_CC()")
+        ASSERT_NULL_PTR(cc->extra_filter3,"read_CC() 8")
+        if (fread(cc->extra_filter3, sizeof(uint8_t), tmp, file) != tmp) ERROR("read_CC() 9")
     }
     else cc->extra_filter3 = NULL;
 
     cc->children = malloc(nb_skp * sizeof(UC));
-    ASSERT_NULL_PTR(cc->children,"read_CC()")
+    ASSERT_NULL_PTR(cc->children,"read_CC() 10")
 
     if (cc->nb_Node_children != 0){
         cc->children_Node_container = malloc(cc->nb_Node_children * sizeof(Node));
-        ASSERT_NULL_PTR(cc->children_Node_container,"read_CC() 6")
+        ASSERT_NULL_PTR(cc->children_Node_container,"read_CC() 11")
     }
     else cc->children_Node_container = NULL;
 
     if (size_kmer != SIZE_SEED){
 
-        if (fread(&tmp_uint8, sizeof(uint8_t), 1, file) != 1) ERROR("read_CC()")
+        if (fread(&tmp_uint8, sizeof(uint8_t), 1, file) != 1) ERROR("read_CC() 12")
 
         if (tmp_uint8 == 8){
             cc->children_type = malloc((cc->nb_elem+1) * sizeof(uint8_t));
-            ASSERT_NULL_PTR(cc->children_type,"read_CC()")
+            ASSERT_NULL_PTR(cc->children_type,"read_CC() 13")
             if (fread(&(((uint8_t*)cc->children_type)[1]), sizeof(uint8_t), (size_t)cc->nb_elem, file) != (size_t)cc->nb_elem)
-                ERROR("read_CC()");
+                ERROR("read_CC() 14");
         }
         else{
             cc->children_type = malloc((CEIL(cc->nb_elem,2)+1) * sizeof(uint8_t));
-            ASSERT_NULL_PTR(cc->children_type,"read_CC()")
+            ASSERT_NULL_PTR(cc->children_type,"read_CC() 15")
             if (fread(&(((uint8_t*)cc->children_type)[1]), sizeof(uint8_t), (size_t)CEIL(cc->nb_elem,2), file) != (size_t)CEIL(cc->nb_elem,2))
-                ERROR("read_CC()")
+                ERROR("read_CC() 16")
         }
 
         ((uint8_t*)cc->children_type)[0] = tmp_uint8;
 
         for (i = 0; i < nb_skp; i++){
 
-            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
+            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC() 17")
 
             uc = &(((UC*)cc->children)[i]);
             read_UC(uc, file, func_on_types[level].size_kmer_in_bytes_minus_1, nb_children);
@@ -421,7 +418,7 @@ void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict 
 
         for (i = 0; i < nb_skp; i++){
 
-            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC()")
+            if (fread(&nb_children, sizeof(uint16_t), 1, file) != 1) ERROR("read_CC() 18")
 
             if (i != nb_skp-1) read_UC(&(((UC*)cc->children)[i]), file, 0, NB_CHILDREN_PER_SKP);
             else read_UC(&(((UC*)cc->children)[i]), file, 0, cc->nb_elem - i * NB_CHILDREN_PER_SKP);

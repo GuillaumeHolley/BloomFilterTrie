@@ -1,6 +1,6 @@
 #include "./../lib/extract_kmers.h"
 
-void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root,
+int extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root,
                              ptrs_on_func* restrict func_on_types, FILE* file_output){
 
     ASSERT_NULL_PTR(n,"extract_kmers_from_node()")
@@ -11,7 +11,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
     CC* cc;
     UC* uc;
 
-    int i = -1, j = 0, k = 0, level = (size_kmer/SIZE_CELL)-1, size_kmer_array = CEIL(size_kmer_root*2,SIZE_CELL);
+    int i = -1, j = 0, k = 0, count = 0, level = (size_kmer/SIZE_CELL)-1, size_kmer_array = CEIL(size_kmer_root*2,SIZE_CELL);
 
     uint16_t size_bf, nb_elt, it_filter2;
 
@@ -26,6 +26,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
     int shifting3 = SIZE_CELL-shifting2;
 
     uint8_t mask = ~(MASK_POWER_8[shifting3]-1);
+    uint8_t mask_end_kmer = MASK_POWER_16[SIZE_CELL - (size_kmer_array*SIZE_CELL - size_kmer_root*2)]-1;
 
     uint8_t s, p;
 
@@ -88,6 +89,10 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                             extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
                                             memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
 
+                                            /*int l = 0;
+                                            for (l=0; l < size_kmer_array; l++) printf("%" PRIu8 "\n", kmer_start[l]);
+                                            printf("--\n");*/
+
                                             //kmer_tmp is the local copy of the current k-mer, it must not be modified
                                             //You can do stuff here with kmer_start (even modify it)
                                             fwrite(kmer_start, sizeof(uint8_t), size_kmer_array, file_output);
@@ -98,15 +103,25 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                         }
 
                                         it_children_pos_bucket += nb_elt;
+                                        count += nb_elt;
                                     }
                                     else{
-                                        extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                shifting2, size_kmer_root, func_on_types, file_output);
+                                        if (shifting3 == 0){
+                                            count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                             it_bucket, 0, size_kmer_root, func_on_types, file_output);
+                                        }
+                                        else{
+                                            count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                             it_bucket, shifting2, size_kmer_root, func_on_types, file_output);
+                                        }
+
                                         it_node++;
                                     }
                                 }
                                 else{
+                                    count++;
                                     memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
+                                    for (k=0; k<size_kmer_array; k++) kmer_start[k] = reverse_word_8(kmer_start[k]);
 
                                     //kmer_tmp is the local copy of the current k-mer, it must not be modified
                                     //You can do stuff here with kmer_start (even modify it)
@@ -127,7 +142,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
 
                     nb_cell_children = func_on_types[level].size_kmer_in_bytes_minus_1-1;
 
-                    for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
+                    for (it_filter2=0; it_filter2 < MASK_POWER_16[p]; it_filter2++){
 
                         if ((cc->BF_filter2[size_bf+it_filter2/SIZE_CELL] & (MASK_POWER_8[it_filter2%SIZE_CELL])) != 0){
 
@@ -158,8 +173,16 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                         if (((cc->children_Node_container[it_node].UC_array.nb_children & 0x1) == 0) || (first_bit == 1)){
 
                                             first_bit=0;
-                                            extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                    shifting2, size_kmer_root, func_on_types, file_output);
+
+                                            if (shifting3 == 0){
+                                                count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                                 it_bucket, 0, size_kmer_root, func_on_types, file_output);
+                                            }
+                                            else{
+                                                count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                                 it_bucket, shifting2, size_kmer_root, func_on_types, file_output);
+                                            }
+
                                             it_node++;
                                         }
                                         else goto OUT_LOOP_S8;
@@ -172,7 +195,8 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                             for (j=cpt_pv*size_line; j<(cpt_pv+nb_elt)*size_line; j+=size_line){
 
                                                 extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
-                                                kmer_tmp[size_kmer_array-1] &= 0x7f;
+
+                                                kmer_tmp[size_kmer_array-1] &= mask_end_kmer;
                                                 memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
 
                                                 //kmer_tmp is the local copy of the current k-mer, it must not be modified
@@ -185,6 +209,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                             }
 
                                             cpt_pv += nb_elt;
+                                            count += nb_elt;
                                         }
                                         else goto OUT_LOOP_S8;
                                     }
@@ -205,6 +230,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                 }
             }
             else {
+
                 if (func_on_types[level].level_min == 1){
 
                     for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
@@ -256,15 +282,26 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                         }
 
                                         it_children_pos_bucket += nb_elt;
+                                        count += nb_elt;
                                     }
                                     else{
-                                        extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                shifting2, size_kmer_root, func_on_types, file_output);
+
+                                        if (shifting3 == 0){
+                                            count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                             it_bucket, 0, size_kmer_root, func_on_types, file_output);
+                                        }
+                                        else{
+                                            count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                             it_bucket, shifting2, size_kmer_root, func_on_types, file_output);
+                                        }
+
                                         it_node++;
                                     }
                                 }
                                 else{
+                                    count++;
                                     memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
+                                    for (k=0; k<size_kmer_array; k++) kmer_start[k] = reverse_word_8(kmer_start[k]);
                                     //kmer_tmp is the local copy of the current k-mer, it must not be modified
                                     //You can do stuff here with kmer_start (even modify it)
                                     fwrite(kmer_start, sizeof(uint8_t), size_kmer_array, file_output);
@@ -317,8 +354,16 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                         if (((cc->children_Node_container[it_node].UC_array.nb_children & 0x1) == 0) || (first_bit == 1)){
 
                                             first_bit=0;
-                                            extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                    shifting2, size_kmer_root, func_on_types, file_output);
+
+                                            if (shifting3 == 0){
+                                                count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                                 it_bucket, 0, size_kmer_root, func_on_types, file_output);
+                                            }
+                                            else{
+                                                count += extract_kmers_from_node(&(cc->children_Node_container[it_node]), kmer_tmp, size_kmer-SIZE_SEED,
+                                                                                 it_bucket, shifting2, size_kmer_root, func_on_types, file_output);
+                                            }
+
                                             it_node++;
                                         }
                                         else goto OUT_LOOP_S4;
@@ -331,7 +376,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                             for (j=cpt_pv*size_line; j<(cpt_pv+nb_elt)*size_line; j+=size_line){
 
                                                 extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
-                                                kmer_tmp[size_kmer_array-1] &= 0x7f;
+                                                kmer_tmp[size_kmer_array-1] &= mask_end_kmer;
                                                 memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
 
                                                 //kmer_tmp is the local copy of the current k-mer, it must not be modified
@@ -344,6 +389,7 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                                             }
 
                                             cpt_pv += nb_elt;
+                                            count += nb_elt;
                                         }
                                         else goto OUT_LOOP_S4;
                                     }
@@ -371,10 +417,14 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
         size_line = func_on_types[level].size_kmer_in_bytes + n->UC_array.size_annot;
         nb_elt = n->UC_array.nb_children >> 1;
 
+        count += nb_elt;
+
         for (j = 0; j < nb_elt * size_line; j += size_line){
 
             it_substring = 0;
             it_bucket = bucket;
+
+            shifting_UC = SIZE_CELL-pos_in_bucket;
 
             memcpy(kmer_tmp, kmer, size_kmer_array*sizeof(uint8_t));
 
@@ -387,17 +437,22 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
 
                     size_new_substring = size_kmer*2-((it_substring-sizeof(uint64_t))*SIZE_CELL);
                     size_new_substring_bytes = CEIL(size_new_substring, SIZE_CELL);
-                    for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
+
+                    for (k=0; k<size_new_substring_bytes; k++)
+                        new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
+
                     new_substring >>= func_on_types[level].size_kmer_in_bytes*SIZE_CELL - size_new_substring;
                 }
                 else{
 
                     size_new_substring = sizeof(uint64_t)*SIZE_CELL;
                     size_new_substring_bytes = sizeof(uint64_t);
-                    for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
+
+                    for (k=0; k<size_new_substring_bytes; k++)
+                        new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
                 }
 
-                shifting_UC = SIZE_CELL-pos_in_bucket;
+                if (shifting_UC != 8) size_new_substring_bytes++;
 
                 for (k=it_bucket; k<it_bucket+size_new_substring_bytes; k++){
 
@@ -409,6 +464,9 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
                     shifting_UC += SIZE_CELL;
                 }
 
+                shifting_UC = SIZE_CELL-pos_in_bucket;
+
+                if ((shifting_UC != 8)/* && (it_substring >= func_on_types[level].size_kmer_in_bytes)*/) size_new_substring_bytes--;
                 it_bucket+=size_new_substring_bytes;
             }
 
@@ -421,5 +479,5 @@ void extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, 
         }
     }
 
-    return;
+    return count;
 }

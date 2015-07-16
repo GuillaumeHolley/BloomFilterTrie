@@ -1,6 +1,6 @@
 # BloomFilterTrie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) version 0.1.2.
+This repository contains the source code of the Bloom Filter Trie (BFT) version 0.2.
 
 To compile the code, Judy's Array and Jemalloc must be installed on your machine. For Ubuntu, they corresponds to packages *libjemalloc1* and *libjudydebian1*.
 
@@ -18,6 +18,7 @@ make
 Options:
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
 [-query_branching {kmers|kmers_comp} list_kmer_files]
+[-extract_kmers compressed_kmers_file]
 ```
 ### Commands
 
@@ -37,6 +38,7 @@ Command **load** loads a BFT from file *file_bft*.
 * **-add_genomes** adds the genomes listed in *list_genome_files* to the BFT stored in *file_bft*, the new BFT is written in *output_file*
 * **-query_kmers** queries the BFT for *k*-mers written in the files of *list_kmer_files*. For each file of *list_kmer_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried *k*-mers, the intersection of a column and a row is a binary value indicating if the *k*-mer represented by the row is present in the genome represented by the column.
 * **-query_branching** queries the BFT for the number of *k*-mers written in the files of *list_kmer_files* that are branching in the colored de-Bruijn graph represented by the BFT.
+* **-extract_kmers** extracts the *k*-mers stored in the BFT and writes them to a compressed *k*-mers file named *compressed_kmers_file* (see below for input file types).
 
 New options will be available soon.
 

@@ -21,7 +21,7 @@ void insertKmer_Node(Node* restrict node, Node* restrict root, uint8_t* restrict
 
     if (id_genome > NB_MAX_ID_GENOMES || id_genome < 0) ERROR ("insertKmer_Node(): unauthorized genome ID\n");
 
-    if (node->CC_array == NULL) if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
+    if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
 
     int level = (size_suffix/SIZE_SEED)-1;
     int node_nb_elem = -1;
@@ -261,12 +261,12 @@ Node* insertKmer_Node_special(Node* root, resultPresence* restrict pres, uint8_t
             initiateNode(node);
 
             if (func_on_types[level].level_min == 0){
-                if ((((uint8_t*)(pres->link_child))[nb_cell-1] >> 7) == 1) cc->children_Node_container[pos_Node].UC_array.nb_children = 1;
-                else cc->children_Node_container[pos_Node].UC_array.nb_children = 0;
+                if ((((uint8_t*)(pres->link_child))[nb_cell-1] >> 7) == 1) node->UC_array.nb_children = 1;
+                else node->UC_array.nb_children = 0;
             }
 
             //Create and initialize a new CC in this node
-            ((Node*)&(cc->children_Node_container[pos_Node]))->CC_array = createCC(MODULO_HASH);
+            node->CC_array = createCC(MODULO_HASH);
 
             uc = &(((UC*)cc->children)[pos_skp]);
 
@@ -275,7 +275,7 @@ Node* insertKmer_Node_special(Node* root, resultPresence* restrict pres, uint8_t
             uint8_t** annot_complex = get_annots_cplx_nodes(uc, nb_cell, uc->nb_children, pres->pos_sub_bucket, pres->pos_sub_bucket + nb_elt - 1);
 
             transform2CC_from_arraySuffix((uint8_t*)pres->link_child,
-                                       ((Node*)&(cc->children_Node_container[pos_Node]))->CC_array,
+                                       node->CC_array,
                                        size_suffix,
                                        size_annot,
                                        annot_extend,

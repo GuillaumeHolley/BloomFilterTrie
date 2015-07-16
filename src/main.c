@@ -11,8 +11,8 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <jemalloc/jemalloc.h>
-const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
+//#include <jemalloc/jemalloc.h>
+//const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 
 #include <Judy.h>
 
@@ -42,6 +42,8 @@ void insertKmers(Root* restrict root,
                  ptrs_on_func* restrict func_on_types,
                  annotation_inform* ann_inf,
                  resultPresence* res);
+
+void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types);
 
 void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files,
                                    int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
@@ -160,6 +162,7 @@ int main(int argc, char *argv[])
 
                     fclose(file_input);
                 }
+                else if (strcmp("-extract_kmers", argv[i]) == 0) i--;
                 else{
                     fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                     exit(EXIT_FAILURE);
@@ -261,37 +264,16 @@ int main(int argc, char *argv[])
 
                     fclose(file_input);
                 }
+                else if (strcmp("-extract_kmers", argv[i]) == 0){
+
+                    write_kmers_2disk(root, argv[i+1], func_on_types);
+                    i--;
+                }
                 else{
                     fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                     exit(EXIT_FAILURE);
                 }
             }
-
-            // ----------- TEST ZONE ----------------
-            /*char int_to_string[12];
-            int length_string;
-            FILE* file_test;
-            if ((file_test = fopen("file_test", "w")) == NULL) ERROR("File test failed to open.\n")
-
-            uint8_t* kmer = calloc(CEIL(size_kmer*2, SIZE_CELL), sizeof(uint8_t));
-            ASSERT_NULL_PTR(kmer,"insert_Genomes_from_KmerFiles()")
-
-            length_string = sprintf(int_to_string, "%d", root->k);
-            int_to_string[length_string] = '\n';
-            fwrite(int_to_string, sizeof(char), length_string+1, file_test);
-
-            memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);
-
-            length_string = sprintf(int_to_string, "%d", (int)mem->nb_kmers_in_UCptr);
-            int_to_string[length_string] = '\n';
-            fwrite(int_to_string, sizeof(char), length_string+1, file_test);
-
-            free(mem);
-
-            extract_kmers_from_node(&(root->node), kmer, size_kmer, 0, 0, size_kmer, func_on_types, file_test);
-
-            fclose(file_test);*/
-            // ----------- END TEST ZONE ----------------
 
             if (paths_and_names != NULL){
                 int i = 0;
@@ -367,6 +349,7 @@ int main(int argc, char *argv[])
 
                     i++;
                 }
+                else if (strcmp("-extract_kmers", argv[i]) == 0) i--;
                 else{
                     fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                     exit(EXIT_FAILURE);
@@ -473,6 +456,11 @@ int main(int argc, char *argv[])
 
                     i++;
                 }
+                else if (strcmp("-extract_kmers", argv[i]) == 0){
+
+                    write_kmers_2disk(root, argv[i+1], func_on_types);
+                    i--;
+                }
                 else{
                     fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                     exit(EXIT_FAILURE);
@@ -537,6 +525,50 @@ void insertKmers(Root* restrict root,
         insertKmer_Node(&(root->node), &(root->node), &(array_kmers[i*nb_bytes]), size_kmers,
                         kmer, size_kmers, id_genome, func_on_types, ann_inf, res, root->comp_set_colors);
     }
+}
+
+void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
+
+    ASSERT_NULL_PTR(root,"write_kmers_2disk()")
+    ASSERT_NULL_PTR(filename,"write_kmers_2disk()")
+
+    char int_to_string[20];
+
+    int length_string;
+
+    FILE* file_extract_kmers;
+
+    struct timeval tval_before, tval_after, tval_result;
+
+    printf("\nExtraction of k-mers from the BFT to file %s\n\n", filename);
+
+    gettimeofday(&tval_before, NULL);
+
+    if ((file_extract_kmers = fopen(filename, "w")) == NULL) ERROR("Failed to create/open file extracted k-mers.\n")
+
+    uint8_t* kmer = calloc(CEIL(root->k*2, SIZE_CELL), sizeof(uint8_t));
+    ASSERT_NULL_PTR(kmer,"main()")
+
+    length_string = sprintf(int_to_string, "%d", root->k);
+    int_to_string[length_string] = '\n';
+    fwrite(int_to_string, sizeof(char), length_string+1, file_extract_kmers);
+
+    memory_Used* mem = printMemoryUsedFromNode(&(root->node), root->k, func_on_types);
+
+    length_string = sprintf(int_to_string, "%d", (int)mem->nb_kmers_in_UCptr);
+    int_to_string[length_string] = '\n';
+    fwrite(int_to_string, sizeof(char), length_string+1, file_extract_kmers);
+
+    free(mem);
+
+    extract_kmers_from_node(&(root->node), kmer, root->k, 0, 0, root->k, func_on_types, file_extract_kmers);
+
+    free(kmer);
+    fclose(file_extract_kmers);
+
+    gettimeofday(&tval_after, NULL);
+    time_spent(&tval_before, &tval_after, &tval_result);
+    printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -627,7 +659,6 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
                 if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+return_fread)%PRINT_EVERY_X_KMERS)){
                     printf("%" PRIu64 " kmers read\n", kmers_read+return_fread);
-                    //break;
                 }
 
                 kmers_read += return_fread;
