@@ -7,8 +7,6 @@ void shift_extended_annot(UC* uc, int size_substring, int nb_substring, int pos_
 
     if (uc->nb_extended_annot != 0){
 
-        ERROR("shift_extended_annot()")
-
         uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
         int pos = 0;
         int i = 0;
