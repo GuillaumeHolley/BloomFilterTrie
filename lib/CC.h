@@ -540,7 +540,7 @@ int count_Nodes##SIZE_KMER (void* obj, int start, int end){                     
     else {                                                                          \
         for (z=start+2; z<end+2; z++){                                              \
             if (IS_ODD(z)){                                                         \
-                if (cc->children_type[z/2] < 0x10) count++;                         \
+                if ((cc->children_type[z/2] >> 4) == 0) count++;                    \
             }                                                                       \
             else if ((cc->children_type[z/2] & 0xf) == 0) count++;                  \
         }                                                                           \
@@ -579,7 +579,7 @@ void count_Nodes_Children##SIZE_KMER (void* obj, int start, int end, int* count_
     else {                                                                                                   \
         for (z=start+2; z<end+2; z++){                                                                       \
             if (IS_ODD(z)){                                                                                  \
-                if ((cc->children_type[z/2] < 0x10) == 0) *count_nodes += 1;                                 \
+                if ((cc->children_type[z/2] >> 4) == 0) *count_nodes += 1;                                   \
                 else *count_children += cc->children_type[z/2] >> 4;                                         \
             }                                                                                                \
             else {                                                                                           \
