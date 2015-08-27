@@ -12,8 +12,8 @@ make
 
 ### Usage:
 ```
-./bft build k treshold_compression {fastx|kmers|kmers_comp} list_genome_files output_file [Options]
-./bft load file_bft [-add_genomes {fastx|kmers|kmers_comp} list_genome_files output_file] [Options]
+./bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]
+./bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]
 
 Options:
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
@@ -44,7 +44,6 @@ New options will be available soon.
 
 ### Input file types
 
-* *fastx*: files of *list_genome_files* are FASTA/FASTQ files. All *k*-mers are extracted from the files and inserted in the BFT.
 * *kmers*: files of *list_genome_files* are *k*-mers files. Each file contains one *k*-mer (plain text) per line, eventually followed by a count.
 * *kmers_comp*: files of *list_genome_files* are compressed *k*-mers files. Each file is built as the following: First line is *k* (plain text), second line is the number of *k*-mers in the file (plain text) and third line is the concatenation of all compressed *k*-mers. A compressed *k*-mer is encoded with two bits per nucleotid (one byte for 4 nucleotids) with A=00, C=01, G=10 and T=11. A byte is always encoded from the Less Significant Bit to the Most Significant Bit. If a byte cannot be entirely filled in with nucleotids, it is padded with 0s.
 Example: ACTTGTCTG -> 11110100 11011110 00000010
