@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/resource.h>
 
 #include <stdio.h>
@@ -7,14 +8,16 @@
 #include <stdint.h>
 #include <libgen.h>
 
-#include <fcntl.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <limits.h>
 
-//#include <jemalloc/jemalloc.h>
-//const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
+#include <jemalloc/jemalloc.h>
+const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 
 #include <Judy.h>
+
+//KSEQ_INIT(int, read, SIZE_BUFFER)
 
 #include "./../lib/UC_annotation.h"
 #include "./../lib/insertNode.h"
@@ -26,46 +29,30 @@
 #include "./../lib/write_to_disk.h"
 #include "./../lib/extract_kmers.h"
 
-#define PRINT_EVERY_X_KMERS 1000000
-
-#define SIZE_BUFFER 4096 //Size of the buffer (in bytes) used to store kmers read from input files
-
-#include "./../lib/kseq.h"
-//Initialize parser for FASTx files
-KSEQ_INIT(int, read, SIZE_BUFFER)
-
 void insertKmers(Root* restrict root,
                  uint8_t* restrict array_kmers,
-                 int size_kmers,
                  int nb_kmers,
-                 int id_genome,
-                 ptrs_on_func* restrict func_on_types,
+                 uint32_t id_genome,
+                 int size_id_genome,
                  annotation_inform* ann_inf,
                  resultPresence* res);
 
-void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types);
+void write_kmers_2disk(Root* root, char* filename);
 
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files,
-                                   int size_kmer, int id_start_genome, ptrs_on_func* func_on_types);
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
-                                    int id_start_genome, ptrs_on_func* func_on_types);
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int id_start_genome);
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int id_start_genome);
 
-int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename,
-                                          int binary_file, char* output_filename, int size_kmer);
-int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename,
-                                          int binary_file, int size_kmer);
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, char* output_filename);
+int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file);
 
-int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root,
-                                        ptrs_on_func* func_on_types, annotation_inform* ann_inf);
-Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
-                                   annotation_inform* ann_inf, resultPresence* res);
+int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, uint16_t** skip_node_root, annotation_inform* ann_inf);
+Root* get_nb_cplx_nodes_from_FASTx(Root* tree, uint16_t** skip_node_root, annotation_inform* ann_inf, resultPresence* res);
 
 extern void freeRoot(Root* root);
 extern void time_spent(struct timeval *start_time, struct timeval *end_time, struct timeval *resulting_time);
 
 int main(int argc, char *argv[])
 {
-
     Root* root = NULL;
 
     int i = 0;
@@ -74,6 +61,9 @@ int main(int argc, char *argv[])
     int size_kmer = 27;
     int binary_files = 0;
     int nb_files_2_read = 0;
+
+    int r1 = rand();
+    int r2 = rand();
 
     const char csv_ext[5] = ".csv\0";
 
@@ -89,7 +79,7 @@ int main(int argc, char *argv[])
     FILE* file_input = NULL;
     FILE* file_tmp = NULL;
 
-    ptrs_on_func* func_on_types = NULL;
+    info_per_level* info_per_lvl = NULL;
 
     if (argc == 1){
         ERROR("\nUsage:\n"
@@ -103,12 +93,17 @@ int main(int argc, char *argv[])
 
         if (strcmp("build", argv[1]) == 0){
 
+            while (r1 == r2){
+                r1 = rand();
+                r2 = rand();
+            }
+
             size_kmer = atoi(argv[2]); //Length k argument reading
 
             //Test if k is valid
             if (size_kmer <= 0) ERROR("Provided length k (for k-mers) is either <= 0 or not a number\n")
             else if (size_kmer > 63) ERROR("Length k (for k-mers) cannot be superior to 63\n")
-            else if (size_kmer%SIZE_SEED != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
+            else if (size_kmer%NB_CHAR_SUF_PREF != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
 
             //Open the file containing the input files
             if ((file_input = fopen(argv[5], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
@@ -201,25 +196,33 @@ int main(int argc, char *argv[])
 
             fclose(file_input);
 
-            root = createRoot(filenames, nb_files_2_read, size_kmer, atoi(argv[3])); //Create a BFT
-            func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
+            info_per_lvl = create_info_per_level(size_kmer);
 
             //Read and test if the type of input files is valid
             //Insert k-mers of the input files in the BFT
             if (strcmp("kmers_comp", argv[4]) == 0){
-                insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, 0, func_on_types);
+                root = createRoot(filenames, nb_files_2_read, size_kmer, atoi(argv[3]), 0, r1, r2, info_per_lvl); //Create a BFT
+                insert_Genomes_from_KmerFiles(root, paths_and_names, 1, 0);
             }
             else if (strcmp("kmers", argv[4]) == 0){
-                insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, 0, func_on_types);
+                root = createRoot(filenames, nb_files_2_read, size_kmer, atoi(argv[3]), 0, r1, r2, info_per_lvl);
+                insert_Genomes_from_KmerFiles(root, paths_and_names, 0, 0);
             }
             else if (strcmp("fastx", argv[4]) == 0){
-                insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, 0, func_on_types);
+                root = createRoot(filenames, nb_files_2_read, size_kmer, atoi(argv[3]), 0, r1, r2, info_per_lvl);
+                insert_Genomes_from_FASTxFiles(root, paths_and_names, 0);
             }
             else
                 ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
                       "'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
 
-            write_Root(root, argv[6], func_on_types);
+            write_Root_sparse(root, argv[6]);
+
+            memory_Used* mem = printMemoryUsedFromNode(&(root->node), (root->k / NB_CHAR_SUF_PREF) - 1, root->k, root->info_per_lvl);
+            printMemory(mem);
+            free(mem);
+
+            printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
 
             for (i=7; i<argc; i+=3){
 
@@ -243,7 +246,7 @@ int main(int argc, char *argv[])
                         else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
 
                         //Query the BFT for presence of k-mer queries
-                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output, root->k));
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output));
 
                         free(filename_output);
                     }
@@ -259,14 +262,14 @@ int main(int argc, char *argv[])
 
                         buffer[strcspn(buffer, "\r\n")] = 0;
                         //Query the BFT for the number of k-mer queries that are branching vertices
-                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, root->k));
+                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files));
                     }
 
                     fclose(file_input);
                 }
                 else if (strcmp("-extract_kmers", argv[i]) == 0){
 
-                    write_kmers_2disk(root, argv[i+1], func_on_types);
+                    write_kmers_2disk(root, argv[i+1]);
                     i--;
                 }
                 else{
@@ -282,17 +285,16 @@ int main(int argc, char *argv[])
             }
 
             freeRoot(root);
-            free(func_on_types);
         }
         else if (strcmp("load", argv[1]) == 0){
 
-            root = read_Root(argv[2]);
+            root = read_Root_sparse(argv[2]);
 
-            func_on_types = create_ptrs_on_func(SIZE_SEED, root->k);
-
-            memory_Used* mem = printMemoryUsedFromNode(&(root->node), root->k, func_on_types);
+            memory_Used* mem = printMemoryUsedFromNode(&(root->node), (root->k / NB_CHAR_SUF_PREF) - 1, root->k, root->info_per_lvl);
             printMemory(mem);
             free(mem);
+
+            printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
 
             for (i=3; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
 
@@ -380,7 +382,7 @@ int main(int argc, char *argv[])
                         else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
 
                         //Query the BFT for presence of k-mer queries
-                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output, root->k));
+                        printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output));
 
                         free(filename_output);
                     }
@@ -396,7 +398,7 @@ int main(int argc, char *argv[])
 
                         buffer[strcspn(buffer, "\r\n")] = 0;
                         //Query the BFT for the number of k-mer queries that are branching vertices
-                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files, root->k));
+                        printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files));
                     }
 
                     fclose(file_input);
@@ -438,27 +440,25 @@ int main(int argc, char *argv[])
                     //Read and test if the type of input files is valid
                     //Insert k-mers of the input files in the BFT
                     if (strcmp("kmers_comp", argv[i+1]) == 0){
-                        insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                        insert_Genomes_from_KmerFiles(root, paths_and_names, 1, root->nb_genomes - nb_files_2_read);
                     }
                     else if (strcmp("kmers", argv[i+1]) == 0){
-                        insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                        insert_Genomes_from_KmerFiles(root, paths_and_names, 0, root->nb_genomes - nb_files_2_read);
                     }
                     else if (strcmp("fastx", argv[i+1]) == 0){
-                        insert_Genomes_from_FASTxFiles(root, paths_and_names, root->k, root->nb_genomes - nb_files_2_read, func_on_types);
+                        insert_Genomes_from_FASTxFiles(root, paths_and_names, root->nb_genomes - nb_files_2_read);
                     }
                     else
                         ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
                               "'kmers' for k-mers files or 'kmers_comp' for compressed k-mer files.\n")
 
-                    write_Root(root, argv[i+3], func_on_types);
-
-                    free(func_on_types);
+                    write_Root_sparse(root, argv[i+3]);
 
                     i++;
                 }
                 else if (strcmp("-extract_kmers", argv[i]) == 0){
 
-                    write_kmers_2disk(root, argv[i+1], func_on_types);
+                    write_kmers_2disk(root, argv[i+1]);
                     i--;
                 }
                 else{
@@ -485,7 +485,7 @@ int main(int argc, char *argv[])
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
-*  insertKmers(root, array_kmers, size_kmers, nb_kmers, id_genome, func_on_types, ann_inf, res, annot_sorted)
+*  insertKmers(root, array_kmers, size_kmers, nb_kmers, id_genome, info_per_lvl, ann_inf, res, annot_sorted)
 *  ---------------------------------------------------------------------------------------------------------------
 *  Insert kmers into the BFT
 *  ---------------------------------------------------------------------------------------------------------------
@@ -494,27 +494,26 @@ int main(int argc, char *argv[])
 *  size_kmers: length k of kmers in array_kmers
 *  nb_kmers: number of kmers in array_kmers
 *  id_genome: genome id to which belongs the kmers in array_kmers
-*  func_on_types: ptr to ptrs_on_func structure, used to manipulate compressed container field children_type
+*  info_per_lvl: ptr to info_per_level structure, used to manipulate compressed container field children_type
 *  ann_inf: ptr to annotation_inform structure, used to make the transition between reading and modifying an annot
 *  res: ptr to resultPresence structure, used to store information about the presence of a suffix prefix in a CC
 *  ---------------------------------------------------------------------------------------------------------------
 */
 void insertKmers(Root* restrict root,
                  uint8_t* restrict array_kmers,
-                 int size_kmers,
                  int nb_kmers,
-                 int id_genome,
-                 ptrs_on_func* restrict func_on_types,
+                 uint32_t id_genome,
+                 int size_id_genome,
                  annotation_inform* ann_inf,
                  resultPresence* res){
 
     ASSERT_NULL_PTR(root,"insertKmers()")
-    ASSERT_NULL_PTR(func_on_types,"insertKmers()")
     ASSERT_NULL_PTR(ann_inf,"insertKmers()")
     ASSERT_NULL_PTR(res,"insertKmers()")
 
     int i = 0;
-    int nb_bytes = CEIL(size_kmers*2, SIZE_CELL); //Nb bytes used to store a k-mer
+    int curr_lvl = (root->k/NB_CHAR_SUF_PREF)-1;
+    int nb_bytes = CEIL(root->k*2, SIZE_BITS_UINT_8T); //Nb bytes used to store a k-mer
 
     uint8_t kmer[nb_bytes];
 
@@ -522,12 +521,12 @@ void insertKmers(Root* restrict root,
 
         memcpy(kmer, &(array_kmers[i*nb_bytes]), nb_bytes * sizeof(uint8_t));
 
-        insertKmer_Node(&(root->node), &(root->node), &(array_kmers[i*nb_bytes]), size_kmers,
-                        kmer, size_kmers, id_genome, func_on_types, ann_inf, res, root->comp_set_colors);
+        insertKmer_Node(&(root->node), root, curr_lvl, &(array_kmers[i*nb_bytes]), root->k, kmer,
+                        id_genome, size_id_genome, 0, ann_inf, res, root->comp_set_colors);
     }
 }
 
-void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
+void write_kmers_2disk(Root* root, char* filename){
 
     ASSERT_NULL_PTR(root,"write_kmers_2disk()")
     ASSERT_NULL_PTR(filename,"write_kmers_2disk()")
@@ -535,6 +534,7 @@ void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
     char int_to_string[20];
 
     int length_string;
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
 
     FILE* file_extract_kmers;
 
@@ -546,14 +546,14 @@ void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
 
     if ((file_extract_kmers = fopen(filename, "w")) == NULL) ERROR("Failed to create/open file extracted k-mers.\n")
 
-    uint8_t* kmer = calloc(CEIL(root->k*2, SIZE_CELL), sizeof(uint8_t));
+    uint8_t* kmer = calloc(CEIL(root->k*2, SIZE_BITS_UINT_8T), sizeof(uint8_t));
     ASSERT_NULL_PTR(kmer,"main()")
 
     length_string = sprintf(int_to_string, "%d", root->k);
     int_to_string[length_string] = '\n';
     fwrite(int_to_string, sizeof(char), length_string+1, file_extract_kmers);
 
-    memory_Used* mem = printMemoryUsedFromNode(&(root->node), root->k, func_on_types);
+    memory_Used* mem = printMemoryUsedFromNode(&(root->node), lvl_root, root->k, root->info_per_lvl);
 
     length_string = sprintf(int_to_string, "%d", (int)mem->nb_kmers_in_UCptr);
     int_to_string[length_string] = '\n';
@@ -561,7 +561,7 @@ void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
 
     free(mem);
 
-    extract_kmers_from_node(&(root->node), kmer, root->k, 0, 0, root->k, func_on_types, file_extract_kmers);
+    extract_kmers_from_node(&(root->node), lvl_root, kmer, root->k, 0, 0, root->k, root->compressed, root->info_per_lvl, file_extract_kmers);
 
     free(kmer);
     fclose(file_extract_kmers);
@@ -582,7 +582,7 @@ void write_kmers_2disk(Root* root, char* filename, ptrs_on_func* func_on_types){
 *  size_kmer: length k of k-mers in files
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types){
+void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_files, int id_start_genome){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_KmerFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_KmerFiles()")
@@ -600,8 +600,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
     annotation_array_elem* comp_set_colors_tmp = NULL;
 
-    annotation_inform* ann_inf = calloc(1,sizeof(annotation_inform));
-    ASSERT_NULL_PTR(ann_inf,"insert_Genomes_from_FASTx()")
+    annotation_inform* ann_inf = create_annotation_inform(root->nb_genomes);
 
     resultPresence* res = create_resultPresence();
 
@@ -609,7 +608,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
     ASSERT_NULL_PTR(array_kmers,"insert_Genomes_from_KmerFiles()")
 
-    uint8_t* kmer;
+    //uint8_t* kmer;
 
     char* line = calloc(100, sizeof(char));
     ASSERT_NULL_PTR(line,"insert_Genomes_from_KmerFiles()")
@@ -619,14 +618,18 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     int i = 0;
     int j = 0;
     int k = 0;
-    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int size_id_genome = 0;
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
+    int nb_bytes_kmer = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
 
     size_t return_fread;
 
     int length_comp_set_colors_tmp = 0;
 
-    double count = 0;
+    int len_longest_annot;
+
+    //double count = 0;
 
     uint64_t kmers_read;
 
@@ -635,6 +638,8 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
         kmers_read = 0;
         k = 0;
         j = 0;
+
+        size_id_genome = get_nb_bytes_power2_annot(i);
 
         file = fopen(filenames[i-id_start_genome], "r");
         ASSERT_NULL_PTR(file,"insert_Genomes_from_KmerFiles()")
@@ -653,7 +658,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 
                 return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file);
 
-                insertKmers(root, array_kmers, size_kmer, return_fread, i, func_on_types, ann_inf, res);
+                insertKmers(root, array_kmers, return_fread, i, size_id_genome, ann_inf, res);
 
                 memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
 
@@ -667,12 +672,12 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
         else {
             while (fgets(line, 100, file) != NULL){
 
-                if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+                if (parseKmerCount(line, root->k, array_kmers, k) == 1){
                     k += nb_bytes_kmer;
                     j++;
 
                     if (j == nb_kmer_in_buf){
-                        insertKmers(root, array_kmers, size_kmer, nb_kmer_in_buf, i, func_on_types, ann_inf, res);
+                        insertKmers(root, array_kmers, nb_kmer_in_buf, i, size_id_genome, ann_inf, res);
 
                         j = 0;
                         k = 0;
@@ -687,7 +692,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
                 }
             }
 
-            insertKmers(root, array_kmers, size_kmer, j, i, func_on_types, ann_inf, res);
+            insertKmers(root, array_kmers, j, i, size_id_genome, ann_inf, res);
             kmers_read += j;
 
             memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
@@ -698,55 +703,63 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
         if (root->treshold_compression != 0){
             if ((i > 5) && ((i%root->treshold_compression == 0) || (i == root->nb_genomes-1))){
 
-                load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
+                memory_Used* mem = printMemoryUsedFromNode(&(root->node), lvl_root, root->k, root->info_per_lvl);
+                len_longest_annot = MAX(mem->size_biggest_annot+1, getMaxSize_annotation_array_elem(root->comp_set_colors));
+                free(mem);
+
+                load_annotation_from_Node(&(root->node), lvl_root, root->k, len_longest_annot, root->info_per_lvl,
+                                          &PJArray, root->comp_set_colors, ann_inf);
 
                 comp_set_colors_tmp = root->comp_set_colors;
                 length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
+                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors), len_longest_annot);
 
-                compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
+                if (root->comp_set_colors != NULL){
+                    compress_annotation_from_Node(&(root->node), lvl_root, root->k, root->info_per_lvl, &PJArray, comp_set_colors_tmp,
+                                                  ann_inf);
 
-                free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
+                    free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
+                }
 
                 JSLFA(Rc_word, PJArray);
             }
         }
 
         //Delete unecessary annotations
-        /*skip_node_root = build_skip_nodes(&(root->node), size_kmer, func_on_types);
+        /*skip_node_root = build_skip_nodes(&(root->node), root->k, root->info_per_lvl);
 
         printf("\nCreating marking structure\n");
 
-        create_marking_Node_4states(&(root->node), size_kmer, func_on_types);
+        create_marking_Node_4states(&(root->node), root->k, root->info_per_lvl);
 
         printf("\nGetting complex nodes\n");
 
-        count = get_nb_cplx_nodes_from_KmerCounting(root, filenames[i-id_start_genome], size_kmer, skip_node_root, &annot_sorted, func_on_types, ann_inf);
+        count = get_nb_cplx_nodes_from_KmerCounting(root, filenames[i-id_start_genome], root->k, skip_node_root, &annot_sorted, root->info_per_lvl, ann_inf);
 
         if (count/((double)kmers_read) <= TRESH_DEL_ANNOT){
 
-            kmer = calloc(CEIL(size_kmer*2, SIZE_CELL), sizeof(uint8_t));
+            kmer = calloc(CEIL(root->k*2, SIZE_BITS_UINT_8T), sizeof(uint8_t));
             ASSERT_NULL_PTR(kmer,"insert_Genomes_from_KmerFiles()")
 
-            count = deleteColors_from_branchingNodes(&(root->node), &(root->node), kmer, size_kmer, 0, 0, size_kmer, i, func_on_types, skip_node_root, ann_inf, annot_sorted);
+            count = deleteColors_from_branchingNodes(&(root->node), &(root->node), kmer, root->k, 0, 0, root->k, i, root->info_per_lvl, skip_node_root, ann_inf, annot_sorted);
             printf("\nNumber of annotations that could be erased = %f\n", count);
 
             if (((double)kmers_read-count)/((double)kmers_read) <= TRESH_DEL_ANNOT){
 
-                count = resize_annotation_Node(&(root->node), size_kmer, func_on_types);
+                count = resize_annotation_Node(&(root->node), root->k, root->info_per_lvl);
                 printf("\n%f unnecessary annoations has been deleted, BFT has been reallocated\n\n", count);
             }
             else{
                 printf("\nFor this genome, memory cannot be optimized by deleting unnecessary annotations in graph's paths\n\n");
-                delete_marking_Node_4states(&(root->node), size_kmer, func_on_types);
+                delete_marking_Node_4states(&(root->node), root->k, root->info_per_lvl);
             }
 
             free(kmer);
         }
         else {
             printf("\nFor this genome, memory cannot be optimized by deleting unnecessary annotations in graph's paths\n\n");
-            delete_marking_Node_4states(&(root->node), size_kmer, func_on_types);
+            delete_marking_Node_4states(&(root->node), root->k, root->info_per_lvl);
         }
 
         free_skip_nodes(&(root->node), skip_node_root);
@@ -767,7 +780,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
         tval_last = tval_after;
     }
 
-    memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);
+    memory_Used* mem = printMemoryUsedFromNode(&(root->node), lvl_root, root->k, root->info_per_lvl);
 
     if (skip_node_root != NULL) free_skip_nodes(&(root->node), skip_node_root);
 
@@ -778,7 +791,7 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
     free(line);
     free(array_kmers);
 
-    free(ann_inf);
+    free_annotation_inform(ann_inf);
     free(res);
 
     return;
@@ -794,25 +807,25 @@ void insert_Genomes_from_KmerFiles(Root* root, char** filenames, int binary_file
 *  size_kmer: length k of k-mers to extract from the FASTx files
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer, int id_start_genome, ptrs_on_func* func_on_types){
+void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int id_start_genome){
 
     ASSERT_NULL_PTR(root,"insert_Genomes_from_FASTxFiles()")
     ASSERT_NULL_PTR(filenames,"insert_Genomes_from_FASTxFiles()")
 
-    struct timeval tval_before, tval_after, tval_last, tval_result;
+    /*struct timeval tval_before, tval_after, tval_last, tval_result;
     gettimeofday(&tval_before, NULL);
     tval_last = tval_before;
 
     int i = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
     int nb_kmers_buf = 0;
+    int size_id_genome = 0;
     int length_comp_set_colors_tmp = 0;
-    int nb_cell_kmer = CEIL(size_kmer*2, SIZE_CELL); //Size of kmers in bytes
+    int nb_cell_kmer = CEIL(size_kmer*2, SIZE_BITS_UINT_8T); //Size of kmers in bytes
 
     annotation_array_elem* comp_set_colors_tmp = NULL;
 
-    annotation_inform* ann_inf = calloc(1,sizeof(annotation_inform)); //Initialize structure to pass information between reading and modifying an annotation
-    ASSERT_NULL_PTR(ann_inf,"insert_Genomes_from_FASTxFiles()")
+    annotation_inform* ann_inf = create_annotation_inform(root->nb_genomes);
 
     resultPresence* res = create_resultPresence();
 
@@ -829,10 +842,13 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
     uint64_t tmp_kmers_read = 0;
 
     for (i=id_start_genome; i<root->nb_genomes; i++){ //For each file in input
+
         size_buf_tmp = 0;
         kmers_read = 0;
         tmp_kmers_read = 0;
         nb_kmers_buf = 0;
+
+        size_id_genome = get_nb_bytes_power2_annot(i);
 
         int fp = open(filenames[i-id_start_genome], O_RDONLY); //Open it
         kseq_t *seq = kseq_init(fp); //initialize the parser for this file
@@ -853,7 +869,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
                 if (size_buf_tmp == 0){ //If the number of characters in the temporary buffer is 0
                     if (nb_kmers_buf != 0){ //If there is at least one kmer in the seq buffer
                         memcpy(buf_tmp, &(seq->seq.s[nb_kmers_buf]), size_kmer-1); //Copy the last size_kmer-1 characters of seq-buffer into buf_tmp
-                        size_buf_tmp = (size_kmer-1)/* *2 */;
+                        size_buf_tmp = (size_kmer-1);
                     }
                     else{
                         memcpy(buf_tmp, &(seq->seq.s[0]), current_buf_length); //Copy the content of seq buffer into buf_tmp
@@ -869,7 +885,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
                     int nb_kmers = size_buf_tmp - size_kmer + 1;
                     if (nb_kmers > 0){
                         parseSequenceBuffer(buf_tmp, tab_kmers, &nb_kmers, size_kmer, nb_cell_kmer); //Read buf_tmp, extract the kmers in tab_kmers
-                        insertKmers(root, tab_kmers, size_kmer, nb_kmers, i, func_on_types, ann_inf, res); //Insert the kmers into the tree
+                        insertKmers(root, tab_kmers, size_kmer, nb_kmers, i, size_id_genome, 0, info_per_lvl, ann_inf, res); //Insert the kmers into the tree
                         memset(tab_kmers, 0, nb_kmers*nb_cell_kmer*sizeof(uint8_t)); //Reinit tab_kmers
                         tmp_kmers_read = nb_kmers;
                     }
@@ -888,7 +904,7 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
                 //Extraction of buffer's kmers. Insertion in the tree.
                 if (nb_kmers_buf > 0){
                     parseSequenceBuffer(seq->seq.s, tab_kmers, &nb_kmers_buf, size_kmer, nb_cell_kmer);
-                    insertKmers(root, tab_kmers, size_kmer, nb_kmers_buf, i, func_on_types, ann_inf, res);
+                    insertKmers(root, tab_kmers, size_kmer, nb_kmers_buf, i, size_id_genome, 0, info_per_lvl, ann_inf, res);
                     memset(tab_kmers, 0, nb_kmers_buf*nb_cell_kmer*sizeof(uint8_t));
                     tmp_kmers_read += nb_kmers_buf;
                 }
@@ -906,14 +922,17 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
         if (root->treshold_compression != 0){
             if ((i > 5) && ((i%root->treshold_compression == 0) || (i == root->nb_genomes-1))){
 
-                load_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, root->comp_set_colors);
+                load_annotation_from_Node(&(root->node), size_kmer, info_per_lvl, &PJArray, root->comp_set_colors);
 
                 comp_set_colors_tmp = root->comp_set_colors;
+
                 length_comp_set_colors_tmp = root->length_comp_set_colors;
 
-                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors));
+                memory_Used* mem = printMemoryUsedFromNode(&(root->node), lvl_root, root->k, root->info_per_lvl);
+                root->comp_set_colors = sort_annotations(&PJArray, &(root->length_comp_set_colors), mem->size_biggest_annot);
+                free(mem);
 
-                compress_annotation_from_Node(&(root->node), size_kmer, func_on_types, &PJArray, comp_set_colors_tmp);
+                compress_annotation_from_Node(&(root->node), size_kmer, info_per_lvl, &PJArray, comp_set_colors_tmp);
 
                 free_annotation_array_elem(comp_set_colors_tmp, length_comp_set_colors_tmp);
 
@@ -938,22 +957,22 @@ void insert_Genomes_from_FASTxFiles(Root* root, char** filenames, int size_kmer,
         tval_last = tval_after;
     }
 
-    memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, func_on_types);
+    memory_Used* mem = printMemoryUsedFromNode(&(root->node), size_kmer, info_per_lvl);
 
     printMemory(mem);
 
     free(mem);
 
-    free(ann_inf);
+    free_annotation_inform(ann_inf);
     free(res);
 
     free(buf_tmp);
-    free(tab_kmers);
+    free(tab_kmers);*/
 
     return;
 }
 
-int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, char* output_filename, int size_kmer){
+int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int binary_file, char* output_filename){
 
     ASSERT_NULL_PTR(root,"queryBFT_kmerPresences_from_KmerFiles()")
     ASSERT_NULL_PTR(query_filename,"queryBFT_kmerPresences_from_KmerFiles()")
@@ -963,7 +982,7 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
     const char comma = ',';
 
-    int annot_present;
+    //int annot_present;
     int size_annot;
     int size_annot_cplx;
     int size_annot_res;
@@ -972,15 +991,14 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
     int j = 0;
     int k = 0;
     int nb_kmers_present = 0;
-    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int nb_bytes_kmer = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
 
     uint64_t kmers_read = 0;
 
     FILE* file_query;
     FILE* file_output;
-
-    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
 
     resultPresence* res;
 
@@ -990,7 +1008,7 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
     uint8_t* annot_ext;
     uint8_t* annot_cplx;
 
-    uint8_t* annot_res = calloc(CEIL(root->nb_genomes+2, SIZE_CELL), sizeof(uint8_t));
+    uint8_t* annot_res = calloc(CEIL(root->nb_genomes+2, SIZE_BITS_UINT_8T), sizeof(uint8_t));
     ASSERT_NULL_PTR(annot_res,"queryBFT_kmerPresences_from_KmerFiles()")
 
     uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
@@ -1025,17 +1043,18 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
             for (k=0; k<(int)return_fread; k++){
 
-                res = isKmerPresent(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types);
+                res = isKmerPresent(&(root->node), root, lvl_root, &(array_kmers[k*nb_bytes_kmer]), root->k);
 
                 if (res->link_child != NULL){
 
                     if (res->posFilter2 != 0){
-                        annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                       &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                        get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                        &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
                     }
                     else{
-                        annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                       &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                        get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext,
+                                       &annot_cplx, &size_annot, &size_annot_cplx, res->posFilter2, res->posFilter3,
+                                       res->pos_sub_bucket);
                     }
 
                     if (size_annot != 0){
@@ -1077,7 +1096,7 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
         while (fgets(line, 100, file_query) != NULL){
 
-            if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+            if (parseKmerCount(line, root->k, array_kmers, k) == 1){
                 k += nb_bytes_kmer;
                 j++;
 
@@ -1085,17 +1104,18 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
                     for (i=0; i<nb_kmer_in_buf; i++){
 
-                        res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
+                        res = isKmerPresent(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k);
 
                         if (res->link_child != NULL){
 
                             if (res->posFilter2 != 0){
-                                annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                                get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                                &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
                             }
                             else{
-                                annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                               &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                                get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext,
+                                               &annot_cplx, &size_annot, &size_annot_cplx, res->posFilter2, res->posFilter3,
+                                               res->pos_sub_bucket);
                             }
 
                             if (size_annot != 0){
@@ -1139,17 +1159,18 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
         for (i=0; i<j; i++){
 
-            res = isKmerPresent(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types);
+            res = isKmerPresent(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k);
 
             if (res->link_child != NULL){
 
                 if (res->posFilter2 != 0){
-                    annot_present = get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                    get_annotation((UC*)res->container, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                    &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
                 }
                 else{
-                    annot_present = get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext, &annot_cplx, &size_annot,
-                                                   &size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+                    get_annotation(&(((UC*)((CC*)res->container)->children)[res->bucket]), &annot, &annot_ext,
+                                   &annot_cplx, &size_annot, &size_annot_cplx, res->posFilter2, res->posFilter3,
+                                   res->pos_sub_bucket);
                 }
 
                 if (size_annot != 0){
@@ -1191,12 +1212,16 @@ int queryBFT_kmerPresences_from_KmerFiles(Root* root, char* query_filename, int 
 
     gettimeofday(&tval_after, NULL);
     time_spent(&tval_before, &tval_after, &tval_result);
+
     printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+    printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
+    printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
 
     return nb_kmers_present;
 }
 
-int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file, int size_kmer){
+int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int binary_file){
 
     ASSERT_NULL_PTR(root,"queryBFT_kmerBranching_from_KmerFiles()")
     ASSERT_NULL_PTR(query_filename,"queryBFT_kmerBranching_from_KmerFiles()")
@@ -1208,14 +1233,13 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
     int j = 0;
     int k = 0;
     int count_branching_node = 0;
-    int nb_bytes_kmer = CEIL(size_kmer*2, SIZE_CELL);
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
+    int nb_bytes_kmer = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
 
     uint64_t kmers_read = 0;
 
     FILE* file;
-
-    ptrs_on_func* func_on_types = create_ptrs_on_func(SIZE_SEED, size_kmer);
 
     size_t return_fread;
 
@@ -1225,7 +1249,7 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
     char* line = calloc(100, sizeof(char));
     ASSERT_NULL_PTR(line,"queryBFT_kmerBranching_from_KmerFiles()")
 
-    uint16_t** skip_node_root = build_skip_nodes(&(root->node), size_kmer, func_on_types);
+    uint16_t** skip_node_root = build_skip_nodes(&(root->node));
 
     file = fopen(query_filename, "r");
     ASSERT_NULL_PTR(file,"queryBFT_kmerBranching_from_KmerFiles()")
@@ -1243,10 +1267,12 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 
             for (k=0; k<(int)return_fread; k++){
 
-                if (isBranchingRight(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                if (isBranchingRight(&(root->node), root, lvl_root, &(array_kmers[k*nb_bytes_kmer]), root->k,
+                                     root->info_per_lvl, skip_node_root) > 1){
                     count_branching_node++;
                 }
-                else if (isBranchingLeft(&(root->node), &(array_kmers[k*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                else if (isBranchingLeft(&(root->node), root, lvl_root, &(array_kmers[k*nb_bytes_kmer]), root->k,
+                                         root->info_per_lvl, skip_node_root) > 1){
                     count_branching_node++;
                 }
             }
@@ -1263,7 +1289,7 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 
         while (fgets(line, 100, file) != NULL){
 
-            if (parseKmerCount(line, size_kmer, array_kmers, k) == 1){
+            if (parseKmerCount(line, root->k, array_kmers, k) == 1){
                 k += nb_bytes_kmer;
                 j++;
 
@@ -1271,10 +1297,12 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 
                     for (i=0; i<nb_kmer_in_buf; i++){
 
-                        if (isBranchingRight(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                        if (isBranchingRight(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k,
+                                             root->info_per_lvl, skip_node_root) > 1){
                             count_branching_node++;
                         }
-                        else if (isBranchingLeft(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+                        else if (isBranchingLeft(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k,
+                                                 root->info_per_lvl, skip_node_root) > 1){
                             count_branching_node++;
                         }
                     }
@@ -1293,10 +1321,12 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 
         for (i=0; i<j; i++){
 
-            if (isBranchingRight(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+            if (isBranchingRight(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k,
+                                 root->info_per_lvl, skip_node_root) > 1){
                 count_branching_node++;
             }
-            else if (isBranchingLeft(&(root->node), &(array_kmers[i*nb_bytes_kmer]), size_kmer, func_on_types, skip_node_root) > 1){
+            else if (isBranchingLeft(&(root->node), root, lvl_root, &(array_kmers[i*nb_bytes_kmer]), root->k,
+                                     root->info_per_lvl, skip_node_root) > 1){
                 count_branching_node++;
             }
         }
@@ -1313,7 +1343,11 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 
     gettimeofday(&tval_after, NULL);
     time_spent(&tval_before, &tval_after, &tval_result);
+
     printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+    printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
+    printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
 
     return count_branching_node;
 }
@@ -1323,12 +1357,11 @@ int queryBFT_kmerBranching_from_KmerFiles(Root* root, char* query_filename, int 
 *  ---------------------------------------------------------------------------------------------------------------
 */
 
-int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types, annotation_inform* ann_inf){
+int get_nb_cplx_nodes_from_KmerCounting(Root* root, char* name_file, uint16_t** skip_node_root, annotation_inform* ann_inf){
 
-    ASSERT_NULL_PTR(tree,"get_nb_cplx_nodes_from_KmerCounting()")
+    ASSERT_NULL_PTR(root,"get_nb_cplx_nodes_from_KmerCounting()")
     ASSERT_NULL_PTR(name_file,"get_nb_cplx_nodes_from_KmerCounting()")
     ASSERT_NULL_PTR(skip_node_root,"get_nb_cplx_nodes_from_KmerCounting()")
-    ASSERT_NULL_PTR(func_on_types,"get_nb_cplx_nodes_from_KmerCounting()")
     ASSERT_NULL_PTR(ann_inf,"get_nb_cplx_nodes_from_KmerCounting()")
 
     resultPresence* res;
@@ -1348,7 +1381,8 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
     int count_without_left_n = 0;
     int degree_left = 0;
 
-    int nb_cell = CEIL(size_kmer*2, SIZE_CELL);
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
+    int nb_cell = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_cell;
 
     FILE* file = fopen(name_file, "r");
@@ -1356,7 +1390,7 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
 
     while (fgets(line, 100, file) != NULL){
 
-        if (parseKmerCount(line, size_kmer, tab_kmers, k) == 1){
+        if (parseKmerCount(line, root->k, tab_kmers, k) == 1){
             k += nb_cell;
             j++;
 
@@ -1364,10 +1398,10 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
 
                 for (k = 0; k < nb_kmer_in_buf * nb_cell; k += nb_cell){
 
-                    if (isBranchingRight(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types, skip_node_root) > 1){ //Flag 0
+                    if (isBranchingRight(&(root->node), root,lvl_root, &(tab_kmers[k]), root->k, root->info_per_lvl, skip_node_root) > 1){ //Flag 0
 
                         count_branching++;
-                        res = isKmerPresent(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types);
+                        res = isKmerPresent(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k);
 
                         uc = (UC*)res->container;
 
@@ -1376,9 +1410,9 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
 
                         free(res);
                     }
-                    else if ((degree_left = isBranchingLeft(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types, skip_node_root)) != 1){
+                    else if ((degree_left = isBranchingLeft(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k, root->info_per_lvl, skip_node_root)) != 1){
 
-                        res = isKmerPresent(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types);
+                        res = isKmerPresent(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k);
 
                         uc = (UC*)res->container;
 
@@ -1416,10 +1450,10 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
 
     for (k = 0; k < j * nb_cell; k += nb_cell){
 
-        if (isBranchingRight(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types, skip_node_root) > 1){ //Flag 0
+        if (isBranchingRight(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k, root->info_per_lvl, skip_node_root) > 1){ //Flag 0
 
             count_branching++;
-            res = isKmerPresent(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types);
+            res = isKmerPresent(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k);
 
             uc = (UC*)res->container;
 
@@ -1428,9 +1462,9 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
 
             free(res);
         }
-        else if ((degree_left = isBranchingLeft(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types, skip_node_root)) != 1){
+        else if ((degree_left = isBranchingLeft(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k, root->info_per_lvl, skip_node_root)) != 1){
 
-            res = isKmerPresent(&(tree->node), &(tab_kmers[k]), size_kmer, func_on_types);
+            res = isKmerPresent(&(root->node), root, lvl_root, &(tab_kmers[k]), root->k);
             uc = (UC*)res->container;
 
             if (degree_left == 0){
@@ -1464,22 +1498,31 @@ int get_nb_cplx_nodes_from_KmerCounting(Root* tree, char* name_file, int size_km
     return count_branching /*+ count_without_left_n*/;
 }
 
-Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_node_root, ptrs_on_func* func_on_types,
-                                   annotation_inform* ann_inf, resultPresence* res){
+Root* get_nb_cplx_nodes_from_FASTx(Root* tree, uint16_t** skip_node_root, annotation_inform* ann_inf,
+                                   resultPresence* res){
 
     ASSERT_NULL_PTR(tree,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(tree->filenames,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(skip_node_root,"get_nb_cplx_nodes_from_FASTx()")
-    ASSERT_NULL_PTR(func_on_types,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(ann_inf,"get_nb_cplx_nodes_from_FASTx()")
     ASSERT_NULL_PTR(res,"get_nb_cplx_nodes_from_FASTx()")
 
-    Root* bft_cplx_nodes = createRoot(NULL, 0, size_kmer, 0);
+    int r1 = rand();
+    int r2 = rand();
 
-    int i = 0, j = 0;
+    while (r1 == r2){
+        r1 = rand();
+        r2 = rand();
+    }
+
+    info_per_level* info_per_lvl = create_info_per_level(tree->k);
+    Root* bft_cplx_nodes = createRoot(NULL, 0, tree->k, 0, 0, r1, r2, info_per_lvl);
+
+    /*int i = 0;
+    int j = 0;
     int size_buf_tmp = 0; //How many characters are stored in buf_tmp
     int nb_kmers_buf = 0;
-    int nb_cell_kmer = CEIL(size_kmer*2, SIZE_CELL); //Size of kmers in bytes
+    int nb_cell_kmer = CEIL(size_kmer*2, SIZE_BITS_UINT_8T); //Size of kmers in bytes
 
     char* buf_tmp = calloc((size_kmer-1)*2, sizeof(char)); //Allocate temporary buffer
     ASSERT_NULL_PTR(buf_tmp,"get_nb_cplx_nodes_from_FASTx()")
@@ -1531,9 +1574,9 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
                         parseSequenceBuffer(buf_tmp, tab_kmers, &nb_kmers, size_kmer, nb_cell_kmer); //Read buf_tmp, extract the kmers in tab_kmers
 
                         for (j=0; j < nb_kmers * nb_cell_kmer; j += nb_cell_kmer){
-                            if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) > 1) ||
-                                (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) != 1))
-                                   insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res);
+                            if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, info_per_lvl, skip_node_root) > 1) ||
+                                (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, info_per_lvl, skip_node_root) != 1))
+                                   insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, 1, 0, info_per_lvl, ann_inf, res);
                         }
 
                         memset(tab_kmers, 0, nb_kmers*nb_cell_kmer*sizeof(uint8_t)); //Reinit tab_kmers
@@ -1556,9 +1599,9 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
                     parseSequenceBuffer(seq->seq.s, tab_kmers, &nb_kmers_buf, size_kmer, nb_cell_kmer);
 
                     for (j=0; j< nb_kmers_buf * nb_cell_kmer; j += nb_cell_kmer){
-                        if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) > 1) ||
-                            (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, func_on_types, skip_node_root) != 1))
-                                insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, func_on_types, ann_inf, res);
+                        if ((isBranchingRight(&(tree->node), &(tab_kmers[j]), size_kmer, info_per_lvl, skip_node_root) > 1) ||
+                            (isBranchingLeft(&(tree->node), &(tab_kmers[j]), size_kmer, info_per_lvl, skip_node_root) != 1))
+                                insertKmers(bft_cplx_nodes, &(tab_kmers[j]), size_kmer, 1, 0, 1, 0, info_per_lvl, ann_inf, res);
                     }
 
                     memset(tab_kmers, 0, nb_kmers_buf*nb_cell_kmer*sizeof(uint8_t));
@@ -1581,9 +1624,9 @@ Root* get_nb_cplx_nodes_from_FASTx(Root* tree, int size_kmer, uint16_t** skip_no
         close(fp);
     }
 
-    free(func_on_types);
+    free(info_per_lvl);
     free(buf_tmp);
-    free(tab_kmers);
+    free(tab_kmers);*/
 
     return bft_cplx_nodes;
 }

@@ -3,6 +3,15 @@
 
 #include <sys/time.h>
 
+#if (defined(__x86_64__) || defined(_M_X64) || defined(_WIN64) \
+  || defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) \
+  || defined(__64BIT__) || defined(_LP64) || defined(__LP64__) \
+  || defined(__ia64) || defined(__itanium__) || defined(_M_IA64) )
+#  define _WORDx64
+#else
+#  define _WORDx86
+#endif
+
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
@@ -25,10 +34,21 @@ if( (_p) == NULL )                                                  \
      exit(EXIT_FAILURE);                                            \
 }
 
-#define FREE_PTR(_p) do{ \
-	 free( (_p) ); \
-     (_p) = NULL; \
-}while(0)
+typedef struct{
+    uint64_t elem1;
+    int elem2;
+} Duo;
+
+inline void sum_up_duos(Duo* d1, Duo* d2){
+
+    ASSERT_NULL_PTR(d1, "sum_up_duos()")
+    ASSERT_NULL_PTR(d2, "sum_up_duos()")
+
+    d1->elem1 += d2->elem1;
+    d1->elem2 += d2->elem2;
+
+    return;
+}
 
 inline void time_spent(struct timeval *start_time, struct timeval *end_time, struct timeval *resulting_time){
 

@@ -10,7 +10,6 @@
 #include <math.h>
 
 #include "./../lib/useful_macros.h"
-#include "./../lib/popcnt.h"
 #include "./../lib/UC_annotation.h"
 #include "./../lib/log2.h"
 
@@ -19,12 +18,15 @@
 *  ===================================================================================================================================
 */
 
-inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot, uint16_t id_genome, uint8_t flag, uint8_t flag_ext){
+const uint8_t MASK_POWER_8[8];
+
+inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot,
+                            uint32_t id_genome, int size_id_genome, uint8_t flag, uint8_t flag_ext){
 
     ASSERT_NULL_PTR(current_annot, "modify_annot_bis()")
     ASSERT_NULL_PTR(it_annot, "modify_annot_bis()")
 
-    if (id_genome < MASK_POWER_8[6]){
+    if (id_genome < 0x40){
 
         (*current_annot)[*it_annot] = (id_genome << 2) | flag;
         (*it_annot)++;
@@ -38,49 +40,71 @@ inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it
         return 1;
     }
     else{
+        if (size_id_genome <= 0) size_id_genome = get_nb_bytes_power2_annot(id_genome);
 
-        (*current_annot)[*it_annot] = ((id_genome & 0xffc0) >> 4) | flag;
-        (*it_annot)++;
+        int size_id_genome_cpy = size_id_genome;
+        size_id_genome = (size_id_genome-1) * 6 - 2;
 
-        if (*it_annot >= *size_current_annot){
-            *it_annot = 0;
-            *size_current_annot = 1;
-            (*current_annot) = annot_sup;
+        uint8_t* curr_ann_tmp = *current_annot;
+        int it_tmp = *it_annot;
+        int size_tmp = *size_current_annot;
+
+        curr_ann_tmp[it_tmp] = ((id_genome >> size_id_genome) & 0xfc) | flag;
+        it_tmp++;
+        size_id_genome -= 6;
+
+        while (size_id_genome > 0){
+            curr_ann_tmp[it_tmp] = ((id_genome >> size_id_genome) & 0xfc) | flag_ext;
+            it_tmp++;
+            size_id_genome -= 6;
         }
 
-        (*current_annot)[*it_annot] = ((id_genome & 0x3f) << 2) | flag_ext;
-        (*it_annot)++;
-
-        if (*it_annot >= *size_current_annot){
-            *it_annot = 0;
-            *size_current_annot = 1;
-            (*current_annot) = annot_sup;
+        if (it_tmp >= size_tmp){
+            it_tmp = 0;
+            size_tmp = 1;
+            curr_ann_tmp = annot_sup;
         }
 
-        return 2;
+        if (size_id_genome <= 0){
+
+            curr_ann_tmp[it_tmp] = ((id_genome >> size_id_genome) & 0xfc) | flag_ext;
+            it_tmp++;
+
+            if (it_tmp >= size_tmp){
+                it_tmp = 0;
+                size_tmp = 1;
+                curr_ann_tmp = annot_sup;
+            }
+        }
+
+        *current_annot = curr_ann_tmp;
+        *it_annot = it_tmp;
+        *size_current_annot = size_tmp;
+
+        return size_id_genome_cpy;
     }
 }
 
-inline uint8_t* min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot){
+inline UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot){
 
     if (nb_substrings == 0) return 0;
     else ASSERT_NULL_PTR(annot, "min_size_per_sub()")
 
-    uint8_t* sizes = calloc(nb_substrings, sizeof(uint8_t));
+    UC_SIZE_ANNOT_T *sizes = calloc(nb_substrings, sizeof( UC_SIZE_ANNOT_T ));
     ASSERT_NULL_PTR(sizes, "min_size_per_sub()")
 
     if (size_annot == 0) return sizes;
 
-    int i, z, base;
+    int i, k;
     int size_line = size_substring+size_annot;
 
-    for (i=0; i<nb_substrings; i++){
+    uint8_t* z;
 
-        z = size_annot-1;
-        base = i*size_line+size_substring;
+    for (i=size_substring, k=0; i < nb_substrings * size_line; i += size_line, k++){
 
-        while ((z >= 0) && (annot[base+z] == 0)) z--;
-        sizes[i] = z+1;
+        z = annot + i + size_annot - 1;
+        while ((z >= annot + i) && (*z == 0)) z--;
+        sizes[k] = z - annot - i + 1;
     }
 
     return sizes;
@@ -93,16 +117,19 @@ inline int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substrin
 
     if (size_annot == 0) return 0;
 
-    int i, z;
-    int size_line = size_substring+size_annot;
+    int size_line = size_substring + size_annot;
+    int i = size_substring;
     int max_size = -1;
 
-    for (i=size_substring; i<nb_substrings * size_line; i+=size_line){
+    uint8_t* z;
 
-        z = size_annot-1;
-        while ((z >= 0) && (annot[i+z] == 0)) z--;
+    for (; i < nb_substrings * size_line; i += size_line){
 
-        max_size = MAX(max_size,z+1);
+        z = annot + i + size_annot - 1;
+        while ((z >= annot + i) && (*z == 0)) z--;
+
+        max_size = MAX(max_size, z - annot - i + 1);
+        if (max_size == size_annot) return max_size;
     }
 
     return max_size;
@@ -110,19 +137,18 @@ inline int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substrin
 
 inline int size_annot_sub(uint8_t* annot, int size_substring, int size_annot){
 
-    if (annot == NULL) return 0;
-    if (size_annot == 0) return 0;
+    if ((annot == NULL) || (size_annot == 0)) return 0;
 
-    int z = size_annot-1;
-    while ((z >= 0) && (annot[size_substring+z] == 0)) z--;
+    uint8_t* z = annot + size_substring + size_annot - 1;
+    while ((z >= annot) && (*z == 0)) z--;
 
-    return z+1;
+    return z - annot + 1;
 }
 
 inline uint8_t* extract_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position, int* size_annot){
 
-    ASSERT_NULL_PTR(annot_sorted, "extract_from_annotation_array_elem()")
-    ASSERT_NULL_PTR(size_annot, "extract_from_annotation_array_elem()")
+    ASSERT_NULL_PTR(annot_sorted, "extract_from_annotation_array_elem() 1")
+    ASSERT_NULL_PTR(size_annot, "extract_from_annotation_array_elem() 2")
 
     int it_annot_sorted = 0;
 
@@ -146,13 +172,40 @@ inline int getSize_from_annotation_array_elem(annotation_array_elem* annot_sorte
 }
 
 inline void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array){
+
     if (annot_sorted != NULL){
+
         int i = 0;
         for (i=0; i<size_array; i++){
             if (annot_sorted[i].annot_array != NULL) free(annot_sorted[i].annot_array);
         }
+
         free(annot_sorted);
     }
+}
+
+inline double getTotalSize_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array){
+
+    double size_annot_array_elem = 0;
+
+    if (annot_sorted != NULL){
+
+        int64_t old_pos = 0;
+
+        for (int i=0; i<size_array; i++){
+            if (annot_sorted[i].annot_array != NULL){
+                size_annot_array_elem += (annot_sorted[i].last_index - old_pos + 1) * annot_sorted[i].size_annot;
+                old_pos = annot_sorted[i].last_index;
+            }
+        }
+    }
+
+    return size_annot_array_elem;
+}
+
+inline int getMaxSize_annotation_array_elem(annotation_array_elem* annot_sorted){
+    if (annot_sorted != NULL) return annot_sorted[0].size_annot;
+    else return 0;
 }
 
 #endif

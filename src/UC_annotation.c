@@ -71,3 +71,83 @@ int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot
 
     return 1;
 }
+
+void get_annotations(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t*** annots_cplx,
+                   int** size_annots, int** size_annots_cplx, int size_substring, int nb_substring,
+                   int position_start, int position_end){
+
+    if (nb_substring <= 0) return;
+
+    if ((position_start >= nb_substring) || (position_start < 0)){
+        ERROR("get_annotations(): position_start >= nb_substring or < 0")
+    }
+
+    if ((position_end >= nb_substring) || (position_end < 0)){
+        ERROR("get_annotations(): position_end >= nb_substring or < 0")
+    }
+
+    ASSERT_NULL_PTR(uc,"get_annotation()")
+    ASSERT_NULL_PTR(uc->suffixes,"get_annotation()")
+
+    int size_line;
+
+    int i = 0;
+    int nb_suffixes = position_end - position_start + 1;
+
+    *annots = malloc(nb_suffixes * sizeof(uint8_t*));
+    ASSERT_NULL_PTR(*annots, "get_annotations()")
+
+    *size_annots_cplx = calloc(nb_suffixes, sizeof(int));
+    ASSERT_NULL_PTR(*size_annots_cplx, "get_annotations()")
+
+    *size_annots = calloc(nb_suffixes, sizeof(int));
+    ASSERT_NULL_PTR(*size_annots, "get_annotations()")
+
+    *annots_ext = NULL;
+    *annots_cplx = NULL;
+
+    if (uc->size_annot == 0){
+
+        for (i = 0; i < nb_suffixes; i++) (*annots)[i] = NULL;
+
+        if ((*annots_ext = get_extend_annots(uc, size_substring, nb_substring,
+                                             position_start, position_end)) == NULL){
+
+            if ((*annots_cplx = get_annots_cplx_nodes(uc, size_substring, nb_substring,
+                                                     position_start, position_end)) != NULL){
+                free(*size_annots_cplx);
+                *size_annots_cplx = min_size_per_annot_cplx_sub(uc, size_substring, nb_substring,
+                                                                position_start, position_end);
+            }
+        }
+    }
+    else{
+
+        size_line = size_substring + uc->size_annot;
+
+        for (i = position_start; i <= position_end; i++)
+            (*annots)[i - position_start] = &(uc->suffixes[i * size_line + size_substring]);
+
+        if ((*annots_ext = get_extend_annots(uc, size_substring, nb_substring,
+                                             position_start, position_end)) == NULL){
+
+            for (i = 0; i < nb_suffixes; i++)
+                (*size_annots)[i] = size_annot_sub((*annots)[i], 0, uc->size_annot);
+
+            if ((*annots_cplx = get_annots_cplx_nodes(uc, size_substring, nb_substring,
+                                                     position_start, position_end)) != NULL){
+
+                for (i = 0; i < nb_suffixes; i++)
+                    (*size_annots_cplx)[i] = size_annot_sub((*annots_cplx)[i], 0, uc->size_annot_cplx_nodes);
+            }
+        }
+        else{
+            for (i = 0; i < nb_suffixes; i++){
+                if ((*annots_ext)[i] != NULL) (*size_annots)[i] = uc->size_annot;
+                else (*size_annots)[i] = size_annot_sub((*annots)[i], 0, uc->size_annot);
+            }
+        }
+    }
+
+    return;
+}

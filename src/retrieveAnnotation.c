@@ -1,7 +1,8 @@
 #include "./../lib/retrieveAnnotation.h"
 
-annotation_array_elem* retrieve_annotation_right(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix, int id_genome_avoid,
-                            uint16_t** skip_node_root, ptrs_on_func* restrict func_on_types, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+/*annotation_array_elem* retrieve_annotation_right(Root* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array,
+                                                 int shifting_suffix, uint32_t id_genome_avoid, uint16_t** skip_node_root,
+                                                 info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation_right()")
     ASSERT_NULL_PTR(kmer_start,"retrieve_annotation_right()")
@@ -10,6 +11,7 @@ annotation_array_elem* retrieve_annotation_right(Node* root, uint8_t* kmer_start
     int annot_present;
     int size_annot = 0;
     int size_annot_cplx = 0;
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
 
     uint8_t* kmer = NULL;
     uint8_t* annot_res = NULL;
@@ -21,7 +23,7 @@ annotation_array_elem* retrieve_annotation_right(Node* root, uint8_t* kmer_start
 
     annotation_array_elem* ann_arr_elem;
 
-    resultPresence* res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+    resultPresence* res = getRightNeighbors(root, lvl_root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
     //memcpy(kmer_start, kmer_start_tmp, size_kmer_array*sizeof(uint8_t));
 
     for (z=0; z<4; z++){ //for each possible right neighbor
@@ -74,7 +76,7 @@ annotation_array_elem* retrieve_annotation_right(Node* root, uint8_t* kmer_start
                 memcpy(kmer, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                 ann_arr_elem = retrieve_annotation_right(root, kmer, kmer_start, size_kmer_root, size_kmer_array, shifting_suffix, id_genome_avoid,
-                                                skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                skip_node_root, info_per_lvl, ann_inf, annot_sorted);
 
                 free(kmer);
                 free(res);
@@ -92,8 +94,9 @@ annotation_array_elem* retrieve_annotation_right(Node* root, uint8_t* kmer_start
     return NULL;
 }
 
-annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int id_genome_avoid,
-                            uint16_t** skip_node_root, ptrs_on_func* restrict func_on_types, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root,
+                                                int size_kmer_array, uint32_t id_genome_avoid, uint16_t** skip_node_root,
+                                                info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation_left()")
     ASSERT_NULL_PTR(kmer_start,"retrieve_annotation_left()")
@@ -113,7 +116,7 @@ annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start,
 
     annotation_array_elem* ann_arr_elem;
 
-    resultPresence* res = getLeftNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+    resultPresence* res = getLeftNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
     //memcpy(kmer_start, kmer_start_tmp, size_kmer_array*sizeof(uint8_t));
 
     for (z=0; z<4; z++){ //for each possible right neighbor
@@ -166,7 +169,7 @@ annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start,
                 memcpy(kmer, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                 ann_arr_elem = retrieve_annotation_left(root, kmer, kmer_start, size_kmer_root, size_kmer_array, id_genome_avoid,
-                                                skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                skip_node_root, info_per_lvl, ann_inf, annot_sorted);
 
                 free(kmer);
                 free(res);
@@ -190,8 +193,9 @@ annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start,
     return ann_arr_elem;
 }
 
-annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix, int id_genome_avoid,
-                            uint16_t** skip_node_root, ptrs_on_func* restrict func_on_types, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix,
+                                           uint32_t id_genome_avoid, uint16_t** skip_node_root, info_per_level* restrict info_per_lvl, annotation_inform* ann_inf,
+                                           annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation()")
     ASSERT_NULL_PTR(kmer_start,"retrieve_annotation()")
@@ -203,13 +207,13 @@ annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint
 
     annot_left = retrieve_annotation_left(root, kmer_start, kmer_start_tmp, size_kmer_root,
                                           size_kmer_array, id_genome_avoid, skip_node_root,
-                                          func_on_types, ann_inf, annot_sorted);
+                                          info_per_lvl, ann_inf, annot_sorted);
 
     memcpy(kmer_start, kmer_start_tmp, size_kmer_array * sizeof(uint8_t));
 
     annot_right = retrieve_annotation_right(root, kmer_start, kmer_start_tmp, size_kmer_root,
                                             size_kmer_array, shifting_suffix, id_genome_avoid,
-                                            skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                            skip_node_root, info_per_lvl, ann_inf, annot_sorted);
 
     memcpy(kmer_start, kmer_start_tmp, size_kmer_array * sizeof(uint8_t));
 
@@ -223,10 +227,11 @@ annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint
     free(annot_right);
 
     return annot_left_right;
-}
+}*/
 
-void modify_annotations(Node* root, UC* uc, int size_substring, int nb_children, int position, int id_genome, uint8_t* kmer, int size_kmer,
-                        ptrs_on_func* restrict func_on_types, annotation_inform* ann_inf, annotation_array_elem* annot_sorted, int special_case){
+void modify_annotations(Root* root, UC* uc, int size_substring, int nb_children, int position, uint32_t id_genome,
+                        int size_id_genome, uint8_t* kmer, annotation_inform* ann_inf, annotation_array_elem* annot_sorted,
+                        int special_case){
 
     ASSERT_NULL_PTR(uc,"modify_annotations()")
     ASSERT_NULL_PTR(ann_inf,"modify_annotations()")
@@ -241,27 +246,31 @@ void modify_annotations(Node* root, UC* uc, int size_substring, int nb_children,
 
     annotation_array_elem* annot_array_elem = NULL;
 
-    res_get_annotation = get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx, size_substring, nb_children, position);
+    res_get_annotation = get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
+                                        &size_annot_cplx, size_substring, nb_children, position);
 
     if (res_get_annotation == 1){
 
-        if (size_annot_cplx != 0) compute_best_mode(ann_inf, annot_sorted, annot_cplx, size_annot_cplx, NULL, 0, id_genome);
-        else compute_best_mode(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome);
+        if (size_annot_cplx != 0) compute_best_mode(ann_inf, annot_sorted, annot_cplx,
+                                                    size_annot_cplx, NULL, 0, id_genome, size_id_genome);
+        else compute_best_mode(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome, size_id_genome);
     }
     else{
-        int size_kmer_array = CEIL(size_kmer*2, SIZE_CELL);
-        int shifting_suffix = SIZE_CELL - (size_kmer_array * SIZE_CELL - (size_kmer - 1) * 2);
+        /*int size_kmer_array = CEIL(root->k*2, SIZE_BITS_UINT_8T);
+        int shifting_suffix = SIZE_BITS_UINT_8T - (size_kmer_array * SIZE_BITS_UINT_8T - (root->k - 1) * 2);
         uint8_t kmer_copy[size_kmer_array];
 
         memcpy(kmer_copy, kmer, size_kmer_array * sizeof(uint8_t));
 
-        annot_array_elem = retrieve_annotation(root, kmer_copy, kmer, size_kmer, size_kmer_array, shifting_suffix, id_genome,
-                                                NULL, func_on_types, ann_inf, annot_sorted);
+        annot_array_elem = retrieve_annotation(&(root->node), kmer_copy, kmer, root->k, size_kmer_array, shifting_suffix,
+                                               id_genome, NULL, root->info_per_lvl, ann_inf, annot_sorted);
 
         annot = annot_array_elem->annot_array;
         size_annot = annot_array_elem->size_annot;
 
-        compute_best_mode(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome);
+        compute_best_mode(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome, size_id_genome);*/
+
+        ERROR("modify_annotations()")
     }
 
     if (ann_inf->last_added != id_genome){
@@ -273,18 +282,22 @@ void modify_annotations(Node* root, UC* uc, int size_substring, int nb_children,
                 annot_cplx = get_annot_cplx_nodes(uc, size_substring, nb_children, position);
             }
 
-            modify_mode_annotation(ann_inf, annot_cplx, ann_inf->min_size, NULL, 0, id_genome);
+            modify_mode_annotation(ann_inf, annot_cplx, ann_inf->min_size, NULL, 0, id_genome, size_id_genome);
         }
         else {
 
             if (ann_inf->min_size > uc->size_annot){
-                if ((special_case == 0) || (annot_ext == NULL) || (ann_inf->min_size > uc->size_annot+1))
+                if ((special_case == 0) || (annot_ext == NULL) || (ann_inf->min_size > uc->size_annot+1)){
                     annot_ext = realloc_annotation(uc, size_substring, nb_children, ann_inf->min_size, 0, position);
+                }
             }
 
-            modify_mode_annotation(ann_inf, &(uc->suffixes[position * (size_substring + uc->size_annot) + size_substring]), uc->size_annot, annot_ext, 1, id_genome);
 
-            if ((annot_ext != NULL) && (annot_ext[0] == 0)) delete_extend_annots(uc, size_substring, nb_children, position, position, 0, 0, 1);
+            modify_mode_annotation(ann_inf, &(uc->suffixes[position * (size_substring + uc->size_annot) + size_substring]),
+                                   uc->size_annot, annot_ext, 1, id_genome, size_id_genome);
+
+            if ((annot_ext != NULL) && (annot_ext[0] == 0))
+                delete_extend_annots(uc, size_substring, nb_children, position, position, 0, 0, 1);
         }
     }
 

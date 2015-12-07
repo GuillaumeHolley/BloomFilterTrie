@@ -23,7 +23,7 @@
 *  ===================================================================================================================================
 */
 
-int extract_kmers_from_node(Node* n, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root,
-                             ptrs_on_func* restrict func_on_types, FILE* file_output);
+int extract_kmers_from_node(Node* n, int lvl_node, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket,
+                            int size_kmer_root, int compression, info_per_level* restrict info_per_lvl, FILE* file_output);
 
 #endif

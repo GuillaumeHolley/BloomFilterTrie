@@ -16,21 +16,33 @@
 
 #include <Judy.h>
 
+#include "./../lib/default_param.h"
 #include "./../lib/useful_macros.h"
 #include "./../lib/UC.h"
-
-#define SIZE_SEED 9 //Length of prefixes (in characters) stored in CCs
-#define NB_CELLS_PER_SEED CEIL(SIZE_SEED*2,SIZE_CELL) //Length of prefixes (in 8bits cells) stored in CCs
-
-#define SIZE_CLUST_SKIP_NODES NB_CHILDREN_PER_SKP //Value max
+#include "./../lib/xxhash.h"
 
 /* ===================================================================================================================================
 *  STRUCTURES DECLARATION
 *  ===================================================================================================================================
 */
 
-// Power of 2, up to 2^16
-static const uint64_t MASK_POWER_16[17] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
+// info_per_level is a structure which contains pointers on macro used to manipulate the field children_type of a CC.
+// The structure is used in an array, initialized in create_info_per_level()
+typedef struct{
+    int nb_ucs_skp;
+    int nb_kmers_uc; //Number of prefixes a CC, at a specific level of the tree, can contain.
+    int mask_shift_kmer; //Suffixes are encoded in arrays of 8bits cells: mask_shift_kmer covers only the bits used on the last cell
+    int size_kmer_in_bytes; //Size of the suffixes represented at a given level of the tree, in bytes
+    int size_kmer_in_bytes_minus_1; //Size of the suffixes represented at a given level of the tree, minus the size of the prefixes ps, in bytes
+    int nb_bits_per_cell_skip_filter2;
+    int nb_bits_per_cell_skip_filter3;
+    int nb_bytes_per_cell_skip_filter2;
+    int nb_bytes_per_cell_skip_filter3;
+    int modulo_hash;
+    int tresh_suf_pref;
+    int level_min;
+    int root;
+} info_per_level;
 
 // A node is a list of containers of two types: Compressed Containers (CC) and Uncompressed Containers (UC).
 // It can contain 0 or more CCs in CC_array, plus always one UC which can be empty (UC_array.substrings == NULL) or not.
@@ -43,18 +55,33 @@ typedef struct {
 // TODO: Include the file names associated to each genome ID
 typedef struct {
     Node node;
-    annotation_array_elem* comp_set_colors;
+
     char** filenames;
+
+    annotation_array_elem* comp_set_colors;
+
+    info_per_level* info_per_lvl;
+
+    uint64_t* hash_v;
+
+    uint8_t compressed;
+
+    int k;
+    int r1;
+    int r2;
     int nb_genomes;
     int length_comp_set_colors;
-    int k;
     int treshold_compression;
 } Root;
 
 //resultPresence is a structure produced by presenceKmer(). It contains information about the presence of a prefix p into a given node.
 typedef struct{
+    void* restrict node;
     void* restrict container; //Ptr to the container (UC or CC) which contain the prefix p or cc->children that contain the substring we are looking for
     void* restrict link_child; //Ptr to the container (Node or uint8_t*) having potentially the suffix linked to the prefix p
+
+    int level_node;
+    int pos_container;
 
     int bucket; //Position of the array containing the suffixes linked to prefix p in children
     int pos_sub_bucket; // Position (in term of suffix+annotation) of the first suffix linked to prefix p in children[bucket]
@@ -70,7 +97,7 @@ typedef struct{
     int count_children;
     int count_nodes;
 
-    uint8_t substring[NB_CELLS_PER_SEED]; // the prefix p
+    uint8_t substring[SIZE_BYTES_SUF_PREF]; // the prefix p
 
     uint8_t presBF; //Boolean indicating if p is said present in the Bloom Filter
     uint8_t presFilter2; //Boolean indicating if p_u is present in the Second Filter
@@ -79,14 +106,109 @@ typedef struct{
 } resultPresence;
 
 typedef struct{
-    double double1;
-    double double2;
-} Duo;
+
+    int start_pos_filter2;
+    int end_pos_filter2;
+    int start_pos_filter3;
+    int end_pos_filter3;
+
+    uint8_t* pres_in_filter2;
+    uint8_t* pres_in_filter3;
+
+} resultPresenceSeedCC;
+
+typedef struct{
+    Node* n;
+    resultPresenceSeedCC* res_pres_ccs;
+    uint8_t* pres_uc;
+
+    int nb_res_pres_ccs;
+} resultPresenceSeed;
 
 /* ===================================================================================================================================
 *  INLINE FUNCTIONS DECLARATION
 *  ===================================================================================================================================
 */
+
+inline uint64_t* create_hash_v_array(int rand_seed1, int rand_seed2){
+
+    int j, nb_bits;
+    uint32_t nb_hash_v = pow(4, NB_CHAR_SUF_PREF);
+
+    uint32_t i;
+
+    uint64_t* hash_v = malloc(nb_hash_v * 2 * sizeof(uint64_t));
+    ASSERT_NULL_PTR(hash_v, "create_hash_v_array()")
+
+    uint8_t gen_sub[SIZE_BYTES_SUF_PREF];
+
+    for (i = 0; i < nb_hash_v; i++){
+
+        nb_bits = NB_CHAR_SUF_PREF * 2;
+
+        for (j = 0; j < SIZE_BYTES_SUF_PREF; j++){
+
+            nb_bits -= SIZE_BITS_UINT_8T;
+
+            if (nb_bits >= 0) gen_sub[j] = (i >> nb_bits) & 0xff;
+            else gen_sub[j] = (i << (-nb_bits)) & 0xff;
+        }
+
+        hash_v[i * 2] = XXH64(gen_sub, SIZE_BYTES_SUF_PREF, rand_seed1);
+        hash_v[i * 2 + 1] = XXH64(gen_sub, SIZE_BYTES_SUF_PREF, rand_seed2);
+    }
+
+    return hash_v;
+}
+
+inline void init_resultPresenceSeed(resultPresenceSeed* res_seed){
+
+    ASSERT_NULL_PTR(res_seed,"init_resultPresenceSeed()")
+
+    res_seed->n = NULL;
+    res_seed->res_pres_ccs = NULL;
+    res_seed->pres_uc = NULL;
+
+    res_seed->nb_res_pres_ccs = 0;
+}
+
+inline void init_resultPresenceSeedCC(resultPresenceSeedCC* res_pres_CC){
+
+    ASSERT_NULL_PTR(res_pres_CC,"init_resultPresenceSeedCC()")
+
+    res_pres_CC->start_pos_filter2 = -1;
+    res_pres_CC->end_pos_filter2 = -1;
+    res_pres_CC->start_pos_filter3 = -1;
+    res_pres_CC->end_pos_filter3 = -1;
+
+    res_pres_CC->pres_in_filter2 = NULL;
+    res_pres_CC->pres_in_filter3 = NULL;
+}
+
+inline void free_resultPresenceSeedCC(resultPresenceSeedCC* res_pres_CC, int free_res_pres_CC_or_not){
+
+    ASSERT_NULL_PTR(res_pres_CC,"free_resultPresenceSeedCC()")
+
+    if (res_pres_CC->pres_in_filter2 != NULL) free(res_pres_CC->pres_in_filter2);
+    if (res_pres_CC->pres_in_filter3 != NULL) free(res_pres_CC->pres_in_filter3);
+
+    if (free_res_pres_CC_or_not != 0) free(res_pres_CC);
+}
+
+inline void free_resultPresenceSeed(resultPresenceSeed* res_seed, int free_res_seed_or_not){
+
+    ASSERT_NULL_PTR(res_seed,"free_resultPresenceSeed()")
+
+    int i = 0;
+
+    if (res_seed->res_pres_ccs != NULL){
+        for (i = 0; i < res_seed->nb_res_pres_ccs; i++) free_resultPresenceSeedCC(&(res_seed->res_pres_ccs[i]), 0);
+        free(res_seed->res_pres_ccs);
+    }
+
+    if (res_seed->pres_uc != NULL) free(res_seed->pres_uc);
+    if (free_res_seed_or_not != 0) free(res_seed);
+}
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  createNode()
@@ -130,19 +252,26 @@ inline void initiateNode(Node* node){
 *  ---------------------------------------------------------------------------------------------------------------
 *  ---------------------------------------------------------------------------------------------------------------
 */
-inline Root* createRoot(char** filenames, int nb_files, int k, int treshold_compression){
+inline Root* createRoot(char** filenames, int nb_files, int k, int treshold_compression, uint8_t compressed,
+                        int r1, int r2, info_per_level* info_per_lvl){
 
     Root* root = malloc(sizeof(Root));
     ASSERT_NULL_PTR(root,"createRoot()")
 
-    initiateNode(&(root->node));
-
     root->filenames = filenames;
     root->nb_genomes = nb_files;
+    root->compressed = compressed;
     root->comp_set_colors = NULL;
     root->length_comp_set_colors = 0;
     root->k = k;
+    root->r1 = r1;
+    root->r2 = r2;
     root->treshold_compression = treshold_compression;
+    root->info_per_lvl = info_per_lvl;
+
+    root->hash_v = create_hash_v_array(root->r1, root->r2);
+
+    initiateNode(&(root->node));
 
     return root;
 }
@@ -152,6 +281,7 @@ inline resultPresence* create_resultPresence(){
     resultPresence* res = calloc(1,sizeof(resultPresence));
     ASSERT_NULL_PTR(res,"create_resultPresence()")
 
+    res->node = NULL;
     res->container = NULL;
     res->link_child = NULL;
     res->posFilter2 = INT_MAX;
@@ -165,8 +295,11 @@ inline void initialize_resultPresence(resultPresence* res){
 
     ASSERT_NULL_PTR(res,"create_resultPresence()")
 
+    res->node = NULL;
     res->container = NULL;
     res->link_child = NULL;
+    res->pos_container = 0;
+    res->level_node = 0;
     res->bucket = 0;
     res->pos_sub_bucket = 0;
     res->presBF = 0;

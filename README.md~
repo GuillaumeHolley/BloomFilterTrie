@@ -1,6 +1,6 @@
 # BloomFilterTrie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) version 0.1.4.
+This repository contains the source code of the Bloom Filter Trie (BFT) version 0.2.
 
 To compile the code, Judy's Array and Jemalloc must be installed on your machine. For Ubuntu, they corresponds to packages *libjemalloc1* and *libjudydebian1*.
 

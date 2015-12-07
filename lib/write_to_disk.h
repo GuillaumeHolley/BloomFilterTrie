@@ -17,14 +17,24 @@
 #define UC_VERTEX 2
 #define UC_PRESENT 4
 
-void write_Root(Root* restrict root, char* filename, ptrs_on_func* restrict func_on_types);
-void write_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
-void write_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children);
-void write_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
+/*void write_Root(Root* restrict root, char* filename);
+void write_Node(Node* restrict node, Root* root, int lvl_node, FILE* file, int size_kmer);
+void write_CC(CC* restrict cc, Root* root, int lvl_cc, FILE* file, int size_kmer);
+void write_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children);*/
 
-Root* read_Root(char* filename);
-void read_Node(Node* restrict node, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
+void write_Root_sparse(Root* restrict root, char* filename);
+void write_Node_sparse(Node* restrict node, Root* root, int lvl_node, FILE* file, int size_kmer);
+void write_UC_sparse(UC* uc, Root* root, FILE* file, int size_substring, uint16_t nb_children);
+void write_CC_sparse(CC* restrict cc, Root* root, int lvl_cc, FILE* file, int size_kmer);
+
+/*Root* read_Root(char* filename);
+void read_Node(Node* restrict node, Root* root, int lvl_node, FILE* file, int size_kmer);
 void read_UC(UC* uc, FILE* file, int size_substring, uint16_t nb_children);
-void read_CC(CC* restrict cc, FILE* file, int size_kmer, ptrs_on_func* restrict func_on_types);
+void read_CC(CC* restrict cc, Root* root, int lvl_cc, FILE* file, int size_kmer);*/
+
+Root* read_Root_sparse(char* filename);
+void read_Node_sparse(Node* restrict node, Root* root, int lvl_node, FILE* file, int size_kmer);
+void read_UC_sparse(UC* uc, FILE* file, int size_substring, uint16_t nb_children);
+void read_CC_sparse(CC* restrict cc, Root* root, int lvl_cc, FILE* file, int size_kmer);
 
 #endif

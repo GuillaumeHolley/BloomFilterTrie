@@ -56,8 +56,8 @@ typedef struct{
 
 memory_Used* create_memory_Used();
 void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2);
-memory_Used* printMemoryUsedFromNode(Node* node, int size_kmer, ptrs_on_func* func_on_types);
-memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int size_kmer, ptrs_on_func* restrict func_on_types);
+memory_Used* printMemoryUsedFromNode(Node* restrict node, int lvl_node, int size_kmer, info_per_level* info_per_lvl);
+memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl);
 memory_Used* printMemoryUsedFrom_UC(UC* restrict uc);
 void printMemory(memory_Used* mem);
 

@@ -56,19 +56,18 @@ void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2){
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
-*  printMemoryUsedFromNode(node, size_kmer, func_on_types)
+*  printMemoryUsedFromNode(node, size_kmer, info_per_lvl)
 *  ---------------------------------------------------------------------------------------------------------------
 *  Return information about a node and its containers
 *  ---------------------------------------------------------------------------------------------------------------
 *  node: pointer on a Node structure
 *  size_kmer: size of the suffixes stored from this node
-*  func_on_types: ptrs_on_func structure, contains information to manipulate CCs field CC->children_type
+*  info_per_lvl: info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-memory_Used* printMemoryUsedFromNode(Node* restrict node, int size_kmer, ptrs_on_func* restrict func_on_types){
+memory_Used* printMemoryUsedFromNode(Node* restrict node, int lvl_node, int size_kmer, info_per_level* info_per_lvl){
 
     ASSERT_NULL_PTR(node,"printMemoryUsedFromNode()")
-    ASSERT_NULL_PTR(func_on_types,"printMemoryUsedFromNode()")
 
     memory_Used* mem = create_memory_Used();
     ASSERT_NULL_PTR(mem,"printMemoryUsedFromNode()")
@@ -84,7 +83,7 @@ memory_Used* printMemoryUsedFromNode(Node* restrict node, int size_kmer, ptrs_on
     }
 
     for (i=0; i<node_nb_elem; i++){
-        memory_Used* mem_tmp = printMemoryUsedFrom_CC(&(((CC*)node->CC_array)[i]), size_kmer, func_on_types);
+        memory_Used* mem_tmp = printMemoryUsedFrom_CC(&(((CC*)node->CC_array)[i]), lvl_node, size_kmer, info_per_lvl);
         add_memory_Used(mem, mem_tmp);
         free(mem_tmp);
     }
@@ -114,35 +113,51 @@ memory_Used* printMemoryUsedFromNode(Node* restrict node, int size_kmer, ptrs_on
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
-*  printMemoryUsedFrom_CC(cc, size_kmer, func_on_types)
+*  printMemoryUsedFrom_CC(cc, size_kmer, info_per_lvl)
 *  ---------------------------------------------------------------------------------------------------------------
 *  Return information about a CC and its children
 *  ---------------------------------------------------------------------------------------------------------------
 *  cc: pointer on a CC
 *  size_kmer: size of the suffixes stored from this CC
-*  func_on_types: ptrs_on_func structure, contains information to manipulate CCs field CC->children_type
+*  info_per_lvl: info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int size_kmer, ptrs_on_func* restrict func_on_types){
+memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl){
 
     memory_Used* mem = create_memory_Used();
     ASSERT_NULL_PTR(mem,"printMemoryUsedFrom_CC()")
 
-    int nb_skp = CEIL(cc->nb_elem,NB_CHILDREN_PER_SKP);
-    int level = (size_kmer/SIZE_SEED)-1;
+    int nb_skp = CEIL(cc->nb_elem, info_per_lvl[lvl_cc].nb_ucs_skp);
     int i = 0;
     int pos_Node = 0;
+
+    uint8_t type = (cc->type >> 6) & 0x1;
 
     mem->nb_CC_visited += 1;
     mem->nb_pointers_used = nb_skp;
 
     UC* uc;
 
-    if (size_kmer == SIZE_SEED){
+    if (size_kmer == NB_CHAR_SUF_PREF){
         //Memory annotations + annotations chunks links
         mem->nb_kmers_in_UCptr = cc->nb_elem;
         mem->kmers_in_CC9 += cc->nb_elem;
         mem->nb_CC9 += 1;
+
+        for (i=0; i<nb_skp; i++){
+            uc = &(((UC*)cc->children)[i]);
+
+            if (i == nb_skp-1){
+                mem->memory += (cc->nb_elem - i * info_per_lvl[lvl_cc].nb_ucs_skp) * uc->size_annot
+                    + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
+                    + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
+            }
+            else {
+                mem->memory += info_per_lvl[lvl_cc].nb_ucs_skp * uc->size_annot
+                    + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
+                    + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
+            }
+        }
     }
     else {
         if (size_kmer == 63){
@@ -173,14 +188,21 @@ memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int size_kmer, ptrs_on_func
         for (i=0; i<nb_skp; i++){
             uc = &(((UC*)cc->children)[i]);
             mem->nb_kmers_in_UCptr += uc->nb_children;
-            mem->memory += uc->nb_children * uc->size_annot + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT;
             mem->size_biggest_annot = MAX(mem->size_biggest_annot, uc->size_annot);
+
+            mem->memory += uc->nb_children * uc->size_annot
+                + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
+                + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
         }
 
         for (i=0; i<cc->nb_elem; i++){
+
             memory_Used* mem_tmp = NULL;
-            if (func_on_types[level].is_child((void*)cc, i) == 0){
-                mem_tmp = printMemoryUsedFromNode(&(cc->children_Node_container[pos_Node]), size_kmer-SIZE_SEED, func_on_types);
+
+            if (is_child(cc, i, type) == 0){
+
+                mem_tmp = printMemoryUsedFromNode(&(cc->children_Node_container[pos_Node]), lvl_cc-1,
+                                                  size_kmer-NB_CHAR_SUF_PREF, info_per_lvl);
 
                 ASSERT_NULL_PTR(mem_tmp,"printMemoryUsedFrom_CC()")
                 add_memory_Used(mem, mem_tmp);
@@ -216,9 +238,12 @@ memory_Used* printMemoryUsedFrom_UC(UC* uc){
     mem->nb_UCptr_visited = 1;
     mem->nb_pointers_used = 1;
 
-    mem->memory = (uc->nb_children >> 1) * uc->size_annot + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT;
     mem->nb_kmers_in_UCptr = uc->nb_children >> 1;
     mem->size_biggest_annot = uc->size_annot;
+
+    mem->memory = mem->nb_kmers_in_UCptr * uc->size_annot
+        + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
+        + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
 
     return mem;
 }
@@ -233,6 +258,7 @@ void printMemory(memory_Used* mem){
     printf("Nb kmers in UCs = %f\n", mem->nb_kmers_in_UCptr);
     printf("Nb pointers used = %f\n", mem->nb_pointers_used);
     printf("Size greatest annotation (bytes) = %f\n", mem->size_biggest_annot);
+    printf("Total size used by annotations = %f\n", mem->memory);
 
     printf("\nNb of CC63s = %f\n", mem->nb_CC63);
     printf("Nb of CC54s = %f\n", mem->nb_CC54);

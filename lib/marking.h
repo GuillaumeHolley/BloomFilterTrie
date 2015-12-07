@@ -12,12 +12,12 @@
 
 #define MASK_COUNT_FLAG_1 85
 
-void create_marking_Node_4states(Node* n, int size_kmer, ptrs_on_func* restrict func_on_types);
-void create_marking_CC_4states(CC* cc, int size_kmer, ptrs_on_func* restrict func_on_types);
-void create_marking_UC_4states(UC* uc, int size_kmer, ptrs_on_func* restrict func_on_types);
+void create_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level* restrict info_per_lvl);
+void create_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level* restrict info_per_lvl);
+void create_marking_UC_4states(UC* uc, int lvl_uc, info_per_level* restrict info_per_lvl);
 
-void delete_marking_Node_4states(Node* n, int size_kmer, ptrs_on_func* restrict func_on_types);
-void delete_marking_CC_4states(CC* cc, int size_kmer, ptrs_on_func* restrict func_on_types);
+void delete_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level* restrict info_per_lvl);
+void delete_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level* restrict info_per_lvl);
 void delete_marking_UC_4states(UC* uc, int size_substring, int nb_children);
 
 void mark_UC_4states(UC* uc, int size_substring, int nb_children, int position, uint8_t flag);

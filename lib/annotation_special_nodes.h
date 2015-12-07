@@ -10,7 +10,7 @@
 #include <math.h>
 
 #include "./../lib/useful_macros.h"
-#include "./../lib/popcnt.h"
 #include "./../lib/UC_annotation.h"
+#include "./../lib/marking.h"
 
 #endif

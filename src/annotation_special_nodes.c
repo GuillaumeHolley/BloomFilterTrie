@@ -1,6 +1,6 @@
 #include "./../lib/annotation_special_nodes.h"
 
-extern uint8_t* min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+extern UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
 
 void shift_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int pos_insert){
 
@@ -14,7 +14,7 @@ void shift_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int po
         int size_line = SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes;
 
         while (1){
-            pos += ((((uint16_t)extend_annot[i * size_line]) << SIZE_CELL) | ((uint16_t)extend_annot[i * size_line + 1]));
+            pos += ((((uint16_t)extend_annot[i * size_line]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i * size_line + 1]));
             if (pos < pos_insert){
                 i++;
                 if (i == uc->nb_cplx_nodes) break;
@@ -24,9 +24,9 @@ void shift_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int po
 
         if (i < uc->nb_cplx_nodes){
             i *= size_line;
-            uint16_t delta = ((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1]));
+            uint16_t delta = ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
             delta++;
-            extend_annot[i] = delta >> SIZE_CELL;
+            extend_annot[i] = delta >> SIZE_BITS_UINT_8T;
             extend_annot[i+1] = delta & 0xff;
         }
     }
@@ -50,7 +50,7 @@ void insert_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
 
         while (1){
             old_pos = pos;
-            pos += ((((uint16_t)extend_annot[i * size_line]) << SIZE_CELL) | ((uint16_t)extend_annot[i * size_line + 1]));
+            pos += ((((uint16_t)extend_annot[i * size_line]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i * size_line + 1]));
             if (pos < pos_insert){
                 i++;
                 if (i == uc->nb_cplx_nodes) break;
@@ -63,7 +63,7 @@ void insert_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
         if (i == 0){
             memmove(&(extend_annot[size_line]), extend_annot, uc->nb_cplx_nodes * size_line * sizeof(uint8_t));
 
-            extend_annot[0] = pos_insert >> SIZE_CELL;
+            extend_annot[0] = pos_insert >> SIZE_BITS_UINT_8T;
             extend_annot[1] = pos_insert & 0xff;
             memcpy(&(extend_annot[SIZE_BYTE_CPLX_N]), annot, size_annot * sizeof(uint8_t));
 
@@ -76,7 +76,7 @@ void insert_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
 
             delta = pos_insert - old_pos;
 
-            extend_annot[sum] = delta >> SIZE_CELL;
+            extend_annot[sum] = delta >> SIZE_BITS_UINT_8T;
             extend_annot[sum+1] = delta & 0xff;
             memcpy(&(extend_annot[sum + SIZE_BYTE_CPLX_N]), annot, size_annot * sizeof(uint8_t));
 
@@ -88,13 +88,13 @@ void insert_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
         }
         else i--;
 
-        extend_annot[(i+1) * size_line] = delta >> SIZE_CELL;
+        extend_annot[(i+1) * size_line] = delta >> SIZE_BITS_UINT_8T;
         extend_annot[(i+1) * size_line + 1] = delta & 0xff;
 
         uc->nb_cplx_nodes++;
     }
     else{
-        extend_annot[0] = pos_insert >> SIZE_CELL;
+        extend_annot[0] = pos_insert >> SIZE_BITS_UINT_8T;
         extend_annot[1] = pos_insert & 0xff;
         memcpy(&(extend_annot[SIZE_BYTE_CPLX_N]), annot, size_annot * sizeof(uint8_t));
         uc->nb_cplx_nodes = 1;
@@ -124,12 +124,12 @@ void delete_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
         int deleted = 0;
 
         while(1){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1]));
+            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
 
             if (pos > tmp_pos_sub_end){
                 if (delete_ext_sub_array == 1){
-                    pos = ((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1])) - (pos_sub_end - pos_sub_start + 1 - deleted);
-                    extend_annot[i] = pos >> SIZE_CELL;
+                    pos = ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1])) - (pos_sub_end - pos_sub_start + 1 - deleted);
+                    extend_annot[i] = pos >> SIZE_BITS_UINT_8T;
                     extend_annot[i+1] = pos & 0xff;
                 }
 
@@ -142,9 +142,9 @@ void delete_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int p
 
                 if (i < size_delta_list - size_line_cplx_n){
                     memmove(&(extend_annot[i]), &(extend_annot[i + size_line_cplx_n]), (size_delta_list - i - size_line_cplx_n) * sizeof(uint8_t));
-                    pos += (((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1])));
+                    pos += (((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1])));
                     if (delete_ext_sub_array == 1) pos -= shift;
-                    extend_annot[i] = (pos - old_pos) >> SIZE_CELL;
+                    extend_annot[i] = (pos - old_pos) >> SIZE_BITS_UINT_8T;
                     extend_annot[i+1] = (pos - old_pos) & 0xff;
                     it_pos = pos;
                     pos = old_pos;
@@ -200,7 +200,7 @@ uint8_t* get_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring, int 
         int i = 0;
 
         for (i=0; i<uc->nb_cplx_nodes * size_line; i += size_line){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1]));
+            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
             if (pos == pos_substring) return &(extend_annot[i+2]);
             else if (pos > pos_substring) return NULL;
         }
@@ -230,7 +230,7 @@ uint8_t** get_annots_cplx_nodes(UC* uc, int size_substring, int nb_substring, in
         int bool_pres_extend_annot = 0;
 
         for (i=0; i < uc->nb_cplx_nodes * size_line; i += size_line){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_CELL) | ((uint16_t)extend_annot[i+1]));
+            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
 
             if (pos > pos_substring_end) break;
             if (it_pos <= pos){
@@ -257,13 +257,12 @@ void recopy_back_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring){
         return;
     }
 
+    int i = 0;
     int old_size_line = size_substring + uc->size_annot;
     int new_size_line = old_size_line + uc->size_annot_cplx_nodes;
     int tot_size_line = nb_substring * old_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT;
-    uint8_t* new_suffixes;
-    int i = 0;
 
-    new_suffixes = calloc(nb_substring * new_size_line,sizeof(uint8_t));
+    uint8_t* new_suffixes = calloc(nb_substring * new_size_line,sizeof(uint8_t));
     ASSERT_NULL_PTR(new_suffixes,"recopy_back_annot_cplx_nodes()")
 
     for (i=0; i<nb_substring; i++)
@@ -275,13 +274,14 @@ void recopy_back_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring){
         int size_line_cplx_nodes = SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes;
 
         for (i=0; i < uc->nb_cplx_nodes * size_line_cplx_nodes; i += size_line_cplx_nodes){
-            pos += ((((uint16_t)uc->suffixes[tot_size_line + i]) << SIZE_CELL) | ((uint16_t)uc->suffixes[tot_size_line + i + 1]));
+            pos += ((((uint16_t)uc->suffixes[tot_size_line + i]) << SIZE_BITS_UINT_8T) | ((uint16_t)uc->suffixes[tot_size_line + i + 1]));
 
             memcpy(&(new_suffixes[pos * new_size_line + old_size_line]),
                    &(uc->suffixes[tot_size_line + i + SIZE_BYTE_CPLX_N]),
                    uc->size_annot_cplx_nodes * sizeof(uint8_t*));
         }
 
+        uc->nb_cplx_nodes = 0;
         uc->size_annot_cplx_nodes = 0;
     }
 
@@ -381,7 +381,7 @@ void create_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring){
     uint8_t possible_cplx_n[nb_substring];
 
     uint8_t** ext_annot = get_extend_annots(uc, size_substring, nb_substring, 0, nb_substring-1);
-    uint8_t* size_annot = min_size_per_sub(uc->suffixes, nb_substring, size_substring, uc->size_annot);
+    UC_SIZE_ANNOT_T *size_annot = min_size_per_sub(uc->suffixes, nb_substring, size_substring, uc->size_annot);
     ASSERT_NULL_PTR(size_annot,"create_annot_cplx_nodes()")
 
     for (i=0; i<nb_substring; i++){
@@ -416,7 +416,7 @@ void create_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring){
 
             delta = i - old_pos;
 
-            extend_annot[it_annot_extend] = delta >> SIZE_CELL;
+            extend_annot[it_annot_extend] = delta >> SIZE_BITS_UINT_8T;
             extend_annot[it_annot_extend+1] = delta & 0xff;
             memcpy(&(extend_annot[it_annot_extend+2]), &(uc->suffixes[i * size_line + size_substring]), size_annot[i] * sizeof(uint8_t));
 
@@ -438,6 +438,103 @@ void create_annot_cplx_nodes(UC* uc, int size_substring, int nb_substring){
     uc->suffixes = new_tab_suffixes;
 
     free(size_annot);
+    if (ext_annot != NULL) free(ext_annot);
+
+    return;
+}
+
+void create_annot_cplx_nodes_marked(UC* uc, int size_substring, int nb_substring){
+
+    if (nb_substring == 0) return;
+    ASSERT_NULL_PTR(uc,"create_annot_cplx_nodes()")
+    ASSERT_NULL_PTR(uc->suffixes,"create_annot_cplx_nodes()")
+
+    int delta;
+    int size_line_cplx_n;
+    int tot_new_size_line;
+
+    int i = 0;
+    int old_pos = 0;
+    int max_size_annot = 0;
+    int it_annot_extend = 0;
+    int nb_possible_cplx_n = 0;
+    int size_line = size_substring + uc->size_annot;
+
+    int tot = nb_substring * size_line
+                + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
+                + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
+
+    uint8_t possible_cplx_n[nb_substring];
+
+    uint8_t* new_tab_suffixes;
+    uint8_t* extend_annot;
+
+    uint8_t** ext_annot = get_extend_annots(uc, size_substring, nb_substring, 0, nb_substring-1);
+
+    UC_SIZE_ANNOT_T *size_annot = min_size_per_sub(uc->suffixes, nb_substring, size_substring, uc->size_annot);
+    ASSERT_NULL_PTR(size_annot,"create_annot_cplx_nodes()")
+
+    memset(possible_cplx_n, 0, nb_substring * sizeof(uint8_t));
+
+    for (i=0; i<nb_substring; i++){
+
+        if (get_mark_UC_4states_bis(uc, i, tot) != 0){
+
+            if ((ext_annot != NULL) && (ext_annot[i] != NULL) && (ext_annot[i][0] != 0)){
+                nb_possible_cplx_n++;
+                possible_cplx_n[i] = 1;
+                max_size_annot = uc->size_annot + 1;
+            }
+            else if (size_annot[i] != 0){
+                nb_possible_cplx_n++;
+                possible_cplx_n[i] = 1;
+                max_size_annot = MAX(max_size_annot, size_annot[i]);
+            }
+        }
+    }
+
+    if ((nb_possible_cplx_n * (max_size_annot + SIZE_BYTE_CPLX_N)) >
+        (nb_substring * uc->size_annot + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT)) goto CREATE_ANNOT_CPLX_NODES_MARKED;
+
+    tot_new_size_line = nb_substring * size_substring;
+    size_line_cplx_n = max_size_annot + SIZE_BYTE_CPLX_N;
+
+    new_tab_suffixes = calloc(tot_new_size_line + nb_possible_cplx_n * size_line_cplx_n, sizeof(uint8_t));
+    ASSERT_NULL_PTR(new_tab_suffixes,"create_annot_cplx_nodes()")
+
+    extend_annot = &(new_tab_suffixes[tot_new_size_line]);
+
+    for (i=0; i<nb_substring; i++){
+
+        memcpy(&(new_tab_suffixes[i*size_substring]), &(uc->suffixes[i*size_line]), size_substring*sizeof(uint8_t));
+
+        if (possible_cplx_n[i] == 1){
+
+            delta = i - old_pos;
+
+            extend_annot[it_annot_extend] = delta >> SIZE_BITS_UINT_8T;
+            extend_annot[it_annot_extend+1] = delta & 0xff;
+            memcpy(&(extend_annot[it_annot_extend+2]), &(uc->suffixes[i * size_line + size_substring]), size_annot[i] * sizeof(uint8_t));
+
+            if (size_annot[i] == uc->size_annot){
+                if ((ext_annot != NULL) && (ext_annot[i] != NULL) && (ext_annot[i][0] != 0))
+                    extend_annot[it_annot_extend + uc->size_annot] = ext_annot[i][0];
+            }
+
+            old_pos = i;
+            it_annot_extend += size_line_cplx_n;
+        }
+    }
+
+    uc->size_annot = 0;
+    uc->nb_extended_annot = 0;
+    uc->nb_cplx_nodes = nb_possible_cplx_n;
+    uc->size_annot_cplx_nodes = max_size_annot;
+
+    free(uc->suffixes);
+    uc->suffixes = new_tab_suffixes;
+
+    CREATE_ANNOT_CPLX_NODES_MARKED: free(size_annot);
     if (ext_annot != NULL) free(ext_annot);
 
     return;

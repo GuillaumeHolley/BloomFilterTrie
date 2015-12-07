@@ -1,13 +1,13 @@
 #include "./../lib/deleteColorsNode.h"
 
-int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix, int id_genome,
-                            uint16_t** skip_node_root, ptrs_on_func* restrict func_on_types, annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted){
+/*int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix, int id_genome,
+                            uint16_t** skip_node_root, info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"deleteColors_simplePath()")
     ASSERT_NULL_PTR(kmer_start,"deleteColors_simplePath()")
     ASSERT_NULL_PTR(kmer_start_tmp,"deleteColors_simplePath()")
 
-    uint16_t last_id_genome;
+    UC_SIZE_ANNOT_T last_id_genome;
 
     int size_annot_res_tmp_right, annot_present;
     int size_annot_res = 0;
@@ -82,18 +82,18 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
                     if (id_genome != 0){
                         annot_array_elem = retrieve_annotation(root, kmer_start, kmer_retrieve, size_kmer_root, size_kmer_array, shifting_suffix, id_genome,
-                                                                skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                                skip_node_root, info_per_lvl, ann_inf, annot_sorted);
                     }
                     else{
                         annot_array_elem = retrieve_annotation(root, kmer_start, kmer_retrieve, size_kmer_root, size_kmer_array, shifting_suffix, -1,
-                                                                skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                                skip_node_root, info_per_lvl, ann_inf, annot_sorted);
                     }
 
                     for (i = annot_array_elem->size_annot - 1; i >= 0; i--){
                         if (annot_array_elem->annot_array[i] != 0){
                             for (j = 7; j >= 0; j--){
                                 if ((annot_array_elem->annot_array[i] & MASK_POWER_8[j]) != 0){
-                                    last_id_genome = i * SIZE_CELL + j - 2;
+                                    last_id_genome = i * SIZE_BITS_UINT_8T + j - 2;
                                     annot_array_elem->annot_array[i] &= ~(MASK_POWER_8[j]);
                                     goto ANNOTATE;
                                 }
@@ -112,7 +112,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
                     tot = res[z].posFilter3 * (res[z].posFilter2 + uc->size_annot) + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT +
                             uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
 
-                    ceil = CEIL(res[z].posFilter3 * 2, SIZE_CELL);
+                    ceil = CEIL(res[z].posFilter3 * 2, SIZE_BITS_UINT_8T);
 
                     if (ann_inf->min_size > uc->size_annot_cplx_nodes){
 
@@ -137,7 +137,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
                     free(annot_array_elem->annot_array);
                     free(annot_array_elem);
 
-                    reinit_annotation_inform(ann_inf);
+                    reinit_annotation_inform(ann_inf, annot_array_elem->size_annot);
 
                     goto IT_BRANCHING_NODES;
                 }
@@ -145,7 +145,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
             IT_SPL_NODES: if (flag < 2){ //if the neighbor is not branching
 
-                res_tmp_right = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                res_tmp_right = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
 
                 for (q=0; q<4; q++){
 
@@ -190,18 +190,18 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
                                 if (id_genome != 0){
                                     annot_array_elem = retrieve_annotation(root, kmer_start, kmer_retrieve, size_kmer_root, size_kmer_array, shifting_suffix, id_genome,
-                                                                            skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                                            skip_node_root, info_per_lvl, ann_inf, annot_sorted);
                                 }
                                 else{
                                     annot_array_elem = retrieve_annotation(root, kmer_start, kmer_retrieve, size_kmer_root, size_kmer_array, shifting_suffix, -1,
-                                                                            skip_node_root, func_on_types, ann_inf, annot_sorted);
+                                                                            skip_node_root, info_per_lvl, ann_inf, annot_sorted);
                                 }
 
                                 for (i = annot_array_elem->size_annot - 1; i >= 0; i--){
                                     if (annot_array_elem->annot_array[i] != 0){
                                         for (j = 7; j >= 0; j--){
                                             if ((annot_array_elem->annot_array[i] & MASK_POWER_8[j]) != 0){
-                                                last_id_genome = i * SIZE_CELL + j - 2;
+                                                last_id_genome = i * SIZE_BITS_UINT_8T + j - 2;
                                                 annot_array_elem->annot_array[i] &= ~(MASK_POWER_8[j]);
                                                 goto ANNOTATE2;
                                             }
@@ -220,7 +220,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
                                 tot = res_tmp_right[q].posFilter3 * (res_tmp_right[q].posFilter2 + uc_tmp_right->size_annot) + uc_tmp_right->nb_extended_annot *
                                         SIZE_BYTE_EXT_ANNOT + uc_tmp_right->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc_tmp_right->size_annot_cplx_nodes);
 
-                                ceil = CEIL(res_tmp_right[q].posFilter3 * 2, SIZE_CELL);
+                                ceil = CEIL(res_tmp_right[q].posFilter3 * 2, SIZE_BITS_UINT_8T);
 
                                 if (ann_inf->min_size > uc_tmp_right->size_annot_cplx_nodes){
 
@@ -235,7 +235,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
                                     increase_size_annot_cplx_nodes(uc_tmp_right, res_tmp_right[q].posFilter2, res_tmp_right[q].posFilter3, ann_inf->min_size, 0);
 
-                                    reinit_annotation_inform(ann_inf);
+                                    reinit_annotation_inform(ann_inf, annot_array_elem->size_annot);
                                 }
                                 else{
                                     uc_tmp_right->suffixes = realloc(uc_tmp_right->suffixes, (tot + SIZE_BYTE_CPLX_N + uc_tmp_right->size_annot_cplx_nodes +
@@ -257,7 +257,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
                                 uc_tmp_right = NULL;
 
-                                reinit_annotation_inform(ann_inf);
+                                reinit_annotation_inform(ann_inf, annot_array_elem->size_annot);
 
                                 goto WRONG_NODE;
                             }
@@ -267,7 +267,7 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
 
                                 uc_tmp_right = NULL;
 
-                                reinit_annotation_inform(ann_inf);
+                                reinit_annotation_inform(ann_inf, annot_array_elem->size_annot);
 
                                 goto WRONG_NODE;
                             }
@@ -338,21 +338,21 @@ int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start
     return count;
 }
 
-int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root, int id_genome,
-                                     ptrs_on_func* restrict func_on_types, uint16_t** skip_node_root, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root, uint32_t id_genome,
+                                     info_per_level* restrict info_per_lvl, uint16_t** skip_node_root, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(n,"deleteColors_from_branchingNodes()")
     ASSERT_NULL_PTR(root,"deleteColors_from_branchingNodes()")
     ASSERT_NULL_PTR(kmer,"deleteColors_from_branchingNodes()")
     ASSERT_NULL_PTR(ann_inf,"deleteColors_from_branchingNodes()")
     ASSERT_NULL_PTR(skip_node_root,"deleteColors_from_branchingNodes()")
-    ASSERT_NULL_PTR(func_on_types,"deleteColors_from_branchingNodes()")
+    ASSERT_NULL_PTR(info_per_lvl,"deleteColors_from_branchingNodes()")
 
     CC* cc;
     UC* uc;
     resultPresence* res;
 
-    int i = -1, j = 0, k = 0, count = 0, level = (size_kmer/SIZE_CELL)-1, size_kmer_array = CEIL(size_kmer_root*2,SIZE_CELL);
+    int i = -1, j = 0, k = 0, count = 0, level = (size_kmer/SIZE_BITS_UINT_8T)-1, size_kmer_array = CEIL(size_kmer_root*2,SIZE_BITS_UINT_8T);
 
     uint16_t size_bf, nb_elt, it_filter2;
 
@@ -361,10 +361,10 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
     int it_filter3, first_bit, it_bucket, last_shift, last_it_children_bucket, nb_cell_children, shifting_UC, tot;
     int it_children_pos_bucket, it_children_bucket, it_node, it_substring, size_line, size_new_substring, size_new_substring_bytes;
 
-    int shifting_suffix = SIZE_CELL - (size_kmer_array*SIZE_CELL - (size_kmer_root-1)*2);
-    int shifting1 = (SIZE_SEED*2)-SIZE_CELL+pos_in_bucket;
-    int shifting2 = shifting1-SIZE_CELL;
-    int shifting3 = SIZE_CELL-shifting2;
+    int shifting_suffix = SIZE_BITS_UINT_8T - (size_kmer_array*SIZE_BITS_UINT_8T - (size_kmer_root-1)*2);
+    int shifting1 = (NB_CHAR_SUF_PREF*2)-SIZE_BITS_UINT_8T+pos_in_bucket;
+    int shifting2 = shifting1-SIZE_BITS_UINT_8T;
+    int shifting3 = SIZE_BITS_UINT_8T-shifting2;
 
     uint8_t mask = ~(MASK_POWER_8[shifting3]-1);
 
@@ -379,8 +379,8 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
             i++;
             cc = &(((CC*)n->CC_array)[i]);
 
-            s = (cc->type >> 2) & 0x3f;
-            p = SIZE_SEED*2-s;
+            s = (cc->type >> 1) & 0x1f;
+            p = NB_CHAR_SUF_PREF*2-s;
 
             it_filter2 = 0;
             it_filter3 = 0;
@@ -390,21 +390,21 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
             it_children_bucket = 0;
             it_substring = 0;
 
-            size_bf = cc->type >> 8;
+            size_bf = cc->type >> 7;
             last_it_children_bucket = -1;
 
             if (s==8){
-                if (func_on_types[level].level_min == 1){
+                if (info_per_lvl[level].level_min == 1){
                     for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_CELL] & (MASK_POWER_8[it_filter2%SIZE_CELL])) != 0){
+                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
 
                             first_bit = 1;
 
-                            while((it_filter3 < cc->nb_elem) && (((cc->extra_filter3[it_filter3/SIZE_CELL] & MASK_POWER_8[it_filter3%SIZE_CELL]) == 0) || (first_bit == 1))){
+                            while((it_filter3 < cc->nb_elem) && (((cc->extra_filter3[it_filter3/SIZE_BITS_UINT_8T] & MASK_POWER_8[it_filter3%SIZE_BITS_UINT_8T]) == 0) || (first_bit == 1))){
 
                                 memcpy(kmer_tmp, kmer, size_kmer_array*sizeof(uint8_t));
 
-                                new_substring = (it_filter2 << SIZE_CELL) | cc->filter3[it_filter3];
+                                new_substring = (it_filter2 << SIZE_BITS_UINT_8T) | cc->filter3[it_filter3];
                                 new_substring = (new_substring >> 2) | ((new_substring & 0x3) << 16);
                                 kmer_tmp[bucket] |= new_substring >> shifting1;
                                 kmer_tmp[bucket+1] = new_substring >> shifting2;
@@ -412,16 +412,16 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                 it_bucket = bucket+2;
                                 if (shifting3 == 0) it_bucket++;
 
-                                if (size_kmer != SIZE_SEED){
+                                if (size_kmer != NB_CHAR_SUF_PREF){
 
-                                    if ((nb_elt = (*func_on_types[level].getNbElts)((void*)cc, it_filter3)) != 0){
-                                        it_children_bucket = it_filter3/NB_CHILDREN_PER_SKP;
+                                    if ((nb_elt = getNbElts(cc, it_filter3)) != 0){
+                                        it_children_bucket = it_filter3/NB_UC_PER_SKP;
 
                                         if (it_children_bucket != last_it_children_bucket){
 
                                             it_children_pos_bucket = 0;
                                             uc = &(((UC*)cc->children)[it_children_bucket]);
-                                            size_line = func_on_types[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
+                                            size_line = info_per_lvl[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
                                             last_it_children_bucket = it_children_bucket;
 
                                             tot = uc->nb_children * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
@@ -432,14 +432,14 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                                             if (get_mark_UC_4states_bis(uc, j/size_line, tot) >= 2){
 
-                                                extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
+                                                extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(info_per_lvl[level]));
 
                                                 memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
-                                                res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                                                res = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
                                                 memcpy(kmer_start_tmp, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                                                 count += deleteColors_simplePath(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix,
-                                                                                 id_genome, skip_node_root, func_on_types, ann_inf, res, annot_sorted);
+                                                                                 id_genome, skip_node_root, info_per_lvl, ann_inf, res, annot_sorted);
 
                                                 free(res);
 
@@ -452,14 +452,14 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                         it_children_pos_bucket += nb_elt;
                                     }
                                     else{
-                                        count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                                  shifting2, size_kmer_root, id_genome, func_on_types, skip_node_root, ann_inf, annot_sorted);
+                                        count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-NB_CHAR_SUF_PREF, it_bucket,
+                                                                                  shifting2, size_kmer_root, id_genome, info_per_lvl, skip_node_root, ann_inf, annot_sorted);
                                         it_node++;
                                     }
                                 }
                                 else{
-                                    if ((isBranchingRight(root, kmer_tmp, size_kmer_root, func_on_types, skip_node_root) > 1) ||
-                                        (isBranchingLeft(root, kmer_tmp, size_kmer_root, func_on_types, skip_node_root) > 1)){
+                                    if ((isBranchingRight(root, kmer_tmp, size_kmer_root, info_per_lvl, skip_node_root) > 1) ||
+                                        (isBranchingLeft(root, kmer_tmp, size_kmer_root, info_per_lvl, skip_node_root) > 1)){
                                             //count++;
                                             memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
                                         }
@@ -473,18 +473,18 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                 }
                 else{
                     int cpt_pv = 0;
-                    int nb_skp = CEIL(cc->nb_elem,NB_CHILDREN_PER_SKP);
+                    int nb_skp = CEIL(cc->nb_elem,NB_UC_PER_SKP);
 
-                    nb_cell_children = func_on_types[level].size_kmer_in_bytes_minus_1-1;
+                    nb_cell_children = info_per_lvl[level].size_kmer_in_bytes_minus_1-1;
 
                     for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_CELL] & (MASK_POWER_8[it_filter2%SIZE_CELL])) != 0){
+                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
 
                             first_bit = 1;
 
                             while (it_children_bucket < nb_skp){
                                 uc = &(((UC*)cc->children)[it_children_bucket]);
-                                size_line = func_on_types[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
+                                size_line = info_per_lvl[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
 
                                 tot = uc->nb_children * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
                                             + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
@@ -493,7 +493,7 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                                     memcpy(kmer_tmp, kmer, size_kmer_array*sizeof(uint8_t));
 
-                                    new_substring = (it_filter2 << SIZE_CELL) | cc->filter3[it_filter3];
+                                    new_substring = (it_filter2 << SIZE_BITS_UINT_8T) | cc->filter3[it_filter3];
                                     new_substring = (new_substring >> 2) | ((new_substring & 0x3) << 16);
                                     kmer_tmp[bucket] |= new_substring >> shifting1;
                                     kmer_tmp[bucket+1] = new_substring >> shifting2;
@@ -501,13 +501,13 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                     it_bucket = bucket+2;
                                     if (shifting3 == 0) it_bucket++;
 
-                                    if ((nb_elt = (*func_on_types[level].getNbElts)(cc, it_filter3)) == 0){
+                                    if ((nb_elt = getNbElts(cc, it_filter3)) == 0){
 
                                         if (((cc->children_Node_container[it_node].UC_array.nb_children & 0x1) == 0) || (first_bit == 1)){
 
                                             first_bit=0;
-                                            count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                                      shifting2, size_kmer_root, id_genome, func_on_types, skip_node_root, ann_inf, annot_sorted);
+                                            count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-NB_CHAR_SUF_PREF, it_bucket,
+                                                                                      shifting2, size_kmer_root, id_genome, info_per_lvl, skip_node_root, ann_inf, annot_sorted);
                                             it_node++;
                                         }
                                         else goto OUT_LOOP_S8;
@@ -521,14 +521,14 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                                                 if (get_mark_UC_4states_bis(uc, j/size_line, tot) >= 2){
 
-                                                    extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
+                                                    extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(info_per_lvl[level]));
                                                     kmer_tmp[size_kmer_array-1] &= 0x7f;
                                                     memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
-                                                    res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                                                    res = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
                                                     memcpy(kmer_start_tmp, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                                                     count += deleteColors_simplePath(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix,
-                                                                                     id_genome, skip_node_root, func_on_types, ann_inf, res, annot_sorted);
+                                                                                     id_genome, skip_node_root, info_per_lvl, ann_inf, res, annot_sorted);
 
                                                     free(res);
 
@@ -556,13 +556,13 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                 }
             }
             else {
-                if (func_on_types[level].level_min == 1){
+                if (info_per_lvl[level].level_min == 1){
                     for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_CELL] & (MASK_POWER_8[it_filter2%SIZE_CELL])) != 0){
+                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
 
                             first_bit = 1;
 
-                            while((it_filter3 < cc->nb_elem) && (((cc->extra_filter3[it_filter3/SIZE_CELL] & MASK_POWER_8[it_filter3%SIZE_CELL]) == 0) || (first_bit == 1))){
+                            while((it_filter3 < cc->nb_elem) && (((cc->extra_filter3[it_filter3/SIZE_BITS_UINT_8T] & MASK_POWER_8[it_filter3%SIZE_BITS_UINT_8T]) == 0) || (first_bit == 1))){
 
                                 memcpy(kmer_tmp, kmer, size_kmer_array*sizeof(uint8_t));
 
@@ -576,17 +576,17 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                 it_bucket = bucket+2;
                                 if (shifting3 == 0) it_bucket++;
 
-                                if (size_kmer != SIZE_SEED){
+                                if (size_kmer != NB_CHAR_SUF_PREF){
 
-                                    if ((nb_elt = (*func_on_types[level].getNbElts)((void*)cc, it_filter3)) != 0){
-                                        it_children_bucket = it_filter3/NB_CHILDREN_PER_SKP;
+                                    if ((nb_elt = getNbElts(cc, it_filter3)) != 0){
+                                        it_children_bucket = it_filter3/NB_UC_PER_SKP;
 
                                         if (it_children_bucket != last_it_children_bucket){
 
                                             it_children_pos_bucket = 0;
                                             uc = &(((UC*)cc->children)[it_children_bucket]);
 
-                                            size_line = func_on_types[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
+                                            size_line = info_per_lvl[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
                                             last_it_children_bucket = it_children_bucket;
 
                                             tot = uc->nb_children * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
@@ -597,13 +597,13 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                                             if (get_mark_UC_4states_bis(uc, j/size_line, tot) >= 2){
 
-                                                extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
+                                                extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(info_per_lvl[level]));
                                                 memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
-                                                res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                                                res = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
                                                 memcpy(kmer_start_tmp, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                                                 count += deleteColors_simplePath(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix,
-                                                                                 id_genome, skip_node_root, func_on_types, ann_inf, res, annot_sorted);
+                                                                                 id_genome, skip_node_root, info_per_lvl, ann_inf, res, annot_sorted);
 
                                                 free(res);
 
@@ -616,14 +616,14 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                         it_children_pos_bucket += nb_elt;
                                     }
                                     else{
-                                        count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                                  shifting2, size_kmer_root, id_genome, func_on_types, skip_node_root, ann_inf, annot_sorted);
+                                        count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-NB_CHAR_SUF_PREF, it_bucket,
+                                                                                  shifting2, size_kmer_root, id_genome, info_per_lvl, skip_node_root, ann_inf, annot_sorted);
                                         it_node++;
                                     }
                                 }
                                 else{
-                                    if ((isBranchingRight(root, kmer_tmp, size_kmer_root, func_on_types, skip_node_root) > 1) ||
-                                        (isBranchingLeft(root, kmer_tmp, size_kmer_root, func_on_types, skip_node_root) > 1)){
+                                    if ((isBranchingRight(root, kmer_tmp, size_kmer_root, info_per_lvl, skip_node_root) > 1) ||
+                                        (isBranchingLeft(root, kmer_tmp, size_kmer_root, info_per_lvl, skip_node_root) > 1)){
                                             //count++;
                                             memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
                                         }
@@ -637,18 +637,18 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                 }
                 else{
                     int cpt_pv = 0;
-                    int nb_skp = CEIL(cc->nb_elem,NB_CHILDREN_PER_SKP);
+                    int nb_skp = CEIL(cc->nb_elem,NB_UC_PER_SKP);
 
-                    nb_cell_children = func_on_types[level].size_kmer_in_bytes_minus_1-1;
+                    nb_cell_children = info_per_lvl[level].size_kmer_in_bytes_minus_1-1;
 
                     for (it_filter2=0; it_filter2<MASK_POWER_16[p]; it_filter2++){
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_CELL] & (MASK_POWER_8[it_filter2%SIZE_CELL])) != 0){
+                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
 
                             first_bit = 1;
 
                             while (it_children_bucket < nb_skp){
                                 uc = &(((UC*)cc->children)[it_children_bucket]);
-                                size_line = func_on_types[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
+                                size_line = info_per_lvl[level].size_kmer_in_bytes_minus_1 + uc->size_annot;
 
                                 tot = uc->nb_children * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
                                             + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
@@ -667,13 +667,13 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                                     it_bucket = bucket+2;
                                     if (shifting3 == 0) it_bucket++;
 
-                                    if ((nb_elt = (*func_on_types[level].getNbElts)(cc, it_filter3)) == 0){
+                                    if ((nb_elt = getNbElts(cc, it_filter3)) == 0){
 
                                         if (((cc->children_Node_container[it_node].UC_array.nb_children & 0x1) == 0) || (first_bit == 1)){
 
                                             first_bit=0;
-                                            count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-SIZE_SEED, it_bucket,
-                                                                                      shifting2, size_kmer_root, id_genome, func_on_types, skip_node_root, ann_inf, annot_sorted);
+                                            count += deleteColors_from_branchingNodes(&(cc->children_Node_container[it_node]), root, kmer_tmp, size_kmer-NB_CHAR_SUF_PREF, it_bucket,
+                                                                                      shifting2, size_kmer_root, id_genome, info_per_lvl, skip_node_root, ann_inf, annot_sorted);
                                             it_node++;
                                         }
                                         else goto OUT_LOOP_S4;
@@ -687,15 +687,15 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                                                 if (get_mark_UC_4states_bis(uc, j/size_line, tot) >= 2){
 
-                                                    extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(func_on_types[level]));
+                                                    extractSuffix(kmer_tmp, size_kmer, size_kmer_array, shifting3, it_bucket, &(uc->suffixes[j]), &(info_per_lvl[level]));
                                                     kmer_tmp[size_kmer_array-1] &= 0x7f;
 
                                                     memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
-                                                    res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                                                    res = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
                                                     memcpy(kmer_start_tmp, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                                                     count += deleteColors_simplePath(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix,
-                                                                                     id_genome, skip_node_root, func_on_types, ann_inf, res, annot_sorted);
+                                                                                     id_genome, skip_node_root, info_per_lvl, ann_inf, res, annot_sorted);
 
                                                     free(res);
 
@@ -728,7 +728,7 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
     if (n->UC_array.suffixes != NULL){
 
-        size_line = func_on_types[level].size_kmer_in_bytes + n->UC_array.size_annot;
+        size_line = info_per_lvl[level].size_kmer_in_bytes + n->UC_array.size_annot;
         nb_elt = n->UC_array.nb_children >> 1;
 
         tot = nb_elt * size_line + n->UC_array.nb_extended_annot * SIZE_BYTE_EXT_ANNOT
@@ -743,26 +743,26 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
 
                 memcpy(kmer_tmp, kmer, size_kmer_array*sizeof(uint8_t));
 
-                while (it_substring < func_on_types[level].size_kmer_in_bytes){
+                while (it_substring < info_per_lvl[level].size_kmer_in_bytes){
 
                     it_substring += sizeof(uint64_t);
                     new_substring = 0;
 
-                    if (it_substring > func_on_types[level].size_kmer_in_bytes){
+                    if (it_substring > info_per_lvl[level].size_kmer_in_bytes){
 
-                        size_new_substring = size_kmer*2-((it_substring-sizeof(uint64_t))*SIZE_CELL);
-                        size_new_substring_bytes = CEIL(size_new_substring, SIZE_CELL);
+                        size_new_substring = size_kmer*2-((it_substring-sizeof(uint64_t))*SIZE_BITS_UINT_8T);
+                        size_new_substring_bytes = CEIL(size_new_substring, SIZE_BITS_UINT_8T);
                         for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
-                        new_substring >>= func_on_types[level].size_kmer_in_bytes*SIZE_CELL - size_new_substring;
+                        new_substring >>= info_per_lvl[level].size_kmer_in_bytes*SIZE_BITS_UINT_8T - size_new_substring;
                     }
                     else{
 
-                        size_new_substring = sizeof(uint64_t)*SIZE_CELL;
+                        size_new_substring = sizeof(uint64_t)*SIZE_BITS_UINT_8T;
                         size_new_substring_bytes = sizeof(uint64_t);
                         for (k=0; k<size_new_substring_bytes; k++) new_substring = (new_substring << 8) | reverse_word_8(n->UC_array.suffixes[j+(it_substring-sizeof(uint64_t))+k]);
                     }
 
-                    shifting_UC = SIZE_CELL-pos_in_bucket;
+                    shifting_UC = SIZE_BITS_UINT_8T-pos_in_bucket;
 
                     for (k=it_bucket; k<it_bucket+size_new_substring_bytes; k++){
 
@@ -771,7 +771,7 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                         if (last_shift >= 0) kmer_tmp[k] |= new_substring >> last_shift;
                         else kmer_tmp[k] |= new_substring << abs(last_shift);
 
-                        shifting_UC += SIZE_CELL;
+                        shifting_UC += SIZE_BITS_UINT_8T;
                     }
 
                     it_bucket+=size_new_substring_bytes;
@@ -780,11 +780,11 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
                 for (k=0; k<size_kmer_array; k++) kmer_tmp[k] = reverse_word_8(kmer_tmp[k]);
 
                 memcpy(kmer_start, kmer_tmp, size_kmer_array*sizeof(uint8_t));
-                res = getRightNeighbors(root, kmer_start, size_kmer_root, func_on_types, skip_node_root);
+                res = getRightNeighbors(root, kmer_start, size_kmer_root, info_per_lvl, skip_node_root);
                 memcpy(kmer_start_tmp, kmer_start, size_kmer_array*sizeof(uint8_t));
 
                 count += deleteColors_simplePath(root, kmer_start, kmer_start_tmp, size_kmer_root, size_kmer_array, shifting_suffix, id_genome,
-                                                 skip_node_root, func_on_types, ann_inf, res, annot_sorted);
+                                                 skip_node_root, info_per_lvl, ann_inf, res, annot_sorted);
 
                 free(res);
             }
@@ -794,12 +794,12 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
     return count;
 }
 
-int resize_annotation_Node(Node* n, int size_kmer, ptrs_on_func* restrict func_on_types){
+int resize_annotation_Node(Node* n, int size_kmer, info_per_level* restrict info_per_lvl){
 
     ASSERT_NULL_PTR(n,"resize_annotation_Node()")
 
     int count = 0;
-    int level = (size_kmer/SIZE_SEED)-1;
+    int level = (size_kmer/NB_CHAR_SUF_PREF)-1;
 
     if (n->CC_array != NULL){
 
@@ -807,36 +807,36 @@ int resize_annotation_Node(Node* n, int size_kmer, ptrs_on_func* restrict func_o
 
         do {
             i++;
-            count += resize_annotation_CC(&(((CC*)n->CC_array)[i]), size_kmer, func_on_types);
+            count += resize_annotation_CC(&(((CC*)n->CC_array)[i]), size_kmer, info_per_lvl);
         }
         while ((((CC*)n->CC_array)[i].type & 0x1) == 0);
     }
 
-    if (n->UC_array.suffixes != NULL) count += resize_annotation_UC(&(n->UC_array), func_on_types[level].size_kmer_in_bytes, n->UC_array.nb_children >> 1);
+    if (n->UC_array.suffixes != NULL) count += resize_annotation_UC(&(n->UC_array), info_per_lvl[level].size_kmer_in_bytes, n->UC_array.nb_children >> 1);
 
     return count;
 }
 
-int resize_annotation_CC(CC* cc, int size_kmer, ptrs_on_func* restrict func_on_types){
+int resize_annotation_CC(CC* cc, int size_kmer, info_per_level* restrict info_per_lvl){
 
     ASSERT_NULL_PTR(cc,"resize_annotation_CC()")
 
     int i = 0;
-    int level = (size_kmer/SIZE_SEED)-1;
+    int level = (size_kmer/NB_CHAR_SUF_PREF)-1;
     int count = 0;
 
     UC* uc;
 
 
-    for (i=0; i< CEIL(cc->nb_elem, NB_CHILDREN_PER_SKP); i++){
+    for (i=0; i< CEIL(cc->nb_elem, NB_UC_PER_SKP); i++){
 
         uc = &(((UC*)cc->children)[i]);
 
-        if (size_kmer != SIZE_SEED) count += resize_annotation_UC(uc, func_on_types[level].size_kmer_in_bytes_minus_1, uc->nb_children);
-        else count += resize_annotation_UC(uc, 0, MIN(NB_CHILDREN_PER_SKP, cc->nb_elem - i *NB_CHILDREN_PER_SKP));
+        if (size_kmer != NB_CHAR_SUF_PREF) count += resize_annotation_UC(uc, info_per_lvl[level].size_kmer_in_bytes_minus_1, uc->nb_children);
+        else count += resize_annotation_UC(uc, 0, MIN(NB_UC_PER_SKP, cc->nb_elem - i *NB_UC_PER_SKP));
     }
 
-    for (i=0; i<cc->nb_Node_children; i++) count += resize_annotation_Node(&(cc->children_Node_container[i]), size_kmer-SIZE_SEED, func_on_types);
+    for (i=0; i<cc->nb_Node_children; i++) count += resize_annotation_Node(&(cc->children_Node_container[i]), size_kmer-NB_CHAR_SUF_PREF, info_per_lvl);
 
     return count;
 }
@@ -878,7 +878,7 @@ int resize_annotation_UC(UC* uc, int size_substring, int nb_children){
         extended_annot = get_extend_annots(uc, size_substring, nb_children, 0, nb_children-1);
         marked = calloc(nb_children, sizeof(uint8_t));
         sizes_plus_positions = calloc(nb_children * 3, sizeof(uint8_t));
-        sizes_annot = calloc(NB_CELL_GENOMES, sizeof(uint8_t));
+        sizes_annot = calloc(SIZE_MAX_BYTE_ANNOT, sizeof(uint8_t));
 
         tot = nb_children * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
             + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
@@ -920,7 +920,7 @@ int resize_annotation_UC(UC* uc, int size_substring, int nb_children){
         //While the best possible size is bigger than the actual size, we iterate over the bigger annotations first
         while ((new_possible_size >= tot) && (j < nb_children)){
 
-            pos = (((uint16_t)sizes_plus_positions[j * 3 + 1]) << SIZE_CELL) | (((uint16_t)sizes_plus_positions[j * 3 + 2]) | 0xff);
+            pos = (((uint16_t)sizes_plus_positions[j * 3 + 1]) << SIZE_BITS_UINT_8T) | (((uint16_t)sizes_plus_positions[j * 3 + 2]) | 0xff);
 
             if (marked[pos] == 1){
 
@@ -1017,4 +1017,4 @@ int resize_annotation_UC(UC* uc, int size_substring, int nb_children){
     }
 
     return count;
-}
+}*/
