@@ -1,5 +1,4 @@
-#ifndef DEF_HASH
-#define DEF_HASH
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -221,4 +220,4 @@ inline uint64_t hash_test4(uint8_t* kmer, int size_kmer_bytes, uint64_t mod){
     return h%mod;
 }
 
-#endif
+#pragma once

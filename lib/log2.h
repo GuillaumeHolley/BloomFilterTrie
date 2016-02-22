@@ -1,5 +1,4 @@
-#ifndef DEF_LOG2
-#define DEF_LOG2
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,4 +47,3 @@ inline int get_nb_bytes_power2_annot_bis(uint32_t pos, uint32_t pow2_pos){
     if (pow2_pos == pos) return CEIL(MultiplyDeBruijnBitPosition_power2[(uint32_t)(pow2_pos * 0x077CB531U) >> 27] + 1, 6);
     return CEIL(MultiplyDeBruijnBitPosition_power2[(uint32_t)(pow2_pos * 0x077CB531U) >> 27], 6);
 }
-#endif

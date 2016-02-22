@@ -1,5 +1,4 @@
-#ifndef DEF_INSERT_NODE
-#define DEF_INSERT_NODE
+#pragma once
 
 /* ===================================================================================================================================
 *  INCLUDES
@@ -24,12 +23,11 @@
 *  ===================================================================================================================================
 */
 
-void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uint8_t* restrict suffix, int size_suffix,
-                     uint8_t* kmer, uint32_t id_genome, int size_id_genome, int pos_CC_start_search,
-                     annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted);
+void insertKmers(BFT_Root*  root, uint8_t*  array_kmers, int nb_kmers, uint32_t id_genome,
+                 int size_id_genome);
 
-Node* insertKmer_Node_special(Root* restrict root, resultPresence* restrict pres, int lvl_cont, uint8_t* restrict suffix, int size_suffix,
-                              uint8_t* restrict kmer, uint32_t id_genome, int size_id_genome, annotation_inform* ann_inf,
-                              annotation_array_elem* annot_sorted);
+void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffix, int size_suffix,
+                     uint8_t* kmer, uint32_t id_genome, int size_id_genome, int pos_CC_start_search);
 
-#endif
+Node* insertKmer_Node_special(BFT_Root*  root, int lvl_cont, uint8_t*  suffix, int size_suffix,
+                              uint8_t*  kmer, uint32_t id_genome, int size_id_genome);

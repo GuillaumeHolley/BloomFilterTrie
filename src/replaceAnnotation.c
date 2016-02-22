@@ -1,6 +1,6 @@
 #include "./../lib/replaceAnnotation.h"
 
-void load_annotation_from_Node(Node* restrict node, int lvl_node, int size_kmer, int longest_annot, info_per_level* restrict info_per_lvl,
+void load_annotation_from_Node(Node*  node, int lvl_node, int size_kmer, int longest_annot, info_per_level*  info_per_lvl,
                                Pvoid_t* PJArray, annotation_array_elem* annot_sorted, annotation_inform* ann_inf){
 
     ASSERT_NULL_PTR(node,"load_annotation_from_Node()")
@@ -23,7 +23,7 @@ void load_annotation_from_Node(Node* restrict node, int lvl_node, int size_kmer,
     }
 }
 
-void load_annotation_from_CC(CC* restrict cc, int lvl_cc, int size_kmer, int longest_annot, info_per_level* restrict info_per_lvl,
+void load_annotation_from_CC(CC*  cc, int lvl_cc, int size_kmer, int longest_annot, info_per_level*  info_per_lvl,
                              Pvoid_t* PJArray, annotation_array_elem* annot_sorted, annotation_inform* ann_inf){
 
     ASSERT_NULL_PTR(cc,"load_annotation_from_CC()")
@@ -158,11 +158,11 @@ void load_annotation_from_UC(UC* uc, int size_substring, int nb_children, int lo
                 else *PValue += size_decomp << 32;
             #else
                 if (*PValue == NULL){
-                    *PValue = malloc(sizeof(uint64_t))
-                    ASSERT_NULL_PTR(*PValue, "load_annotation_from_UC()");
-                    **PValue = (size_decomp << 32) | size_decomp;
+                    *PValue = malloc(sizeof(uint64_t));
+                    ASSERT_NULL_PTR(*PValue, "load_annotation_from_UC()")
+                    **((uint64_t**)PValue) = (size_decomp << 32) | size_decomp;
                 }
-                else **PValue += size_decomp << 32;
+                else **((uint64_t**)PValue) += size_decomp << 32;
             #endif
 
             memset(annot, 0, (min_sizes[i] + size_checksum + 4) * sizeof(uint8_t));
@@ -174,7 +174,7 @@ void load_annotation_from_UC(UC* uc, int size_substring, int nb_children, int lo
     }
 }
 
-int compress_annotation_from_Node(Node* restrict node, int lvl_node, int size_kmer, info_per_level* restrict info_per_lvl,
+int compress_annotation_from_Node(Node*  node, int lvl_node, int size_kmer, info_per_level*  info_per_lvl,
                                   Pvoid_t* PJArray, annotation_array_elem* old_annot_sorted, annotation_inform* ann_inf){
 
     ASSERT_NULL_PTR(node,"compress_annotation_from_Node()")
@@ -200,7 +200,7 @@ int compress_annotation_from_Node(Node* restrict node, int lvl_node, int size_km
     return tot_sizes_annot;
 }
 
-int compress_annotation_from_CC(CC* restrict cc, int lvl_cc, int size_kmer, info_per_level* restrict info_per_lvl,
+int compress_annotation_from_CC(CC*  cc, int lvl_cc, int size_kmer, info_per_level*  info_per_lvl,
                                 Pvoid_t* PJArray, annotation_array_elem* old_annot_sorted, annotation_inform* ann_inf){
 
     ASSERT_NULL_PTR(cc,"compress_annotation_from_CC()")
@@ -366,8 +366,13 @@ int compress_annotation_from_UC(UC* uc, int size_substring, int nb_children, Pvo
             if (PValue == PJERR) ERROR("Out of memory -- exit")
             if (PValue == NULL) ERROR("compress_annotation_from_UC() 1");
 
-            if (*PValue == UINT32_MAX) size_max = MAX(size_max, min_sizes[z]);
-            else id = MAX(id, *PValue);
+            #if defined (_WORDx64)
+                if (*PValue == UINT32_MAX) size_max = MAX(size_max, min_sizes[z]);
+                else id = MAX(id, *PValue);
+            #else
+                if (**((uint64_t**)PValue) == UINT32_MAX) size_max = MAX(size_max, min_sizes[z]);
+                else id = MAX(id, **((uint64_t**)PValue));
+            #endif
         }
 
         size_max = MAX(MAX(size_max, get_nb_bytes_power2_comp(round_up_next_highest_power2((int)id+1))), size_max_annot_cmp);
@@ -387,6 +392,10 @@ int compress_annotation_from_UC(UC* uc, int size_substring, int nb_children, Pvo
             JSLG(PValue, *PJArray, annot);
             if (PValue == PJERR) ERROR("Out of memory -- exit\n")
             if (PValue == NULL) ERROR("compress_annotation_from_UC() 6");
+
+            #if defined (_WORDx86)
+                PValue = *PValue;
+            #endif
 
             if (*PValue != UINT32_MAX){
 

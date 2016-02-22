@@ -666,13 +666,13 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
         }
         else{
 
-            while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+            while ((i<size) && (ann_inf->annotation[i] & 0x1)){
 
                 ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
                 ann_inf->nb_id_stored++;
                 i++;
 
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+                while ((i<size) && (ann_inf->annotation[i] & 0x2)){
                     ann_inf->id_stored[ann_inf->nb_id_stored-1] = (ann_inf->id_stored[ann_inf->nb_id_stored-1] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -702,12 +702,12 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
         }
         else{
 
-            while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+            while ((i<size) && (ann_inf->annotation[i] & 0x2)){
 
                 ann_inf->id_stored[0] = ann_inf->annotation[i] >> 2;
                 i++;
 
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+                while ((i<size) && (ann_inf->annotation[i] & 0x1)){
                     ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -797,12 +797,12 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
             while ((j >= 0) && ((ann_inf->annotation[j] & 0x3) != 1)) j--;
             i = j;
 
-            while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+            while ((i<size) && (ann_inf->annotation[i] & 0x1)){
 
                 ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
                 i++;
 
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+                while ((i<size) && (ann_inf->annotation[i] & 0x2)){
                     ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -842,12 +842,12 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
             while ((j >= 0) && ((ann_inf->annotation[j] & 0x3) != 2)) j--;
             i = j;
 
-            while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+            while ((i<size) && (ann_inf->annotation[i] & 0x2)){
 
                 ann_inf->id_stored[0] = ann_inf->annotation[i] >> 2;
                 i++;
 
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+                while ((i<size) && (ann_inf->annotation[i] & 0x1)){
                     ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -872,7 +872,7 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
 }
 
 int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot,
-                      int size_annot, uint8_t* annot_sup, int size_annot_sup, int* last_id_genome){
+                      int size_annot, uint8_t* annot_sup, int size_annot_sup, uint32_t* last_id_genome){
 
     ASSERT_NULL_PTR(ann_inf, "is_genome_present_from_end_annot() 1")
     ASSERT_NULL_PTR(annot, "is_genome_present_from_end_annot() 2")
@@ -924,7 +924,7 @@ int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* 
     if (ann_inf->current_mode == 0){
 
         while ((j >= 0) && (ann_inf->annotation[j] != 0)) j--;
-        *last_id_genome = j * SIZE_BITS_UINT_8T;
+        *last_id_genome = MAX(0, j * SIZE_BITS_UINT_8T);
         i = j;
 
         for (j = SIZE_BITS_UINT_8T-1; j >= 0; j--){
@@ -943,7 +943,7 @@ int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* 
             ann_inf->id_stored[0] = ann_inf->annotation[j] >> 2;
             j++;
 
-            while ((j<size) && ((ann_inf->annotation[j] & 0x3) == 2)){
+            while ((j<size) && (ann_inf->annotation[j] & 0x2)){
                 ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[j] >> 2);
                 j++;
             }
@@ -962,7 +962,7 @@ int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* 
             ann_inf->id_stored[0] = ann_inf->annotation[j] >> 2;
             j++;
 
-            while ((j<size) && ((ann_inf->annotation[j] & 0x3) == 1)){
+            while ((j<size) && (ann_inf->annotation[j] & 0x1)){
                 ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[j] >> 2);
                 j++;
             }
@@ -1118,13 +1118,13 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
         else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
 
             if (ann_inf->comp_annot <= 0){
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+                while ((i<size) && (ann_inf->annotation[i] & 0x1)){
 
                     ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
                     ann_inf->size_id_stored[ann_inf->nb_id_stored] = 1;
                     i++;
 
-                    while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+                    while ((i<size) && (ann_inf->annotation[i] & 0x2)){
 
                         ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
                         ann_inf->size_id_stored[ann_inf->nb_id_stored]++;
@@ -1164,13 +1164,14 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
         else if (ann_inf->current_mode == 2){ //<Present nowhere except in x> mode
 
             if (ann_inf->comp_annot <= 0){
-                while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 2)){
+
+                while ((i<size) && (ann_inf->annotation[i] & 0x2)){
 
                     ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
                     ann_inf->size_id_stored[ann_inf->nb_id_stored] = 1;
                     i++;
 
-                    while ((i<size) && ((ann_inf->annotation[i] & 0x3) == 1)){
+                    while ((i<size) && (ann_inf->annotation[i] & 0x1)){
                         ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
                         ann_inf->size_id_stored[ann_inf->nb_id_stored]++;
                         i++;
@@ -1363,7 +1364,7 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
                 size_current_annot = size_annot_sup;
 
                 while ((it_annot>=0) && ((current_annot[it_annot] & 0x3) != 1)) it_annot--;
-                if ((it_annot>=0) && ((current_annot[it_annot] & 0x3) == 1)) goto OUT2;
+                if ((it_annot>=0) && (current_annot[it_annot] & 0x1)) goto OUT2;
             }
 
             it_annot = size_annot-1;
@@ -1379,7 +1380,7 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
                 if (id_genome2insert != ann_inf->id_stored[ann_inf->nb_id_stored-1]+1){
 
                         it_annot++;
-                        while ((annot[it_annot] & 0x3) == 2) it_annot++;
+                        while (annot[it_annot] & 0x2) it_annot++;
 
                         modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, id_genome2insert, size_id_genome, 1, 2);
                         modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, id_genome2insert, size_id_genome, 1, 2);
@@ -1582,8 +1583,8 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
             #if defined (_WORDx64)
                 JLI(PValue_sizes, PArray_sizes, *PValue_annot);
             #else
-                JLI(PValue_sizes, PArray_sizes, **PValue_annot >> 32);
-                decomp_size = MAX(decomp_size, **PValue_annot & 0xffffffff);
+                JLI(PValue_sizes, PArray_sizes, **((uint64_t**)PValue_annot) >> 32);
+                decomp_size = MAX(decomp_size, **((uint64_t**)PValue_annot) & 0xffffffff);
             #endif
 
             (*PValue_sizes)++;
@@ -1727,17 +1728,17 @@ int comp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, 
 
     ann_inf->size_annot = size;
 
-    if ((ann_inf->annotation[0] & 0x3) == 2){ //<Present everywhere from x to y> mode
+    if (ann_inf->annotation[0] & 0x2){ //<Present everywhere from x to y> mode
         flag1 = 2;
         flag2 = 1;
     }
 
-    while ((i<size) && ((ann_inf->annotation[i] & 0x3) == flag1)){
+    while ((i<size) && (ann_inf->annotation[i] & flag1)){
 
         ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
         i++;
 
-        while ((i<size) && ((ann_inf->annotation[i] & 0x3) == flag2)){
+        while ((i<size) && (ann_inf->annotation[i] & flag2)){
             ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6)
                                                             | (ann_inf->annotation[i] >> 2);
             i++;
@@ -1796,18 +1797,16 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
         flag2 = 1;
     }
 
-    while ((i<size) && ((ann_inf->annotation[i] & 0x3) == flag1)){
+    while ((i<size) && (ann_inf->annotation[i] & flag1)){
 
         ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
         i++;
 
-        while ((i<size) && ((ann_inf->annotation[i] & 0x3) == flag2)){
+        while ((i<size) && (ann_inf->annotation[i] & flag2)){
             ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6)
                                                         | (ann_inf->annotation[i] >> 2);
             i++;
         }
-
-        if (ann_inf->id_stored[ann_inf->nb_id_stored] > 472) ERROR("ann_inf->id_stored[ann_inf->nb_id_stored] > 472\n\n");
 
         ann_inf->nb_id_stored++;
     }
@@ -1913,11 +1912,11 @@ void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint
 
             while (i<size){
 
-                if ((annot_real[i] & 0x3) == 1){
+                if (annot_real[i] & 0x1){
                     start = annot_real[i] >> 2;
                     i++;
 
-                    while ((i<size) && ((annot_real[i] & 0x3) == 2)){
+                    while ((i<size) && (annot_real[i] & 0x2)){
                         start = (start << 6) | (annot_real[i] >> 2);
                         i++;
                     }
@@ -1925,11 +1924,11 @@ void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint
 
                 if (flag == 3) start += stop;
 
-                if ((annot_real[i] & 0x3) == 1){
+                if (annot_real[i] & 0x1){
                     stop = annot_real[i] >> 2;
                     i++;
 
-                    while ((i<size) && ((annot_real[i] & 0x3) == 2)){
+                    while ((i<size) && (annot_real[i] & 0x2)){
                         stop = (stop << 6) | (annot_real[i] >> 2);
                         i++;
                     }
@@ -1944,11 +1943,11 @@ void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint
 
             flag = annot[0] & 0x3;
 
-            while ((i<size) && ((annot_real[i] & 0x3) == 2)){
+            while ((i<size) && (annot_real[i] & 0x2)){
                 z = annot_real[i] >> 2;
                 i++;
 
-                while ((i<size) && ((annot_real[i] & 0x3) == 1)){
+                while ((i<size) && (annot_real[i] & 0x1)){
                     z = (z << 6) | (annot_real[i] >> 2);
                     i++;
                 }
@@ -2006,15 +2005,236 @@ void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint
     return;
 }
 
-annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1, uint8_t* annot_sup1, int size_annot_sup1, uint8_t* annot2, int size_annot2,
-                                  uint8_t* annot_sup2, int size_annot_sup2, uint32_t id_genome_max, annotation_array_elem* annot_sorted){
+void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot, int size_annot,
+                               uint8_t* annot_sup, int size_annot_sup){
+
+    ASSERT_NULL_PTR(ann_inf,"get_id_genomes_from_annot()\n")
+
+    int size;
+
+    int i = 1;
+
+    if (size_annot != 0){ //If the annotation is not new
+
+        if ((annot[0] & 0x3) == 3){
+
+            uint32_t position = annot[0] >> 2;
+
+            while ((i<size_annot) && (IS_ODD(annot[i]))){
+                position |= ((uint32_t)(annot[i] >> 1)) << (6+(i-1)*7);
+                i++;
+            }
+
+            if ((i >= size_annot) && (annot_sup != NULL)){
+                i = 0;
+                while ((i<size_annot_sup) && (IS_ODD(annot_sup[i]))){
+                    position |= ((uint32_t)(annot_sup[i] >> 1)) << (6+(i+size_annot-1)*7);
+                    i++;
+                }
+            }
+
+            uint8_t* annot_tmp = extract_from_annotation_array_elem(annot_sorted, position, &size);
+            memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
+
+            i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 1);
+            if (i != 0) size = i;
+        }
+        else{
+            size = size_annot;
+            memcpy(ann_inf->annotation, annot, size_annot*sizeof(uint8_t));
+            if (annot_sup != NULL){
+                memcpy(&(ann_inf->annotation[size_annot]), annot_sup, size_annot_sup*sizeof(uint8_t));
+                size += size_annot_sup;
+            }
+        }
+
+        i = 0;
+
+        ann_inf->size_annot = size;
+        ann_inf->current_mode = ann_inf->annotation[0] & 0x3;
+
+        if (ann_inf->current_mode == 0){ //Bitwize mode
+
+                for (i=2; i<size*SIZE_BITS_UINT_8T; i++){
+
+                    if (ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]){
+
+                        ann_inf->id_stored[ann_inf->nb_id_stored] = i-2;
+                        ann_inf->nb_id_stored++;
+                    }
+                }
+        }
+        else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
+
+            if (ann_inf->comp_annot <= 0){
+
+                bool it = false;
+
+                while ((i<size) && (ann_inf->annotation[i] & 0x1)){
+
+                    ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
+                    i++;
+
+                    while ((i<size) && (ann_inf->annotation[i] & 0x2)){
+
+                        ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
+                        i++;
+                    }
+
+                    if (it){
+
+                        uint32_t j = ann_inf->id_stored[ann_inf->nb_id_stored-1];
+                        uint32_t stop = ann_inf->id_stored[ann_inf->nb_id_stored];
+
+                        if (j != stop){
+                            for (j++; j <= stop; j++){
+                                ann_inf->id_stored[ann_inf->nb_id_stored] = j;
+                                ann_inf->nb_id_stored++;
+                            }
+                        }
+                    }
+                    else ann_inf->nb_id_stored++;
+
+                    it = !it;
+                }
+            }
+        }
+        else if (ann_inf->current_mode == 2){ //<Present nowhere except in x> mode
+
+            if (ann_inf->comp_annot <= 0){
+
+                while ((i<size) && (ann_inf->annotation[i] & 0x2)){
+
+                    ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
+                    i++;
+
+                    while ((i<size) && (ann_inf->annotation[i] & 0x1)){
+                        ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
+                        i++;
+                    }
+
+                    ann_inf->nb_id_stored++;
+                }
+            }
+        }
+        else ERROR( "get_id_genomes_from_annot(): mode 3, should not happen.\n" )
+    }
+
+    return;
+}
+
+int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot, int size_annot,
+                                    uint8_t* annot_sup, int size_annot_sup){
+
+    ASSERT_NULL_PTR(ann_inf,"get_count_id_genomes_from_annot()\n")
+
+    int size;
+
+    int i = 1;
+    int count_ids = 0;
+
+    if (size_annot != 0){ //If the annotation is not new
+
+        if ((annot[0] & 0x3) == 3){
+
+            uint32_t position = annot[0] >> 2;
+
+            while ((i<size_annot) && (IS_ODD(annot[i]))){
+                position |= ((uint32_t)(annot[i] >> 1)) << (6+(i-1)*7);
+                i++;
+            }
+
+            if ((i >= size_annot) && (annot_sup != NULL)){
+                i = 0;
+                while ((i<size_annot_sup) && (IS_ODD(annot_sup[i]))){
+                    position |= ((uint32_t)(annot_sup[i] >> 1)) << (6+(i+size_annot-1)*7);
+                    i++;
+                }
+            }
+
+            uint8_t* annot_tmp = extract_from_annotation_array_elem(annot_sorted, position, &size);
+            memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
+
+            i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 1);
+            if (i != 0) size = i;
+        }
+        else{
+            size = size_annot;
+            memcpy(ann_inf->annotation, annot, size_annot*sizeof(uint8_t));
+            if (annot_sup != NULL){
+                memcpy(&(ann_inf->annotation[size_annot]), annot_sup, size_annot_sup*sizeof(uint8_t));
+                size += size_annot_sup;
+            }
+        }
+
+        i = 0;
+
+        ann_inf->size_annot = size;
+        ann_inf->current_mode = ann_inf->annotation[0] & 0x3;
+
+        if (ann_inf->current_mode == 0){ //Bitwize mode
+
+            for (i=2; i<size*SIZE_BITS_UINT_8T; i++)
+                if (ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]) count_ids++;
+        }
+        else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
+
+            if (ann_inf->comp_annot <= 0){
+
+                bool it = false;
+
+                while ((i<size) && (ann_inf->annotation[i] & 0x1)){
+
+                    ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
+                    i++;
+
+                    while ((i<size) && (ann_inf->annotation[i] & 0x2)){
+
+                        ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
+                        i++;
+                    }
+
+                    if (it){
+                        count_ids += ann_inf->id_stored[ann_inf->nb_id_stored] - ann_inf->id_stored[ann_inf->nb_id_stored-1] + 1;
+                        ann_inf->nb_id_stored = 0;
+                    }
+                    else ann_inf->nb_id_stored++;
+
+                    it = !it;
+                }
+            }
+        }
+        else if (ann_inf->current_mode == 2){ //<Present nowhere except in x> mode
+
+            if (ann_inf->comp_annot <= 0){
+
+                while ((i<size) && (ann_inf->annotation[i] & 0x2)){
+
+                    count_ids++;
+                    i++;
+
+                    while ((i<size) && (ann_inf->annotation[i] & 0x1)) i++;
+                }
+            }
+        }
+        else ERROR( "get_count_id_genomes_from_annot(): mode 3, should not happen.\n" )
+    }
+
+    reinit_annotation_inform(ann_inf);
+
+    return count_ids;
+}
+
+annotation_array_elem* cmp_annots(uint8_t* annot1, int size_annot1, uint8_t* annot_sup1, int size_annot_sup1, uint8_t* annot2, int size_annot2,
+                                  uint8_t* annot_sup2, int size_annot_sup2, uint32_t id_genome_max, uint8_t (*f)(const uint8_t, const uint8_t),
+                                  annotation_array_elem* annot_sorted){
 
     int flag1, flag2;
 
-    int i = 0;
+    int i = 1;
     int size_annot_flag0 = MAX(CEIL(id_genome_max+3, SIZE_BITS_UINT_8T), 1);
-    int size1 = size_annot1+size_annot_sup1;
-    int size2 = size_annot2+size_annot_sup2;
+    int size1 = size_annot1 + size_annot_sup1;
+    int size2 = size_annot2 + size_annot_sup2;
 
     uint8_t* annot1_flag0 = calloc(size_annot_flag0, sizeof(uint8_t));
     uint8_t* annot2_flag0 = calloc(size_annot_flag0, sizeof(uint8_t));
@@ -2023,20 +2243,20 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
     uint8_t* annot2_real = annot2;
 
     if (annot1 != NULL){
+
         if ((annot1[0] & 0x3) == 3){
-            int position = 0;
-            while ((i<size_annot1) && (annot1[i] != 0)){
-                if (i == 0) position = annot1[0] >> 2;
-                else if ((annot1[i] & 0x1) == 1) position |= ((int)(annot1[i] >> 1)) << (6+(i-1)*7);
-                else break;
+
+            uint32_t position = annot1[0] >> 2;
+
+            while ((i<size_annot1) && (IS_ODD(annot1[i]))){
+                position |= (annot1[i] >> 1) << (6+(i-1)*7);
                 i++;
             }
 
             if ((i >= size_annot1) && (annot_sup1 != NULL)){
                 i = 0;
-                while ((i<size_annot_sup1) && (annot_sup1[i] != 0)){
-                    if ((annot_sup1[i] & 0x1) == 1) position |= ((int)(annot_sup1[i] >> 1)) << (6+(i+size_annot1-1)*7);
-                    else break;
+                while ((i<size_annot_sup1) && (IS_ODD(annot_sup1[i]))){
+                    position |= (annot_sup1[i] >> 1) << (6+(i+size_annot1-1)*7);
                     i++;
                 }
             }
@@ -2044,29 +2264,29 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
             annot1_real = extract_from_annotation_array_elem(annot_sorted, position, &size1);
         }
         else if (annot_sup1 != NULL){
-            annot1_real = malloc(size1*sizeof(uint8_t));
-            memcpy(annot1_real, annot1, size_annot1*sizeof(uint8_t));
+            annot1_real = malloc(size1 * sizeof(uint8_t));
+            memcpy(annot1_real, annot1, size_annot1 * sizeof(uint8_t));
             annot1_real[size_annot1] = annot_sup1[0];
         }
     }
 
-    i = 0;
+    i = 1;
 
     if (annot2 != NULL){
-        if ((annot2[0] & 0x3) == 3){
-            int position = 0;
-            while ((i<size_annot2) && (annot2[i] != 0)){
-                if (i == 0) position = annot2[0] >> 2;
-                else if ((annot2[i] & 0x1) == 1) position |= ((int)(annot2[i] >> 1)) << (6+(i-1)*7);
-                else break;
+
+        if ((annot1[0] & 0x3) == 3){
+
+            uint32_t position = annot2[0] >> 2;
+
+            while ((i<size_annot2) && (IS_ODD(annot2[i]))){
+                position |= (annot2[i] >> 1) << (6+(i-1)*7);
                 i++;
             }
 
             if ((i >= size_annot2) && (annot_sup2 != NULL)){
                 i = 0;
-                while ((i<size_annot_sup2) && (annot_sup2[i] != 0)){
-                    if ((annot_sup2[i] & 0x1) == 1) position |= ((int)(annot_sup2[i] >> 1)) << (6+(i+size_annot2-1)*7);
-                    else break;
+                while ((i<size_annot_sup2) && (IS_ODD(annot_sup2[i]))){
+                    position |= (annot_sup2[i] >> 1) << (6+(i+size_annot2-1)*7);
                     i++;
                 }
             }
@@ -2074,8 +2294,8 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
             annot2_real = extract_from_annotation_array_elem(annot_sorted, position, &size2);
         }
         else if (annot_sup2 != NULL){
-            annot2_real = malloc(size2*sizeof(uint8_t));
-            memcpy(annot2_real, annot2, size_annot2*sizeof(uint8_t));
+            annot2_real = malloc(size2 * sizeof(uint8_t));
+            memcpy(annot2_real, annot2, size_annot2 * sizeof(uint8_t));
             annot2_real[size_annot2] = annot_sup2[0];
         }
     }
@@ -2083,57 +2303,55 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
     i = 0;
 
     if (annot1 != NULL){
+
         flag1 = annot1_real[0] & 0x3;
 
         if (flag1 == 0){
-            memcpy(annot1_flag0, annot1, size_annot1*sizeof(uint8_t));
-            memcpy(&(annot1_flag0[size_annot1]), annot_sup1, size_annot_sup1*sizeof(uint8_t));
+            memcpy(annot1_flag0, annot1_real, size_annot1 * sizeof(uint8_t));
+            memcpy(&(annot1_flag0[size_annot1]), annot_sup1, size_annot_sup1 * sizeof(uint8_t));
         }
         else if (flag1 == 1){
+
             UC_SIZE_ANNOT_T start, stop, z;
 
-                while (i<size1){
-                    if ((annot1[i] & 0x3) == 1){
-                        start = annot1[i] >> 2;
-                        i++;
+            while ((i < size1) && (annot1_real[i] & 0x1)){
+                start = annot1_real[i] >> 2;
+                i++;
 
-                        if ((i<size1) && ((annot1[i] & 0x3) == 2)){
-                            start = (start << 6) | (annot1[i] >> 2);
-                            i++;
-                        }
-                    }
-                    if ((annot1[i] & 0x3) == 1){
-                        stop = annot1[i] >> 2;
-                        i++;
-
-                        if ((i<size1) && ((annot1[i] & 0x3) == 2)){
-                            stop = (stop << 6) | (annot1[i] >> 2);
-                            i++;
-                        }
-                    }
-
-                    for (z=start; z<=stop; z++) annot1_flag0[(z+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(z+2)%SIZE_BITS_UINT_8T];
+                while ((i<size1) && (annot1_real[i] & 0x2)){
+                    start = (start << 6) | (annot1_real[i] >> 2);
+                    i++;
                 }
+
+                stop = annot1_real[i] >> 2;
+                i++;
+
+                while ((i < size1) && (annot1_real[i] & 0x2)){
+                    stop = (stop << 6) | (annot1_real[i] >> 2);
+                    i++;
+                }
+
+                for (z=start; z<=stop; z++)
+                    annot1_flag0[(z+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(z+2)%SIZE_BITS_UINT_8T];
+            }
         }
         else if (flag1 == 2){
+
             UC_SIZE_ANNOT_T pos;
 
-            while (i<size1){
-                if ((annot1[i] & 0x3) == 2){
-                    pos = annot1[i] >> 2;
-                    i++;
+            while ((i<size1) && (annot1[i] & 0x2)){
+                pos = annot1[i] >> 2;
+                i++;
 
-                    if ((i<size1) && ((annot1[i] & 0x3) == 1)){
-                        pos = (pos << 6) | (annot1[i] >> 2);
-                        i++;
-                    }
+                while ((i<size1) && (annot1[i] & 0x1)){
+                    pos = (pos << 6) | (annot1[i] >> 2);
+                    i++;
                 }
 
                 annot1_flag0[(pos+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(pos+2)%SIZE_BITS_UINT_8T];
             }
         }
     }
-    else memset(annot1_flag0, 255, size_annot_flag0 * sizeof(uint8_t));
 
     i = 0;
 
@@ -2142,56 +2360,53 @@ annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1
         flag2 = annot2_real[0] & 0x3;
 
         if (flag2 == 0){
-            memcpy(annot2_flag0, annot2, size_annot2*sizeof(uint8_t));
-            memcpy(&(annot2_flag0[size_annot2]), annot_sup2, size_annot_sup2*sizeof(uint8_t));
+            memcpy(annot2_flag0, annot2_real, size_annot2 * sizeof(uint8_t));
+            memcpy(&(annot2_flag0[size_annot2]), annot_sup2, size_annot_sup2 * sizeof(uint8_t));
         }
         else if (flag2 == 1){
+
             UC_SIZE_ANNOT_T start, stop, z;
 
-                while (i<size2){
-                    if ((annot2[i] & 0x3) == 1){
-                        start = annot2[i] >> 2;
-                        i++;
+            while ((i < size2) && (annot2_real[i] & 0x1)){
+                start = annot2_real[i] >> 2;
+                i++;
 
-                        if ((i<size2) && ((annot2[i] & 0x3) == 2)){
-                            start = (start << 6) | (annot2[i] >> 2);
-                            i++;
-                        }
-                    }
-                    if ((annot2[i] & 0x3) == 1){
-                        stop = annot2[i] >> 2;
-                        i++;
-
-                        if ((i<size2) && ((annot2[i] & 0x3) == 2)){
-                            stop = (stop << 6) | (annot2[i] >> 2);
-                            i++;
-                        }
-                    }
-
-                    for (z=start; z<=stop; z++) annot2_flag0[(z+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(z+2)%SIZE_BITS_UINT_8T];
+                while ((i < size2) && (annot2_real[i] & 0x2)){
+                    start = (start << 6) | (annot2_real[i] >> 2);
+                    i++;
                 }
+
+                stop = annot2_real[i] >> 2;
+                i++;
+
+                while ((i < size2) && (annot2_real[i] & 0x2)){
+                    stop = (stop << 6) | (annot2_real[i] >> 2);
+                    i++;
+                }
+
+                for (z=start; z<=stop; z++)
+                    annot2_flag0[(z+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(z+2)%SIZE_BITS_UINT_8T];
+            }
         }
         else if (flag2 == 2){
+
             UC_SIZE_ANNOT_T pos;
 
-            while (i<size2){
-                if ((annot2[i] & 0x3) == 2){
-                    pos = annot2[i] >> 2;
-                    i++;
+            while ((i < size2) && (annot2_real[i] & 0x2)){
+                pos = annot2_real[i] >> 2;
+                i++;
 
-                    if ((i<size2) && ((annot2[i] & 0x3) == 1)){
-                        pos = (pos << 6) | (annot2[i] >> 2);
-                        i++;
-                    }
+                while ((i < size2) && (annot2_real[i] & 0x1)){
+                    pos = (pos << 6) | (annot2_real[i] >> 2);
+                    i++;
                 }
 
                 annot2_flag0[(pos+2)/SIZE_BITS_UINT_8T] |= MASK_POWER_8[(pos+2)%SIZE_BITS_UINT_8T];
             }
         }
     }
-    else memset(annot2_flag0, 255, size_annot_flag0 * sizeof(uint8_t));
 
-    for (i=0; i<size_annot_flag0; i++) annot1_flag0[i] &= annot2_flag0[i];
+    for (i=0; i < size_annot_flag0; i++) annot1_flag0[i] = (*f)(annot1_flag0[i], annot2_flag0[i]);
 
     free(annot2_flag0);
     if ((annot1 != NULL) && ((annot1[0] & 0x3) != 3) && (annot_sup1 != NULL)) free(annot1_real);

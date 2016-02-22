@@ -2,13 +2,13 @@
 
 extern int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
 
-int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx,
+int get_annot(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx,
                    int* size_annot, int* size_annot_cplx, int size_substring, int nb_substring, int position){
 
-    if (position >= nb_substring) ERROR("get_annotation(): position >= nb_substring")
+    if (position >= nb_substring) ERROR("get_annot(): position >= nb_substring")
 
-    ASSERT_NULL_PTR(uc,"get_annotation()")
-    ASSERT_NULL_PTR(uc->suffixes,"get_annotation()")
+    ASSERT_NULL_PTR(uc,"get_annot()")
+    ASSERT_NULL_PTR(uc->suffixes,"get_annot()")
 
     uint8_t* ext_annot = NULL;
     uint8_t* cplx_annot = NULL;
@@ -72,22 +72,22 @@ int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot
     return 1;
 }
 
-void get_annotations(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t*** annots_cplx,
+void get_annots(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t*** annots_cplx,
                    int** size_annots, int** size_annots_cplx, int size_substring, int nb_substring,
                    int position_start, int position_end){
 
     if (nb_substring <= 0) return;
 
     if ((position_start >= nb_substring) || (position_start < 0)){
-        ERROR("get_annotations(): position_start >= nb_substring or < 0")
+        ERROR("get_annots(): position_start >= nb_substring or < 0")
     }
 
     if ((position_end >= nb_substring) || (position_end < 0)){
-        ERROR("get_annotations(): position_end >= nb_substring or < 0")
+        ERROR("get_annots(): position_end >= nb_substring or < 0")
     }
 
-    ASSERT_NULL_PTR(uc,"get_annotation()")
-    ASSERT_NULL_PTR(uc->suffixes,"get_annotation()")
+    ASSERT_NULL_PTR(uc,"get_annot()")
+    ASSERT_NULL_PTR(uc->suffixes,"get_annot()")
 
     int size_line;
 
@@ -95,13 +95,13 @@ void get_annotations(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t**
     int nb_suffixes = position_end - position_start + 1;
 
     *annots = malloc(nb_suffixes * sizeof(uint8_t*));
-    ASSERT_NULL_PTR(*annots, "get_annotations()")
+    ASSERT_NULL_PTR(*annots, "get_annots()")
 
     *size_annots_cplx = calloc(nb_suffixes, sizeof(int));
-    ASSERT_NULL_PTR(*size_annots_cplx, "get_annotations()")
+    ASSERT_NULL_PTR(*size_annots_cplx, "get_annots()")
 
     *size_annots = calloc(nb_suffixes, sizeof(int));
-    ASSERT_NULL_PTR(*size_annots, "get_annotations()")
+    ASSERT_NULL_PTR(*size_annots, "get_annots()")
 
     *annots_ext = NULL;
     *annots_cplx = NULL;

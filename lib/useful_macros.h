@@ -1,5 +1,4 @@
-#ifndef DEF_USEFUL_MACROS
-#define DEF_USEFUL_MACROS
+#pragma once
 
 #include <sys/time.h>
 
@@ -66,5 +65,3 @@ inline void time_spent(struct timeval *start_time, struct timeval *end_time, str
 
     return;
 }
-
-#endif

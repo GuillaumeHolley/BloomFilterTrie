@@ -1,22 +1,25 @@
 #include "./../lib/fasta.h"
 
-int parseKmerCount(char* line, int size_kmer, uint8_t* tab, int pos_tab){
+int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
     ASSERT_NULL_PTR(line,"parseKmerCount()")
     ASSERT_NULL_PTR(tab,"parseKmerCount()")
 
+    uint8_t* tab_tmp = &(tab[pos_tab]);
+
     int pos_car = 0;
     for (pos_car=0; pos_car < size_kmer; pos_car++){
+
         switch(line[pos_car]){
             case 'a':
             case 'A': break;
             case 'c':
-            case 'C': tab[pos_tab + pos_car/4] |= MASK_INSERT[0][pos_car%4]; break;
+            case 'C': tab_tmp[pos_car/4] |= MASK_INSERT[0][pos_car%4]; break;
             case 'g':
-            case 'G': tab[pos_tab + pos_car/4] |= MASK_INSERT[1][pos_car%4]; break;
+            case 'G': tab_tmp[pos_car/4] |= MASK_INSERT[1][pos_car%4]; break;
             case 'u':
             case 'U':
             case 't':
-            case 'T': tab[pos_tab + pos_car/4] |= MASK_INSERT[2][pos_car%4]; break;
+            case 'T': tab_tmp[pos_car/4] |= MASK_INSERT[2][pos_car%4]; break;
             case 'r':
             case 'R':
             case 'y':
@@ -38,16 +41,36 @@ int parseKmerCount(char* line, int size_kmer, uint8_t* tab, int pos_tab){
             case 'v':
             case 'V':
             case 'n':
-            case 'N': memset(&(tab[pos_tab]), 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
+            case 'N': memset(tab_tmp, 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
             case '\n': break;
-            default: {  memset(&(tab[pos_tab]), 0, ((pos_car+1)/4)*sizeof(uint8_t));
-                        goto END_LOOP;
-                    }
+            default: memset(tab_tmp, 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
         }
     }
 
     END_LOOP: if (pos_car == size_kmer) return 1;
     return 0;
+}
+
+void kmer_comp_to_ascii(const uint8_t* kmer_comp, int k, char* kmer){
+    ASSERT_NULL_PTR(kmer_comp,"parseKmerCount()")
+    ASSERT_NULL_PTR(kmer,"parseKmerCount()")
+
+    uint8_t tmp;
+
+    int i = 0;
+    int j = 0;
+
+    for (i = 0; i < CEIL(k * 2, SIZE_BITS_UINT_8T) - 1; i++){
+        for (j = 0, tmp = kmer_comp[i]; j < 4; j++, kmer++, tmp >>= 2)
+            *kmer = COMP_TO_ASCII[tmp & 0x3];
+    }
+
+    for (j = 0, tmp = kmer_comp[i]; j < k % 4; j++, kmer++, tmp >>= 2)
+        *kmer = COMP_TO_ASCII[tmp & 0x3];
+
+    *kmer = '\0';
+
+    return;
 }
 
 void parseSequenceBuffer(char* buf, uint8_t* tab, int* nb_kmers, int size_kmers, int nb_cell){

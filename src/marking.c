@@ -1,6 +1,6 @@
 #include "./../lib/marking.h"
 
-void create_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level* restrict info_per_lvl){
+void create_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(n, "create_marking_Node_4states()")
 
@@ -21,7 +21,7 @@ void create_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_
     return;
 }
 
-void create_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level* restrict info_per_lvl){
+void create_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(cc,"create_marking_CC_4states()")
 
@@ -89,7 +89,7 @@ void create_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level
     return;
 }
 
-void create_marking_UC_4states(UC* uc, int lvl_uc, info_per_level* restrict info_per_lvl){
+void create_marking_UC_4states(UC* uc, int lvl_uc, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(uc, "create_marking_UC_4states()")
 
@@ -111,7 +111,7 @@ void create_marking_UC_4states(UC* uc, int lvl_uc, info_per_level* restrict info
     return;
 }
 
-void delete_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level* restrict info_per_lvl){
+void delete_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(n, "delete_marking_Node_4states()")
 
@@ -127,14 +127,12 @@ void delete_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_
     }
 
     if (n->UC_array.suffixes != NULL)
-        delete_marking_UC_4states(&(n->UC_array),
-                                  info_per_lvl[lvl_node].size_kmer_in_bytes,
-                                  n->UC_array.nb_children >> 1);
+        delete_marking_UC_4states(&(n->UC_array), info_per_lvl[lvl_node].size_kmer_in_bytes, n->UC_array.nb_children >> 1);
 
     return;
 }
 
-void delete_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level* restrict info_per_lvl){
+void delete_marking_CC_4states(CC* cc, int lvl_cc, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(cc,"delete_marking_CC_4states()")
 
@@ -206,10 +204,16 @@ void mark_UC_4states(UC* uc, int size_substring, int nb_children, int position, 
     ASSERT_NULL_PTR(uc, "mark_UC_4states()")
     ASSERT_NULL_PTR(uc->suffixes, "mark_UC_4states()")
 
-    uc->suffixes[nb_children * (size_substring + uc->size_annot)
+    int tot = nb_children * (size_substring + uc->size_annot)
                 + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
                 + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes)
-                + position/4] |= flag << ((position % 4) * 2);
+                + position/4;
+
+    position = (position % 4) * 2;
+
+    uint8_t mask = 0x3 << position;
+
+    uc->suffixes[tot] = (uc->suffixes[tot] & ~mask) | (flag << position);
 
     return;
 }

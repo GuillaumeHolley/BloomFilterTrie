@@ -5,7 +5,7 @@ extern UC* createUC();
 extern void initiateUC(UC* uc);
 extern void freeUC(UC* uc);
 
-void insertKmer_UC(UC* restrict uc, uint8_t* restrict kmer, uint32_t id_genome, int size_id_genome, int size_kmer, int pos_insertion,
+void insertKmer_UC(UC*  uc, uint8_t*  kmer, uint32_t id_genome, int size_id_genome, int size_kmer, int pos_insertion,
                    annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(uc, "insertKmer_UC()")

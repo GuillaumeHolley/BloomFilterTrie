@@ -1,21 +1,42 @@
 #include "./../lib/insertNode.h"
 
 /* ---------------------------------------------------------------------------------------------------------------
-*  insertKmer_Node(node, kmer, size_kmer, id_genome, info_per_lvl, ann_inf)
+*  insertKmers(root, array_kmers, size_kmers, nb_kmers, id_genome, info_per_lvl, ann_inf, res, annot_sorted)
 *  ---------------------------------------------------------------------------------------------------------------
-*  Insert a suffix or modify a suffix annotation into a node of the tree.
+*  Insert kmers into the BFT
 *  ---------------------------------------------------------------------------------------------------------------
-*  node: pointer on a Node structure to insert the suffix
-*  kmer: pointer on the suffix to insert
-*  size_kmer: size of the suffix to insert, in char.
-*  id_genome: genome identity of the suffix to insert
-*  info_per_lvl: ptr on info_per_level structure, contains information to manipulate CCs field CC->children_type
-*  ann_inf: ptr on annotation_inform structure, used to make the transition between reading and modifying an annot
+*  root: ptr to the root of a BFT
+*  array_kmers: array of kmers
+*  size_kmers: length k of kmers in array_kmers
+*  nb_kmers: number of kmers in array_kmers
+*  id_genome: genome id to which belongs the kmers in array_kmers
+*  info_per_lvl: ptr to info_per_level structure, used to manipulate compressed container field children_type
+*  ann_inf: ptr to annotation_inform structure, used to make the transition between reading and modifying an annot
+*  res: ptr to resultPresence structure, used to store information about the presence of a suffix prefix in a CC
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uint8_t* restrict suffix, int size_suffix,
-                     uint8_t* kmer, uint32_t id_genome, int size_id_genome, int pos_CC_start_search,
-                     annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted){
+void insertKmers(BFT_Root*  root, uint8_t*  array_kmers, int nb_kmers, uint32_t id_genome,
+                 int size_id_genome){
+
+    ASSERT_NULL_PTR(root,"insertKmers()")
+
+    int i = 0;
+    int curr_lvl = (root->k/NB_CHAR_SUF_PREF)-1;
+    int nb_bytes = CEIL(root->k*2, SIZE_BITS_UINT_8T); //Nb bytes used to store a k-mer
+
+    uint8_t kmer[nb_bytes];
+
+    for (i=0; i<nb_kmers; i++){
+
+        memcpy(kmer, &(array_kmers[i*nb_bytes]), nb_bytes * sizeof(uint8_t));
+
+        insertKmer_Node(&(root->node), root, curr_lvl, &(array_kmers[i*nb_bytes]), root->k, kmer,
+                        id_genome, size_id_genome, 0);
+    }
+}
+
+void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffix, int size_suffix,
+                     uint8_t* kmer, uint32_t id_genome, int size_id_genome, int pos_CC_start_search){
 
     ASSERT_NULL_PTR(node,"insertKmer_Node()")
     ASSERT_NULL_PTR(suffix,"insertKmer_Node()")
@@ -28,11 +49,13 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
 
     UC* uc;
 
-    //__builtin_prefetch (&(root->info_per_lvl[lvl_node]), 0, 0);
+    resultPresence* res = root->res;
+    annotation_inform* ann_inf = root->ann_inf;
+    annotation_array_elem* annot_sorted = root->comp_set_colors;
 
     //We search for the first prefix of the suffix contained in the parameter kmer
     //We want to start the search at the beginning of the node so 4th argument is 0
-    presenceKmer(node, root, suffix, size_suffix, pos_CC_start_search, 1, &(root->info_per_lvl[lvl_node]), res);
+    presenceKmer(node, root, suffix, size_suffix, pos_CC_start_search, 1, res);
 
     //If the prefix is present, we insert the suffix into the corresponding child
     if (res->link_child != NULL){
@@ -61,7 +84,7 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
             }
 
             modify_annotations(root, uc, size_substring, nb_elem, res->pos_sub_bucket, id_genome,
-                               size_id_genome, kmer, ann_inf, annot_sorted, 1);
+                               size_id_genome, kmer, 1);
         }
         else { //If the node is not situated on the last level of the tree
             //Shift the suffix to delete the prefix of length NB_CHAR_SUF_PREF (this one is already resent in a container)
@@ -81,24 +104,24 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
                 // If it is not a UC also, we continue insertion of the suffix into the child container, which can only be a node
                 if (res->container_is_UC == 0){
                     insertKmer_Node((Node*)res->link_child, root, lvl_node-1, suffix, size_suffix-NB_CHAR_SUF_PREF, kmer,
-                                    id_genome, size_id_genome, 0, ann_inf, res, annot_sorted);
+                                    id_genome, size_id_genome, 0);
                 }
                 else{ // If it is a UC, we modify the annotation like usual (computation new size, realloc old annotation, modification of it)
                     uc = (UC*)res->container;
                     nb_elem = uc->nb_children >> 1;
 
                     modify_annotations(root, uc, nb_cell, nb_elem, res->pos_sub_bucket, id_genome,
-                                       size_id_genome, kmer, ann_inf, annot_sorted, 1);
+                                       size_id_genome, kmer, 1);
                 }
             }
             else{ //If the container of result_resence is a leaf (basically, a CC->children array), we modify it
 
-                Node* new_node = insertKmer_Node_special(root, res, lvl_node, suffix, size_suffix-NB_CHAR_SUF_PREF, kmer,
-                                                        id_genome, size_id_genome, ann_inf, annot_sorted);
+                Node* new_node = insertKmer_Node_special(root, lvl_node, suffix, size_suffix-NB_CHAR_SUF_PREF, kmer,
+                                                        id_genome, size_id_genome);
 
                 if (new_node != NULL){
                     insertKmer_Node(new_node, root, lvl_node-1, suffix, size_suffix-NB_CHAR_SUF_PREF, kmer,
-                                    id_genome, size_id_genome, 0, ann_inf, res, annot_sorted);
+                                    id_genome, size_id_genome, 0);
                 }
             }
         }
@@ -107,8 +130,7 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
     else if (res->presBF == 1){
 
         //We insert the prefix into the CC
-        insertSP_CC(res, suffix, size_suffix, id_genome,
-                    size_id_genome, &(root->info_per_lvl[lvl_node]), ann_inf, annot_sorted);
+        insertSP_CC(res, root, lvl_node, suffix, size_suffix, id_genome, size_id_genome);
 
         //If the CC, after insertion, stores NB_SUBSTRINGS_TRANSFORM prefixes, it is ready for recomputation
         if (((CC*)res->container)->nb_elem == root->info_per_lvl[lvl_node].tresh_suf_pref)
@@ -136,17 +158,8 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
                     substring_prefix = (reverse_word_8(suffix[0]) << 10)
                                         | (reverse_word_8(suffix[1]) << 2)
                                         | (reverse_word_8(suffix[2]) >> 6);
-
-                    //hash1_v = KnutDivision(substring_prefix, root->info_per_lvl[lvl_node].modulo_hash);
-                    //hash2_v = MutiplicationMethod(substring_prefix, root->info_per_lvl[lvl_node].modulo_hash);
                 }
                 else{
-                    /*uint8_t sp_sub1 = reverse_word_8(suffix[0]) & 0x3f;
-                    uint8_t sp_sub2 = reverse_word_8(suffix[1]);
-
-                    hash1_v = dbj2(sp_sub2, sp_sub1, root->info_per_lvl[lvl_node].modulo_hash);
-                    hash2_v = sdbm(sp_sub2, sp_sub1, root->info_per_lvl[lvl_node].modulo_hash);*/
-
                     substring_prefix = ((reverse_word_8(suffix[0]) & 0x3f) << SIZE_BITS_UINT_8T) | reverse_word_8(suffix[1]);
                 }
 
@@ -158,19 +171,16 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
 
                 res->pos_sub_bucket = 0;
 
-                presenceKmer(node, root, suffix, size_suffix, node_nb_elem-1, 1, &(root->info_per_lvl[lvl_node]), res);
+                presenceKmer(node, root, suffix, size_suffix, node_nb_elem-1, 1, res);
 
                 //We insert the prefix into the CC
-                insertSP_CC(res, suffix, size_suffix, id_genome, size_id_genome,
-                            &(root->info_per_lvl[lvl_node]), ann_inf, annot_sorted);
+                insertSP_CC(res, root, lvl_node, suffix, size_suffix, id_genome, size_id_genome);
 
                 //If the CC, after insertion, stores NB_SUBSTRINGS_TRANSFORM prefixes, it is ready for recomputation
                 if (((CC*)res->container)->nb_elem == root->info_per_lvl[lvl_node].tresh_suf_pref)
                     transform_Filter2n3((CC*)res->container, 14, 4, &(root->info_per_lvl[lvl_node]));
             }
             else{
-                //if (node->UC_array.suffixes == NULL) initiateUC(&(node->UC_array));
-
                 insertKmer_UC(&(node->UC_array), suffix, id_genome, size_id_genome,
                               size_suffix, res->pos_sub_bucket, ann_inf, annot_sorted);
             }
@@ -229,15 +239,16 @@ void insertKmer_Node(Node* restrict node, Root* restrict root, int lvl_node, uin
 *  ann_inf: ptr on annotation_inform structure, used to make the transition between reading and modifying an annot
 *  ---------------------------------------------------------------------------------------------------------------
 */
-Node* insertKmer_Node_special(Root* restrict root, resultPresence* restrict pres, int lvl_cont, uint8_t* restrict suffix, int size_suffix,
-                              uint8_t* restrict kmer, uint32_t id_genome, int size_id_genome, annotation_inform* ann_inf,
-                              annotation_array_elem* annot_sorted){
+Node* insertKmer_Node_special(BFT_Root*  root, int lvl_cont, uint8_t*  suffix, int size_suffix,
+                              uint8_t*  kmer, uint32_t id_genome, int size_id_genome){
 
-    ASSERT_NULL_PTR(pres,"insertKmer_Node_special()")
-    ASSERT_NULL_PTR(pres->container,"insertKmer_Node_special()")
-    ASSERT_NULL_PTR(suffix,"insertKmer_Node_special()")
+    ASSERT_NULL_PTR(root->res->container,"insertKmer_Node_special()")
     ASSERT_NULL_PTR(root->info_per_lvl,"insertKmer_Node_special()")
-    ASSERT_NULL_PTR(ann_inf,"insertKmer_Node_special()")
+    ASSERT_NULL_PTR(suffix,"insertKmer_Node_special()")
+
+    resultPresence* pres = root->res;
+    annotation_inform* ann_inf = root->ann_inf;
+    annotation_array_elem* annot_sorted = root->comp_set_colors;
 
     CC* cc = (CC*)pres->container;
     UC* uc;
@@ -252,27 +263,6 @@ Node* insertKmer_Node_special(Root* restrict root, resultPresence* restrict pres
     int size_line = nb_cell+size_annot;
 
     int z=0;
-    //int inside = 0;
-
-    //Iterate over the suffixes + annotations to compare stored suffixes with the suffix we want to insert
-    /*if (size_suffix == 36){
-        for (z=0; z<nb_elt; z++){
-            if (memcmp(&(((uint8_t*)pres->link_child)[z*size_line]), suffix, nb_cell*sizeof(uint8_t)) == 0){
-                inside = 1;
-                break;
-            }
-        }
-    }
-    else {
-        for (z=0; z<nb_elt; z++){
-            if ((memcmp(&(((uint8_t*)pres->link_child)[z*size_line]), suffix, (nb_cell-1)*sizeof(uint8_t)) == 0) &&
-                ((((uint8_t*)pres->link_child)[z*size_line+nb_cell-1] & 0x7f) == suffix[nb_cell-1])){
-                inside = 1;
-                break;
-            }
-        }
-    }*/
-
     int pos = 0;
     int inside = 1;
 
@@ -426,10 +416,8 @@ Node* insertKmer_Node_special(Root* restrict root, resultPresence* restrict pres
     else{
         uc = &(((UC*)cc->children)[pres->bucket]);
 
-        //modify_annotations(root, uc, nb_cell, uc->nb_children, pres->pos_sub_bucket+z, id_genome,
-        //                   size_id_genome, kmer, ann_inf, annot_sorted, 1);
         modify_annotations(root, uc, nb_cell, uc->nb_children, pres->pos_sub_bucket + pos, id_genome,
-                           size_id_genome, kmer, ann_inf, annot_sorted, 1);
+                           size_id_genome, kmer, 1);
     }
 
     return NULL;

@@ -1,8 +1,8 @@
 #include "./../lib/retrieveAnnotation.h"
 
-/*annotation_array_elem* retrieve_annotation_right(Root* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array,
+/*annotation_array_elem* retrieve_annotation_right(BFT_Root* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array,
                                                  int shifting_suffix, uint32_t id_genome_avoid, uint16_t** skip_node_root,
-                                                 info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+                                                 info_per_level*  info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation_right()")
     ASSERT_NULL_PTR(kmer_start,"retrieve_annotation_right()")
@@ -32,7 +32,7 @@
 
             kmer_start[size_kmer_array-1] |= z << shifting_suffix;
 
-            annot_present = get_annotation((UC*)res[z].container, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+            annot_present = get_annot((UC*)res[z].container, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                            res[z].posFilter2, res[z].posFilter3, res[z].pos_sub_bucket);
 
             if (annot_present != 0){
@@ -96,7 +96,7 @@
 
 annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root,
                                                 int size_kmer_array, uint32_t id_genome_avoid, uint16_t** skip_node_root,
-                                                info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+                                                info_per_level*  info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation_left()")
     ASSERT_NULL_PTR(kmer_start,"retrieve_annotation_left()")
@@ -125,7 +125,7 @@ annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start,
 
             kmer_start[0] |= z;
 
-            annot_present = get_annotation((UC*)res[z].container, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+            annot_present = get_annot((UC*)res[z].container, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                            res[z].posFilter2, res[z].posFilter3, res[z].pos_sub_bucket);
 
             if (annot_present != 0){
@@ -194,7 +194,7 @@ annotation_array_elem* retrieve_annotation_left(Node* root, uint8_t* kmer_start,
 }
 
 annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix,
-                                           uint32_t id_genome_avoid, uint16_t** skip_node_root, info_per_level* restrict info_per_lvl, annotation_inform* ann_inf,
+                                           uint32_t id_genome_avoid, uint16_t** skip_node_root, info_per_level*  info_per_lvl, annotation_inform* ann_inf,
                                            annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"retrieve_annotation()")
@@ -229,12 +229,10 @@ annotation_array_elem* retrieve_annotation(Node* root, uint8_t* kmer_start, uint
     return annot_left_right;
 }*/
 
-void modify_annotations(Root* root, UC* uc, int size_substring, int nb_children, int position, uint32_t id_genome,
-                        int size_id_genome, uint8_t* kmer, annotation_inform* ann_inf, annotation_array_elem* annot_sorted,
-                        int special_case){
+void modify_annotations(BFT_Root* root, UC* uc, int size_substring, int nb_children, int position, uint32_t id_genome,
+                        int size_id_genome, uint8_t* kmer, int special_case){
 
     ASSERT_NULL_PTR(uc,"modify_annotations()")
-    ASSERT_NULL_PTR(ann_inf,"modify_annotations()")
 
     int size_annot;
     int size_annot_cplx;
@@ -244,9 +242,12 @@ void modify_annotations(Root* root, UC* uc, int size_substring, int nb_children,
     uint8_t* annot_ext = NULL;
     uint8_t* annot_cplx = NULL;
 
+    annotation_array_elem* annot_sorted = root->comp_set_colors;
+    annotation_inform* ann_inf = root->ann_inf;
+
     annotation_array_elem* annot_array_elem = NULL;
 
-    res_get_annotation = get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
+    res_get_annotation = get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
                                         &size_annot_cplx, size_substring, nb_children, position);
 
     if (res_get_annotation == 1){

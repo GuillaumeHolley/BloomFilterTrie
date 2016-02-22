@@ -1,5 +1,4 @@
-#ifndef DEF_POPCNT
-#define DEF_POPCNT
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +30,5 @@ inline int popcnt_8_par(const uint8_t* v, int start, int end) {
 
     return hamming_weight;
 }
-
-#endif
 
 

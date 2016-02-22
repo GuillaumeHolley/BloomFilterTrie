@@ -1,5 +1,4 @@
-#ifndef DEF_DEFAULT_PARAM
-#define DEF_DEFAULT_PARAM
+#pragma once
 
 #define SIZE_BITS_UINT_8T 8
 #define KMER_LENGTH_MAX 63
@@ -24,7 +23,7 @@
 #define NB_KMERS_PER_UC9 255 //Maximum capacity of UCs containing suffixes of length 9 is NB_KMERS_PER_CC9
 #define NB_KMERS_PER_UC 255 //Maximum capacity of UCs containing suffixes of length 9 is NB_KMERS_PER_CC
 
-#define NB_UC_PER_SKP 128 //SHOULD BE <= 248 & NB_UC_PER_SKP%8 = 0
+#define NB_UC_PER_SKP 128 //SHOULD BE <= 248 && NB_UC_PER_SKP%8 = 0
 #define NB_BITS_IN_CELL_SKIP_FILTER2 NB_UC_PER_SKP //SHOULD BE <= 248 & NB_BITS_IN_CELL_SKIP_FILTER2%8 = 0
 #define NB_BITS_IN_CELL_SKIP_FILTER3 NB_UC_PER_SKP //SHOULD BE <= 248 & NB_BITS_IN_CELL_SKIP_FILTER3%8 = 0
 
@@ -38,5 +37,3 @@
 
 #define SIZE_BUFFER 4096
 #define PRINT_EVERY_X_KMERS 1000000
-
-#endif

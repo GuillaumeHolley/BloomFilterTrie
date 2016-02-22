@@ -1,5 +1,4 @@
-#ifndef DEF_ANNOTATION
-#define DEF_ANNOTATION
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,12 +12,30 @@
 #include "./../lib/UC_annotation.h"
 #include "./../lib/log2.h"
 
+const uint8_t MASK_POWER_8[8];
+
 /* ===================================================================================================================================
 *  INLINE FUNCTIONS DECLARATION
 *  ===================================================================================================================================
 */
 
-const uint8_t MASK_POWER_8[8];
+inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot,
+                            uint32_t id_genome, int size_id_genome, uint8_t flag, uint8_t flag_ext);
+
+inline UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+inline int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+inline int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
+
+inline uint8_t* extract_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position, int* size_annot);
+inline int getSize_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position);
+inline double getTotalSize_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array);
+inline int getMaxSize_annotation_array_elem(annotation_array_elem* annot_sorted);
+inline void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array);
+
+/* ===================================================================================================================================
+*  INLINE FUNCTIONS
+*  ===================================================================================================================================
+*/
 
 inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot,
                             uint32_t id_genome, int size_id_genome, uint8_t flag, uint8_t flag_ext){
@@ -171,19 +188,6 @@ inline int getSize_from_annotation_array_elem(annotation_array_elem* annot_sorte
     return annot_sorted[it_annot_sorted].size_annot;
 }
 
-inline void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array){
-
-    if (annot_sorted != NULL){
-
-        int i = 0;
-        for (i=0; i<size_array; i++){
-            if (annot_sorted[i].annot_array != NULL) free(annot_sorted[i].annot_array);
-        }
-
-        free(annot_sorted);
-    }
-}
-
 inline double getTotalSize_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array){
 
     double size_annot_array_elem = 0;
@@ -208,4 +212,15 @@ inline int getMaxSize_annotation_array_elem(annotation_array_elem* annot_sorted)
     else return 0;
 }
 
-#endif
+inline void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array){
+
+    if (annot_sorted != NULL){
+
+        int i = 0;
+        for (i=0; i<size_array; i++){
+            if (annot_sorted[i].annot_array != NULL) free(annot_sorted[i].annot_array);
+        }
+
+        free(annot_sorted);
+    }
+}

@@ -21,12 +21,16 @@ extern void sum_up_duos(Duo* d1, Duo* d2);
 *  info_per_lvl: ptr on info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict kmer, int size_kmer, info_per_level* restrict info_per_lvl,
-                           resultPresence* res, uint16_t** skip_node_root){
+void presenceNeighborsLeft(Node*  node, BFT_Root* root, uint8_t*  kmer, int size_kmer, resultPresence* res){
 
     if (size_kmer == 0) ERROR("presenceNeighborsLeft(): this case should not happen")
     ASSERT_NULL_PTR(node,"presenceNeighborsLeft()")
     ASSERT_NULL_PTR(kmer,"presenceNeighborsLeft()")
+
+    CC* cc;
+    UC* uc;
+
+    info_per_level*  info_per_lvl = &(root->info_per_lvl[size_kmer/NB_CHAR_SUF_PREF - 1]);
 
     uint16_t size_bf;
 
@@ -72,9 +76,6 @@ void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict km
     uint16_t hash2_v = root->hash_v[substring_prefix * 2 + 1] % info_per_lvl->modulo_hash;
 
     substring_prefix = (substring[0] << SIZE_BITS_UINT_8T) | substring[1];
-
-    CC* cc;
-    UC* uc;
 
     for (i=0; i<4; i++) initialize_resultPresence(&(res[i]));
 
@@ -378,8 +379,8 @@ void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict km
                                         else{
                                             //res->link_child = &(cc->children_Node_container[count_nodes((CC*)&(((CC*)node->CC_array)[i]), 0, k)]);
                                             if (clust-1 >= 0){
-                                                if ((skip_node_root != NULL) && (k-last_k > k-clust*SIZE_CLUST_SKIP_NODES)){
-                                                    last_node = skip_node_root[i][clust-1] +
+                                                if ((root->skip_sp != NULL) && (k-last_k > k-clust*SIZE_CLUST_SKIP_NODES)){
+                                                    last_node = root->skip_sp[i][clust-1] +
                                                                 count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
                                                 }
                                                 else last_node += count_nodes(cc, last_k, k, type);
@@ -514,8 +515,8 @@ void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict km
                                         else{
                                             //res->link_child = &(cc->children_Node_container[count_nodes(&(((CC*)node->CC_array)[i]), 0, k)]);
                                             if (clust-1 >= 0){
-                                                if ((skip_node_root != NULL) && (k-last_k > k-clust*SIZE_CLUST_SKIP_NODES)){
-                                                    last_node = skip_node_root[i][clust-1] + count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
+                                                if ((root->skip_sp != NULL) && (k-last_k > k-clust*SIZE_CLUST_SKIP_NODES)){
+                                                    last_node = root->skip_sp[i][clust-1] + count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
                                                 }
                                                 else last_node += count_nodes(cc, last_k, k, type);
                                             }
@@ -652,20 +653,6 @@ void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict km
             }
         }
         else{
-            /*for (k=0; k<(node->UC_array.nb_children >> 1)*size_line; k+=size_line){ //Iterate over every suffix stored
-                if (memcmp(&(node->UC_array.suffixes[k]), kmer, nb_cell) == 0){
-
-                    nuc2add = node->UC_array.suffixes[k] & 0x3;
-                    res[nuc2add].link_child = &(node->UC_array.suffixes[k]);
-                    res[nuc2add].pos_sub_bucket = k/size_line;
-                    res[nuc2add].container = &(node->UC_array);
-                    res[nuc2add].posFilter2 = nb_cell;
-                    res[nuc2add].posFilter3 = node->UC_array.nb_children >> 1;
-                    res[nuc2add].container_is_UC = 1;
-                    return;
-                }
-            }*/
-
             int pos = binary_search_UC(&(node->UC_array), 0, (node->UC_array.nb_children >> 1) - 1, kmer, nb_cell, 0xff);
 
             if (memcmp(&(node->UC_array.suffixes[pos * size_line]), kmer, nb_cell * sizeof(uint8_t)) == 0){
@@ -695,8 +682,7 @@ void presenceNeighborsLeft(Node* restrict node, Root* root, uint8_t* restrict km
 *  info_per_lvl: ptr on info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict kmer, int size_kmer, info_per_level* restrict info_per_lvl,
-                            resultPresence* res, uint16_t** skip_node_root){
+void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int size_kmer, resultPresence* res){
 
     if (size_kmer == 0) ERROR("presenceNeighborsRight(): this case should not happen")
     ASSERT_NULL_PTR(node,"presenceNeighborsRight()")
@@ -733,6 +719,8 @@ void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict k
 
     CC* cc;
     UC* uc;
+
+    info_per_level*  info_per_lvl = &(root->info_per_lvl[size_kmer/NB_CHAR_SUF_PREF - 1]);
 
     for (i=0; i<4; i++) initialize_resultPresence(&(res[i]));
 
@@ -1051,12 +1039,12 @@ void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict k
                                         res[nuc2add].children_type_leaf = 1;
                                     }
                                     else{
-                                        if ((skip_node_root != NULL) && (info_per_lvl->root == 1) && (last_count_node == -1)){
+                                        if ((root->skip_sp != NULL) && (info_per_lvl->root == 1) && (last_count_node == -1)){
 
                                             int clust = k/SIZE_CLUST_SKIP_NODES;
 
                                             if (clust-1 >= 0){
-                                                last_count_node = skip_node_root[i][clust-1] + count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
+                                                last_count_node = root->skip_sp[i][clust-1] + count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
                                             }
                                             //else last_count_node = count_nodes(cc, 0, k, type);
                                             else if (k < cc->nb_elem - k) last_count_node = count_nodes(cc, 0, k, type);
@@ -1139,12 +1127,12 @@ void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict k
                                         res[nuc2add].children_type_leaf = 1;
                                     }
                                     else{
-                                        if ((skip_node_root != NULL) && (info_per_lvl->root == 1) && (last_count_node == -1)){
+                                        if ((root->skip_sp != NULL) && (info_per_lvl->root == 1) && (last_count_node == -1)){
 
                                             int clust = k/SIZE_CLUST_SKIP_NODES;
 
                                             if (clust-1 >= 0){
-                                                last_count_node = skip_node_root[i][clust-1] +
+                                                last_count_node = root->skip_sp[i][clust-1] +
                                                                     count_nodes(cc, clust*SIZE_CLUST_SKIP_NODES, k, type);
                                             }
                                             //else last_count_node = count_nodes(cc, 0, k, type);
@@ -1219,6 +1207,65 @@ void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict k
     return;
 }
 
+int* get_bf_presence_per_cc(BFT_Root* root){
+
+    ASSERT_NULL_PTR(root,"get_bf_presence_per_cc()\n")
+
+    CC* cc;
+    Node* node = &(root->node);
+
+    uint32_t substring_prefix;
+
+    uint16_t hash1_v;
+    uint16_t hash2_v;
+    uint16_t hash1_v_mod;
+    uint16_t hash2_v_mod;
+
+    int i;
+    int size_pres_bf = pow(4, NB_CHAR_SUF_PREF);
+
+    int* presence_bf = malloc(size_pres_bf * sizeof(int));
+    ASSERT_NULL_PTR(presence_bf, "get_bf_presence_per_cc()\n");
+
+    info_per_level* info_per_lvl = &(root->info_per_lvl[root->k / NB_CHAR_SUF_PREF - 1]);
+
+    for (i = 0; i < size_pres_bf; i++) presence_bf[i] = -1;
+
+    if (node->CC_array != NULL){
+
+        i = -1;
+
+        do {
+            i++;
+            cc = &(((CC*)node->CC_array)[i]);
+
+            for (uint32_t j = 0; j < size_pres_bf; j++){
+
+                if (presence_bf[j] == -1){
+
+                    if (root->compressed > 0) substring_prefix = j * 2;
+                    else substring_prefix = ((j >> 2) & 0x3fff) * 2;
+
+                    hash1_v = root->hash_v[substring_prefix] % info_per_lvl->modulo_hash;
+                    hash2_v = root->hash_v[substring_prefix + 1] % info_per_lvl->modulo_hash;
+
+                    hash1_v_mod = hash1_v%SIZE_BITS_UINT_8T;
+                    hash2_v_mod = hash2_v%SIZE_BITS_UINT_8T;
+
+                    hash1_v /= SIZE_BITS_UINT_8T;
+                    hash2_v /= SIZE_BITS_UINT_8T;
+
+                    if ((cc->BF_filter2[hash1_v] & MASK_POWER_8[hash1_v_mod])
+                        && (cc->BF_filter2[hash2_v] & MASK_POWER_8[hash2_v_mod])) presence_bf[j] = i;
+                }
+            }
+        }
+        while (IS_EVEN(((CC*)node->CC_array)[i].type));
+    }
+
+    return presence_bf;
+}
+
 /* ---------------------------------------------------------------------------------------------------------------
 *  presenceKmer(node, kmer, size_kmer, nb_CC_node, info_per_lvl)
 *  ---------------------------------------------------------------------------------------------------------------
@@ -1231,8 +1278,8 @@ void presenceNeighborsRight(Node* restrict node, Root* root, uint8_t* restrict k
 *  info_per_lvl: ptr on info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int size_kmer, int posCC_start_search,
-                  int verify_UC_or_not, info_per_level* restrict info_per_lvl, resultPresence* res){
+void presenceKmer(Node*  node, BFT_Root* root, uint8_t*  kmer, int size_kmer, int posCC_start_search,
+                  int verify_UC_or_not, resultPresence* res){
 
     if (size_kmer == 0) ERROR("presenceKmer(): this case should not happen")
     ASSERT_NULL_PTR(node,"presenceKmer()")
@@ -1275,6 +1322,8 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
     res->substring[1] = reverse_word_8(kmer[1]);
     res->substring[2] = reverse_word_8(kmer[2]) & 0xc0;
 
+    info_per_level*  info_per_lvl = &(root->info_per_lvl[res->level_node]);
+
     //Compute hash-functions of the Bloom filter for the prefix
 
     if (root->compressed > 0){
@@ -1303,9 +1352,6 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
             res->pos_container = i;
 
             //First look if the prefix is in the Bloom filter
-            //if ((cc->BF_filter2[hash1_v/SIZE_BITS_UINT_8T] & MASK_POWER_8[hash1_v%SIZE_BITS_UINT_8T]) == 0) continue;
-            //if ((cc->BF_filter2[hash2_v/SIZE_BITS_UINT_8T] & MASK_POWER_8[hash2_v%SIZE_BITS_UINT_8T]) == 0) continue;
-
             if ((cc->BF_filter2[hash1_v] & MASK_POWER_8[hash1_v_mod]) == 0) continue;
             if ((cc->BF_filter2[hash2_v] & MASK_POWER_8[hash2_v_mod]) == 0) continue;
 
@@ -1370,15 +1416,6 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
 
                                     uc = &(((UC*)cc->children)[res->bucket]);
 
-                                    /*res->pos_sub_bucket = res->bucket * info_per_lvl->nb_ucs_skp;
-                                    nb_elem = MIN(cc->nb_elem - res->pos_sub_bucket, info_per_lvl->nb_ucs_skp);
-
-                                    if (imin - res->pos_sub_bucket > res->pos_sub_bucket + nb_elem - imin){
-                                        res->pos_sub_bucket = uc->nb_children - count_children(cc, imin, res->pos_sub_bucket + nb_elem, type);
-                                    }
-                                    else res->pos_sub_bucket = count_children(cc, res->pos_sub_bucket, imin, type);*/
-
-
                                     res->pos_sub_bucket = res->bucket * info_per_lvl->nb_ucs_skp;
                                     nb_elem = MIN(cc->nb_elem - res->pos_sub_bucket, info_per_lvl->nb_ucs_skp);
 
@@ -1398,7 +1435,6 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
                                 }
                                 else{
                                     if (cpt_node_tmp == -1){
-                                        //res->link_child = &(cc->children_Node_container[count_nodes(cc, 0, k)]);
                                         if (imin < cc->nb_elem - imin) res->link_child = &(cc->children_Node_container[count_nodes(cc, 0, imin, type)]);
                                         else res->link_child = &(cc->children_Node_container[cc->nb_Node_children - count_nodes(cc, imin, cc->nb_elem, type)]);
                                     }
@@ -1455,16 +1491,6 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
                                     res->bucket = imin/info_per_lvl->nb_ucs_skp;
                                     uc = &(((UC*)cc->children)[res->bucket]);
 
-
-                                    /*res->pos_sub_bucket = res->bucket * info_per_lvl->nb_ucs_skp;
-                                    nb_elem = MIN(cc->nb_elem - res->pos_sub_bucket, info_per_lvl->nb_ucs_skp);
-
-                                    if (k - res->pos_sub_bucket > res->pos_sub_bucket + nb_elem - k){
-                                        res->pos_sub_bucket = uc->nb_children - count_children(cc, k, res->pos_sub_bucket + nb_elem, type);
-                                    }
-                                    else res->pos_sub_bucket = count_children(cc, res->pos_sub_bucket, k, type);*/
-
-
                                     res->pos_sub_bucket = res->bucket * info_per_lvl->nb_ucs_skp;
                                     nb_elem = MIN(cc->nb_elem - res->pos_sub_bucket, info_per_lvl->nb_ucs_skp);
 
@@ -1484,7 +1510,6 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
                                 }
                                 else{
                                     if (cpt_node_tmp == -1){
-                                        //res->link_child = &(cc->children_Node_container[count_nodes(cc, 0, k)]);
                                         if (imin < cc->nb_elem - imin) res->link_child = &(cc->children_Node_container[count_nodes(cc, 0, imin, type)]);
                                         else res->link_child = &(cc->children_Node_container[cc->nb_Node_children - count_nodes(cc, imin, cc->nb_elem, type)]);
                                     }
@@ -1543,7 +1568,7 @@ void presenceKmer(Node* restrict node, Root* root, uint8_t* restrict kmer, int s
     return;
 }
 
-void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restrict seed, int size_seed, int size_kmer,
+void presenceSeed(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  seed, int size_seed, int size_kmer,
                   int posCC_start_search, int id_genome, int search_for_id_genome, int stop_if_2idgenomes_found,
                   resultPresenceSeed* res, annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
 
@@ -1778,7 +1803,7 @@ void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restri
                                                     cpt_pv = count_children(cc, it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp, it_filter3, type);
                                                 }
 
-                                                get_annotations(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
+                                                get_annots(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
                                                                root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1, uc->nb_children, cpt_pv,
                                                                cpt_pv + nb_elt - 1);
 
@@ -1820,7 +1845,7 @@ void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restri
                                                 else nb_elt = root->info_per_lvl[lvl_node].nb_ucs_skp;
                                             }
 
-                                            get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                                            get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                                             0, nb_elt, it_filter3 % root->info_per_lvl[lvl_node].nb_ucs_skp);
 
                                             if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot,
@@ -1901,7 +1926,7 @@ void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restri
 
                                                 if (search_for_id_genome_cpy > 0){
 
-                                                    get_annotations(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
+                                                    get_annots(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
                                                                    root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1, uc->nb_children, cpt_pv,
                                                                    cpt_pv + nb_elt - 1);
 
@@ -1970,7 +1995,7 @@ void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restri
                     d1->elem1++;
 
                     if (search_for_id_genome_cpy > 0){
-                        get_annotation(&(node->UC_array), &annot, &annot_ext, &annot_cplx,
+                        get_annot(&(node->UC_array), &annot, &annot_ext, &annot_cplx,
                                        &size_annot, &size_annot_cplx, root->info_per_lvl[lvl_node].size_kmer_in_bytes,
                                        nb_elt, j);
 
@@ -1989,7 +2014,7 @@ void presenceSeed(Node* restrict node, Root* root, int lvl_node, uint8_t* restri
     END_PRESENCE_SEED: return;
 }
 
-void isSeedPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restrict seed, int size_seed, int size_kmer,
+void isSeedPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  seed, int size_seed, int size_kmer,
                    int id_genome, int search_for_id_genome, int stop_if_2idgenomes_found, annotation_inform* ann_inf,
                    annotation_array_elem* annot_sorted, Duo* d1){
 
@@ -2038,7 +2063,7 @@ void isSeedPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restr
         res = malloc(sizeof(resultPresence));
         ASSERT_NULL_PTR(res,"isSeedPresent()")
 
-        presenceKmer(node, root, seed_tmp, size_kmer, 0, 0, &(root->info_per_lvl[lvl_node]), res);
+        presenceKmer(node, root, seed_tmp, size_kmer, 0, 0, res);
 
         if (res->link_child != NULL){
 
@@ -2075,7 +2100,7 @@ void isSeedPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restr
                             d1->elem1++;
 
                             if (search_for_id_genome_cpy > 0){
-                                get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                                get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                                nb_cell, uc->nb_children, k);
 
                                 if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome) == 1){
@@ -2105,7 +2130,7 @@ void isSeedPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restr
                         d1->elem1++;
 
                         if (search_for_id_genome_cpy > 0){
-                            get_annotation(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                            get_annot(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                            root->info_per_lvl[lvl_node].size_kmer_in_bytes, nb_elt, k);
 
                             if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome) == 1){
@@ -2141,8 +2166,8 @@ void isSeedPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restr
     return;
 }
 
-void countKmers_Node(Node* restrict node, int lvl_node, int size_kmer, int id_genome,
-                     int search_for_id_genome, int stop_if_2idgenomes_found, info_per_level* restrict info_per_lvl,
+void countKmers_Node(Node*  node, int lvl_node, int size_kmer, int id_genome,
+                     int search_for_id_genome, int stop_if_2idgenomes_found, info_per_level*  info_per_lvl,
                      annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
 
     ASSERT_NULL_PTR(node,"countKmers_Node()")
@@ -2192,7 +2217,7 @@ void countKmers_Node(Node* restrict node, int lvl_node, int size_kmer, int id_ge
 
         if (search_for_id_genome_cpy > 0){
 
-            get_annotations(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+            get_annots(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                            info_per_lvl[lvl_node].size_kmer_in_bytes, nb_elt, 0, nb_elt-1);
 
             for (i=0; i<nb_elt; i++){
@@ -2214,8 +2239,8 @@ void countKmers_Node(Node* restrict node, int lvl_node, int size_kmer, int id_ge
     END_COUNT_KMERS_NODE: return;
 }
 
-void countKmers_CC(CC* restrict cc, int lvl_cont, int size_kmer, int id_genome, int search_for_id_genome,
-                   int stop_if_2idgenomes_found, info_per_level* restrict info_per_lvl,
+void countKmers_CC(CC*  cc, int lvl_cont, int size_kmer, int id_genome, int search_for_id_genome,
+                   int stop_if_2idgenomes_found, info_per_level*  info_per_lvl,
                    annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
 
     ASSERT_NULL_PTR(cc, "countKmers_CC()")
@@ -2251,7 +2276,7 @@ void countKmers_CC(CC* restrict cc, int lvl_cont, int size_kmer, int id_genome, 
                 if (i == nb_skp-1) nb_elt = cc->nb_elem - i * info_per_lvl[lvl_cont].nb_ucs_skp;
                 else nb_elt = info_per_lvl[lvl_cont].nb_ucs_skp;
 
-                get_annotations(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
+                get_annots(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
                                    &size_annot_cplx, 0, nb_elt, 0, nb_elt-1);
 
                 for (j = 0; j < nb_elt; j++){
@@ -2281,7 +2306,7 @@ void countKmers_CC(CC* restrict cc, int lvl_cont, int size_kmer, int id_genome, 
 
             if (search_for_id_genome_cpy > 0){
 
-                get_annotations(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                get_annots(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                info_per_lvl[lvl_cont].size_kmer_in_bytes_minus_1, uc->nb_children, 0,
                                uc->nb_children-1);
 
@@ -2320,7 +2345,7 @@ void countKmers_CC(CC* restrict cc, int lvl_cont, int size_kmer, int id_genome, 
 }
 
 void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_filter3, int* hamming_weight_0,
-                resultPresence* res, info_per_level* restrict info_per_lvl){
+                resultPresence* res, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(cc, "findCluster()")
     ASSERT_NULL_PTR(cpt_node_return, "findCluster()")
@@ -2358,11 +2383,6 @@ void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_f
     int pos_extra_filter3_tmp = INT_MAX;
     int hamming_weight_0_tmp = 0;
     int posFilter2 = 0;
-
-    /*
-    *cpt_node_return = -1;
-    *pos_extra_filter3 = INT_MAX;
-    *hamming_weight_0 = 0;*/
 
     //If SkipFilter2 exists, we use it to accelerate the computation of the Hamming weight
     if (cc->nb_elem >= info_per_lvl->tresh_suf_pref){
@@ -2588,7 +2608,7 @@ void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_f
     return;
 }
 
-resultPresence* isKmerPresent(Node* restrict node, Root* root, int lvl_node, uint8_t* restrict kmer, int size_kmer){
+resultPresence* isKmerPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  kmer, int size_kmer){
 
     ASSERT_NULL_PTR(node,"isKmerPresent()")
     ASSERT_NULL_PTR(kmer,"isKmerPresent()")
@@ -2596,7 +2616,7 @@ resultPresence* isKmerPresent(Node* restrict node, Root* root, int lvl_node, uin
 
     uint16_t nb_elt;
 
-    int j=0;
+    int j;
 
     int nb_cell;
     int size_line;
@@ -2613,7 +2633,7 @@ resultPresence* isKmerPresent(Node* restrict node, Root* root, int lvl_node, uin
     ASSERT_NULL_PTR(res,"isKmerPresent()")
 
     //We want to start the search at the beginning of the node so 4th argument is 0
-    presenceKmer(node, root, kmer_tmp, size_kmer, 0, 1, &(root->info_per_lvl[lvl_node]), res);
+    presenceKmer(node, root, kmer_tmp, size_kmer, 0, 1, res);
 
     if (size_kmer == NB_CHAR_SUF_PREF) return res;
     else{
@@ -2688,98 +2708,4 @@ resultPresence* isKmerPresent(Node* restrict node, Root* root, int lvl_node, uin
     }
 
     return res;
-}
-
-void isKmerPresent_bis(Node* restrict node, Root* root, int lvl_node, uint8_t* restrict kmer, int size_kmer, resultPresence* res){
-
-    ASSERT_NULL_PTR(node,"isKmerPresent()")
-    ASSERT_NULL_PTR(kmer,"isKmerPresent()")
-    ASSERT_NULL_PTR(root,"isKmerPresent()")
-
-    uint16_t nb_elt;
-
-    int j=0;
-
-    int nb_cell;
-    int size_line;
-
-    CC* cc;
-    UC* uc;
-
-    __builtin_prefetch (&(root->info_per_lvl[lvl_node]), 0, 0);
-
-    initialize_resultPresence(res);
-
-    //We want to start the search at the beginning of the node so 4th argument is 0
-    presenceKmer(node, root, kmer, size_kmer, 0, 1, &(root->info_per_lvl[lvl_node]), res);
-
-    if (size_kmer == NB_CHAR_SUF_PREF) return;
-    else{
-
-        int nb_cell_to_delete = 2;
-        nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
-
-        if (size_kmer == 45) nb_cell_to_delete++;
-
-        for (j=0; j < nb_cell - nb_cell_to_delete; j++){
-            kmer[j] = kmer[j+2] >> 2;
-            if (j+3 < nb_cell) kmer[j] |= kmer[j+3] << 6;
-        }
-
-        kmer[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
-
-        if (res->link_child != NULL){
-            if (res->children_type_leaf == 0){
-                if (res->container_is_UC == 0){
-                    isKmerPresent_bis((Node*)res->link_child, root, lvl_node-1, kmer, size_kmer-NB_CHAR_SUF_PREF, res);
-                    return;
-                }
-            }
-            else{
-
-                cc = (CC*)res->container;
-                uc = &(((UC*)cc->children)[res->bucket]);
-
-                nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
-                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
-                size_line = nb_cell + uc->size_annot;
-
-                res->link_child = NULL;
-                res->container = NULL;
-
-                if (nb_elt != 0){
-                    if (size_kmer == 45){
-                        j = binary_search_UC(uc, res->pos_sub_bucket, res->pos_sub_bucket + nb_elt - 1, kmer, nb_cell, 0xff);
-
-                        if (memcmp(&(uc->suffixes[j * size_line]), kmer, nb_cell*sizeof(uint8_t)) == 0){
-                            res->link_child = &(uc->suffixes[j * size_line]);
-                            res->container = uc;
-                            res->pos_sub_bucket = j;
-                            res->posFilter2 = nb_cell;
-                            res->posFilter3 = uc->nb_children;
-
-                            return;
-                        }
-                    }
-                    else{
-                        j = binary_search_UC(uc, res->pos_sub_bucket, res->pos_sub_bucket + nb_elt - 1, kmer, nb_cell, 0x7f);
-
-                        if (memcmp(&(uc->suffixes[j * size_line]), kmer, (nb_cell-1)*sizeof(uint8_t)) == 0){
-                            if ((uc->suffixes[j * size_line + nb_cell - 1] & 0x7f) == kmer[nb_cell - 1]){
-                                res->link_child = &(uc->suffixes[j * size_line]);
-                                res->container = uc;
-                                res->pos_sub_bucket = j;
-                                res->posFilter2 = nb_cell;
-                                res->posFilter3 = uc->nb_children;
-
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return;
 }

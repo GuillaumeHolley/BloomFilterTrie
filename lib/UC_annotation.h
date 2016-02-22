@@ -1,5 +1,4 @@
-#ifndef DEF_UC_ANNOTATION
-#define DEF_UC_ANNOTATION
+#pragma once
 
 #define UC_SIZE_ANNOT_T int32_t
 #define UC_SIZE_ANNOT_CPLX_T UC_SIZE_ANNOT_T
@@ -7,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
 
@@ -269,7 +269,7 @@ inline int max_size_annot_cplx_sub(uint8_t* annot_cplx, int nb_cplx, int size_cp
 *  ===================================================================================================================================
 */
 
-void insertKmer_UC(UC* restrict uc, uint8_t* restrict kmer, uint32_t id_genome,
+void insertKmer_UC(UC*  uc, uint8_t*  kmer, uint32_t id_genome,
                    int size_id_genome, int size_kmer, int pos_insertion, annotation_inform* ann_inf,
                    annotation_array_elem* annot_sorted);
 
@@ -310,7 +310,7 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
                                      int size_annot_sup, uint32_t id_genome);
 
 int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot,
-                      int size_annot, uint8_t* annot_sup, int size_annot_sup, int* last_id_genome);
+                      int size_annot, uint8_t* annot_sup, int size_annot_sup, uint32_t* last_id_genome);
 
 int comp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, uint8_t* annot_sup,
                      int size_annot_sup);
@@ -324,15 +324,21 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
 void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, uint8_t* annot_sup,
                             int size_annot_sup, uint32_t id_genome2insert, int size_id_genome);
 
-annotation_array_elem* intersection_annotations(uint8_t* annot1, int size_annot1, uint8_t* annot_sup1,
-                                                int size_annot_sup1, uint8_t* annot2, int size_annot2,
-                                                uint8_t* annot_sup2, int size_annot_sup2, uint32_t id_genome_max,
-                                                annotation_array_elem* annot_sorted);
+annotation_array_elem* cmp_annots(uint8_t* annot1, int size_annot1, uint8_t* annot_sup1, int size_annot_sup1,
+                                  uint8_t* annot2, int size_annot2,uint8_t* annot_sup2, int size_annot_sup2,
+                                  uint32_t id_genome_max, uint8_t (*f)(const uint8_t, const uint8_t),
+                                  annotation_array_elem* annot_sorted);
 
 void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint8_t* annot_sup, int size_annot_sup,
                          uint32_t id_genome_max, annotation_array_elem* annot_sorted);
 
 annotation_array_elem* sort_annotations(Pvoid_t* PJArray, int* size_array, uint32_t longest_annot);
+
+void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot,
+                               int size_annot, uint8_t* annot_sup, int size_annot_sup);
+
+int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot,
+                                    int size_annot, uint8_t* annot_sup, int size_annot_sup);
 
 /* ===================================================================================================================================
 *  FUNCTIONS DECLARATION annotation_special_nodes.h
@@ -358,11 +364,9 @@ void create_annot_cplx_nodes_marked(UC* uc, int size_substring, int nb_substring
 *  ===================================================================================================================================
 */
 
-int get_annotation(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx, int* size_annot,
+int get_annot(UC* uc, uint8_t** annot, uint8_t** annot_ext, uint8_t** annot_cplx, int* size_annot,
                    int* size_annot_cplx, int size_substring, int nb_substring, int position);
 
-void get_annotations(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t*** annots_cplx,
+void get_annots(UC* uc, uint8_t*** annots, uint8_t*** annots_ext, uint8_t*** annots_cplx,
                    int** size_annots, int** size_annots_cplx, int size_substring, int nb_substring,
                    int position_start, int position_end);
-
-#endif

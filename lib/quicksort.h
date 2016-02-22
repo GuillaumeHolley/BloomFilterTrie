@@ -1,5 +1,4 @@
-#ifndef DEF_QUICKSORT
-#define DEF_QUICKSORT
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,5 +27,3 @@ inline void swap_mem_int(int* a, int* b)
 uint8_t* median3(uint8_t *a, int size_line, int left, int right, int* tab_ind);
 void quicksort(uint8_t* substrings, int size_line_sub, int p, int r, int* tab_ind);
 int* quicksort_init(uint8_t* substrings, int size_line_sub, int p, int r);
-
-#endif

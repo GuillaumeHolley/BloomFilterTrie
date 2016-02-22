@@ -1,5 +1,4 @@
-#ifndef DEF_EXTRACT_KMERS
-#define DEF_EXTRACT_KMERS
+#pragma once
 
 /* ===================================================================================================================================
 *  INCLUDES
@@ -14,16 +13,18 @@
 #include <limits.h>
 #include <string.h>
 
+#include <stdarg.h>
+
 #include "./../lib/useful_macros.h"
+#include "./../lib/fasta.h"
 #include "./../lib/CC.h"
 #include "./../lib/retrieveAnnotation.h"
+#include "./../lib/write_to_disk.h"
 
 /* ===================================================================================================================================
 *  FUNCTIONS DECLARATION
 *  ===================================================================================================================================
 */
 
-int extract_kmers_from_node(Node* n, int lvl_node, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket,
-                            int size_kmer_root, int compression, info_per_level* restrict info_per_lvl, FILE* file_output);
-
-#endif
+void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t* kmer, BFT_kmer* bft_kmer, int size_kmer,
+                                  int bucket, int pos_in_bucket, size_t (*f)(BFT_kmer*, BFT_Root*, va_list), va_list args);

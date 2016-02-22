@@ -25,7 +25,7 @@ memory_Used* create_memory_Used(){
 *  mem2: pointer to a structure memory_Used
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2){
+void add_memory_Used(memory_Used*  mem1, memory_Used*  mem2){
 
     ASSERT_NULL_PTR(mem1,"add_memory_Used()")
     ASSERT_NULL_PTR(mem2,"add_memory_Used()")
@@ -65,7 +65,7 @@ void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2){
 *  info_per_lvl: info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-memory_Used* printMemoryUsedFromNode(Node* restrict node, int lvl_node, int size_kmer, info_per_level* info_per_lvl){
+memory_Used* printMemoryUsedFromNode(Node*  node, int lvl_node, int size_kmer, info_per_level* info_per_lvl){
 
     ASSERT_NULL_PTR(node,"printMemoryUsedFromNode()")
 
@@ -122,7 +122,7 @@ memory_Used* printMemoryUsedFromNode(Node* restrict node, int lvl_node, int size
 *  info_per_lvl: info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl){
+memory_Used* printMemoryUsedFrom_CC(CC*  cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl){
 
     memory_Used* mem = create_memory_Used();
     ASSERT_NULL_PTR(mem,"printMemoryUsedFrom_CC()")
@@ -146,6 +146,8 @@ memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int lvl_cc, int size_kmer, 
 
         for (i=0; i<nb_skp; i++){
             uc = &(((UC*)cc->children)[i]);
+
+            mem->size_biggest_annot = MAX(mem->size_biggest_annot, uc->size_annot);
 
             if (i == nb_skp-1){
                 mem->memory += (cc->nb_elem - i * info_per_lvl[lvl_cc].nb_ucs_skp) * uc->size_annot

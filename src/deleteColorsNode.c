@@ -1,7 +1,7 @@
 #include "./../lib/deleteColorsNode.h"
 
 /*int deleteColors_simplePath(Node* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array, int shifting_suffix, int id_genome,
-                            uint16_t** skip_node_root, info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted){
+                            uint16_t** skip_node_root, info_per_level*  info_per_lvl, annotation_inform* ann_inf, resultPresence* res, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(root,"deleteColors_simplePath()")
     ASSERT_NULL_PTR(kmer_start,"deleteColors_simplePath()")
@@ -46,7 +46,7 @@
 
                 uc = (UC*)res[z].container;
 
-                annot_present = get_annotation(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                annot_present = get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                                res[z].posFilter2, res[z].posFilter3, res[z].pos_sub_bucket);
 
                 size_annot_res = 0;
@@ -159,7 +159,7 @@
 
                         if (flag_tmp < 2){ //if the right neighbor of the right neighbor is not branching
 
-                            annot_present = get_annotation(uc_tmp_right, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
+                            annot_present = get_annot(uc_tmp_right, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
                                res_tmp_right[q].posFilter2, res_tmp_right[q].posFilter3, res_tmp_right[q].pos_sub_bucket);
 
                             size_annot_res_tmp_right = 0;
@@ -339,7 +339,7 @@
 }
 
 int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int size_kmer, int bucket, int pos_in_bucket, int size_kmer_root, uint32_t id_genome,
-                                     info_per_level* restrict info_per_lvl, uint16_t** skip_node_root, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+                                     info_per_level*  info_per_lvl, uint16_t** skip_node_root, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
 
     ASSERT_NULL_PTR(n,"deleteColors_from_branchingNodes()")
     ASSERT_NULL_PTR(root,"deleteColors_from_branchingNodes()")
@@ -794,7 +794,7 @@ int deleteColors_from_branchingNodes(Node* n, Node* root, uint8_t* kmer, int siz
     return count;
 }
 
-int resize_annotation_Node(Node* n, int size_kmer, info_per_level* restrict info_per_lvl){
+int resize_annotation_Node(Node* n, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(n,"resize_annotation_Node()")
 
@@ -817,7 +817,7 @@ int resize_annotation_Node(Node* n, int size_kmer, info_per_level* restrict info
     return count;
 }
 
-int resize_annotation_CC(CC* cc, int size_kmer, info_per_level* restrict info_per_lvl){
+int resize_annotation_CC(CC* cc, int size_kmer, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(cc,"resize_annotation_CC()")
 

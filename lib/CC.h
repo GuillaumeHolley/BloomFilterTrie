@@ -1,5 +1,4 @@
-#ifndef DEF_CC
-#define DEF_CC
+#pragma once
 
 /* ===================================================================================================================================
 *  INCLUDES AND DEFINES
@@ -43,13 +42,13 @@ typedef struct{
     //      so for example, SkipFilter2[0] = HammingWeight(Filter2[i]) for 0 <= i <= 31, because 31 cells of 8 bits = 248 bits
     //      This array only exists if the CC stores NB_SUBSTRINGS_TRANSFORM prefixes or more.
     // 4 - The Skip Filter 3 is an array in which each cell records the Hamming weight of 248 bits in the Third Filter
-    uint8_t* restrict BF_filter2;
+    uint8_t*  BF_filter2;
     // The array filter3 stores explicitly the p_v, in lexicographic ascending order of p_u
-    uint8_t* restrict filter3;
+    uint8_t*  filter3;
     // The bit array extra_filter3 is a "list of cluster position": One or more consecutive p_v in filter3 belong to the same cluster
     // if they share the same p_u in the Second Filter. A 1 at a position in extra_filter3 signal a new cluster for the prefix at the
     // same position in filter3.
-    uint8_t* restrict extra_filter3;
+    uint8_t*  extra_filter3;
     // The array children_type contains for each prefix stored the number of suffixes linked to it, on 4 bits or 8 bits.
     // It must only be accessed using functions stored in the structure info_per_level because the type of the array is dynamic,
     //depending on the level of the tree. A 0 at a position indicates that the suffixes linked to the prefix at this position
@@ -64,8 +63,30 @@ typedef struct{
     // the first cell of each array.
     void* children;
     // children_Node_container is an array of the current CC children nodes
-    Node* restrict children_Node_container;
+    Node*  children_Node_container;
 } __attribute__ ((__packed__)) CC;
+
+/* ===================================================================================================================================
+*  FUNCTIONS DECLARATION
+*  ===================================================================================================================================
+*/
+
+void transform2CC(UC*  uc, CC*  cc, BFT_Root* root, int lvl_cc, int size_suffix);
+void transform2CC_from_arraySuffix(uint8_t*  array_suffix, CC*  cc, BFT_Root* root, int lvl_cc, int size_suffix,
+                                   int size_annot, uint8_t** annot_extend, uint8_t** annot_cplx, int size_annot_cplx);
+
+void insertSP_CC(resultPresence*  pres, BFT_Root* root, int lvl_node_insert,
+                 uint8_t*  kmer, int size_sp, uint32_t id_genome, int size_id_genome);
+
+void transform_Filter2n3(CC* cc, int pref_size, int suf_size, info_per_level*  info_per_lvl);
+
+int add_skp_annotation(CC*, int position_type, int size_annot, info_per_level*  info_per_lvl);
+void add_skp_children(CC* cc, int position_type, int position_child, int count_before_child, int size_substrings,
+                      int size_annot, info_per_level*  info_per_lvl);
+
+info_per_level* create_info_per_level(int size_max);
+uint16_t** build_skip_nodes(Node* node);
+void free_skip_nodes(Node* node, uint16_t** skp_nodes);
 
 /* ===================================================================================================================================
 *  INLINE FUNCTIONS DECLARATION
@@ -75,9 +96,9 @@ typedef struct{
 inline CC* createCC(int nb_bits_bf);
 inline void initiateCC(CC* cc, int nb_bits_bf);
 
-inline void freeNode(Node* node, int lvl_node, info_per_level* restrict info_per_lvl);
-inline void freeRoot(Root* root);
-inline void freeCC(CC* cc, int lvl_cc, info_per_level* restrict info_per_lvl);
+inline void freeNode(Node* node, int lvl_node, info_per_level*  info_per_lvl);
+inline void freeBFT_Root(BFT_Root* root);
+inline void freeCC(CC* cc, int lvl_cc, info_per_level*  info_per_lvl);
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  createCC(nb_bits_bf)
@@ -145,7 +166,7 @@ inline void initiateCC(CC* cc, int nb_bits_bf){
 *  cc: pointer to a CC
 *  ---------------------------------------------------------------------------------------------------------------
 */
-inline void freeCC(CC* cc, int lvl_cc, info_per_level* restrict info_per_level){
+inline void freeCC(CC* cc, int lvl_cc, info_per_level*  info_per_level){
 
     ASSERT_NULL_PTR(cc,"freeCC()")
 
@@ -175,7 +196,7 @@ inline void freeCC(CC* cc, int lvl_cc, info_per_level* restrict info_per_level){
 *  node: pointer to a Node
 *  ---------------------------------------------------------------------------------------------------------------
 */
-inline void freeNode(Node* restrict node, int lvl_node, info_per_level* restrict info_per_lvl){
+inline void freeNode(Node*  node, int lvl_node, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(node,"freeNode()")
 
@@ -200,15 +221,104 @@ inline void freeNode(Node* restrict node, int lvl_node, info_per_level* restrict
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
-*  freeRoot()
+*  createBFT_Root()
+*  ---------------------------------------------------------------------------------------------------------------
+*  Create the root of a BFT
+*  ---------------------------------------------------------------------------------------------------------------
+*  ---------------------------------------------------------------------------------------------------------------
+*/
+inline BFT_Root* createBFT_Root(int k, int treshold_compression, uint8_t compressed){
+
+    BFT_Root* root = malloc(sizeof(BFT_Root));
+    ASSERT_NULL_PTR(root,"createBFT_Root()")
+
+    root->compressed = compressed;
+    root->treshold_compression = treshold_compression;
+    root->k = k;
+    root->nb_genomes = 0;
+    root->length_comp_set_colors = 0;
+    root->marked = 0;
+    root->filenames = NULL;
+    root->comp_set_colors = NULL;
+    root->skip_sp = NULL;
+    root->ann_inf = NULL;
+
+    if (k == 0){
+        root->r1 = 0;
+        root->r2 = 0;
+        root->hash_v = NULL;
+        root->info_per_lvl = NULL;
+        root->res = NULL;
+    }
+    else{
+        root->r1 = rand();
+        while (root->r1 == (root->r2 = rand())){};
+
+        root->hash_v = create_hash_v_array(root->r1, root->r2);
+        root->info_per_lvl = create_info_per_level(root->k);
+        root->res = create_resultPresence();
+    }
+
+    initiateNode(&(root->node));
+
+    return root;
+}
+
+inline BFT_Root* copy_BFT_Root(BFT_Root* root_src){
+
+    ASSERT_NULL_PTR(root_src,"copy_BFT_Root()")
+
+    BFT_Root* root_dest = malloc(sizeof(BFT_Root));
+    ASSERT_NULL_PTR(root_dest,"copy_BFT_Root()")
+
+    memcpy(root_dest, root_src, sizeof(BFT_Root));
+
+    if (root_dest->ann_inf != NULL) root_dest->ann_inf = create_annotation_inform(root_dest->nb_genomes);
+    if (root_dest->res != NULL) root_dest->res = create_resultPresence();
+
+    return root_dest;
+}
+
+inline void add_genomes_BFT_Root(int nb_files, char** filenames, BFT_Root* root){
+
+    if (nb_files < 0) ERROR("add_genomes_BFT_Root(): the number of genomes to insert cannot be less than 0.\n")
+
+    if (nb_files > 0){
+
+        ASSERT_NULL_PTR(filenames, "add_genomes_BFT_Root()\n")
+
+        if (root->filenames == NULL) root->filenames = malloc(nb_files * sizeof(char*));
+        else root->filenames = realloc(root->filenames, (root->nb_genomes + nb_files) * sizeof(char*));
+
+        ASSERT_NULL_PTR(root->filenames, "add_genomes_BFT_Root()\n")
+
+        for (int i = 0; i < nb_files; i++){
+
+            ASSERT_NULL_PTR(filenames[i], "add_genomes_BFT_Root()\n")
+
+            root->filenames[i + root->nb_genomes] = calloc(strlen(filenames[i]) + 1, sizeof(char));
+            ASSERT_NULL_PTR(root->filenames[i + root->nb_genomes] , "add_genomes_BFT_Root()\n")
+
+            strcpy(root->filenames[i + root->nb_genomes], filenames[i]);
+        }
+
+        root->nb_genomes += nb_files;
+
+        if (root->ann_inf != NULL) free_annotation_inform(root->ann_inf);
+        root->ann_inf = create_annotation_inform(root->nb_genomes);
+    }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+*  freeBFT_Root()
 *  ---------------------------------------------------------------------------------------------------------------
 *  Free the root of a BFT
 *  ---------------------------------------------------------------------------------------------------------------
 *  ---------------------------------------------------------------------------------------------------------------
 */
-inline void freeRoot(Root* root){
+inline void freeBFT_Root(BFT_Root* root){
 
-    ASSERT_NULL_PTR(root,"freeRoot()")
+    ASSERT_NULL_PTR(root,"freeBFT_Root()")
 
     if (root->filenames != NULL){
         int i = 0;
@@ -218,8 +328,11 @@ inline void freeRoot(Root* root){
 
     free_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors);
 
+    free_annotation_inform(root->ann_inf);
+
     freeNode(&(root->node), (root->k / NB_CHAR_SUF_PREF) - 1, root->info_per_lvl);
 
+    free(root->res);
     free(root->info_per_lvl);
     free(root->hash_v);
     free(root);
@@ -228,52 +341,9 @@ inline void freeRoot(Root* root){
 }
 
 /* ===================================================================================================================================
-*  FUNCTIONS DECLARATION
-*  ===================================================================================================================================
-*/
-
-void transform2CC(UC* restrict uc, CC* restrict cc, Root* root, int lvl_cc, int size_suffix);
-void transform2CC_from_arraySuffix(uint8_t* restrict array_suffix, CC* restrict cc, Root* root, int lvl_cc, int size_suffix,
-                                   int size_annot, uint8_t** annot_extend, uint8_t** annot_cplx, int size_annot_cplx);
-
-void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict kmer, int size_sp, uint32_t id_genome, int size_id_genome,
-                 info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted);
-
-void transform_Filter2n3(CC* cc, int pref_size, int suf_size, info_per_level* restrict info_per_lvl);
-
-int add_skp_annotation(CC*, int position_type, int size_annot, info_per_level* restrict info_per_lvl);
-void add_skp_children(CC* cc, int position_type, int position_child, int count_before_child, int size_substrings,
-                      int size_annot, info_per_level* restrict info_per_lvl);
-
-info_per_level* create_info_per_level(int size_max);
-uint16_t** build_skip_nodes(Node* node);
-void free_skip_nodes(Node* node, uint16_t** skp_nodes);
-
-/* ===================================================================================================================================
 *  MACROS DECLARATION AND DEFINITIONS
 *  ===================================================================================================================================
 */
-
-
-/* ---------------------------------------------------------------------------------------------------------------
-*  allocate_children_type(cc, nb_elt)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Allocate and initialize CC->children_type for nb_elt counters
-*  ---------------------------------------------------------------------------------------------------------------
-*  cc: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  nb_elt: number of counters to allocate
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline void allocate_children_type (CC* cc, int nb_elt){
-
-    ASSERT_NULL_PTR(cc, "allocate_children_type()")
-
-    cc->children_type = calloc(CEIL(nb_elt,2)+1, sizeof(uint8_t));
-    ASSERT_NULL_PTR(cc->children_type, "allocate_children_type()")
-
-    cc->children_type[0] = 4;
-    return;
-}*/
 
 inline void allocate_children_type (CC* cc, int nb_elt){
 
@@ -285,29 +355,6 @@ inline void allocate_children_type (CC* cc, int nb_elt){
     return;
 }
 
-/* ---------------------------------------------------------------------------------------------------------------
-*  isChild (cc, position)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Determine if a position in CC->children_type corresponds to suffixes in CC->children (a child) or to a Node
-*  ---------------------------------------------------------------------------------------------------------------
-*  cc: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  position: counter position
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline int is_child(CC* cc, int position){
-    ASSERT_NULL_PTR(cc, "isChild()")
-
-    if (cc->children_type[0] == 4){
-        if (IS_ODD(position)){
-           if ((cc->children_type[(position/2)+1] >> 4) != 0) return 1;
-        }
-        else if ((cc->children_type[(position/2)+1] & 0xf) != 0) return 1;
-    }
-    else if (cc->children_type[position+1] != 0) return 1;
-
-    return 0;
-}*/
-
 inline int is_child(CC* cc, int position, uint8_t type){
     ASSERT_NULL_PTR(cc, "isChild()")
 
@@ -317,26 +364,6 @@ inline int is_child(CC* cc, int position, uint8_t type){
     }
     else return cc->children_type[position] != 0;
 }
-
-/* ---------------------------------------------------------------------------------------------------------------
-*  getNbElts (cc, position)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Get a counter
-*  ---------------------------------------------------------------------------------------------------------------
-*  cc: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  position: counter position
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline int getNbElts(CC* cc, int position){
-
-    ASSERT_NULL_PTR(cc, "getNbElts()")
-
-    if (cc->children_type[0] == 4){
-        if (IS_ODD(position)) return cc->children_type[(position/2)+1] >> 4;
-        else return cc->children_type[(position/2)+1] & 0xf;
-    }
-    else return cc->children_type[position+1];
-}*/
 
 inline int getNbElts(CC* cc, int position, uint8_t type){
 
@@ -348,70 +375,6 @@ inline int getNbElts(CC* cc, int position, uint8_t type){
     }
     else return cc->children_type[position];
 }
-
-/* ---------------------------------------------------------------------------------------------------------------
-*  addNewElt(obj, position, current_nb_elem)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Increment a counter of 1
-*  ---------------------------------------------------------------------------------------------------------------
-*  obj: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  position: counter position
-*  current_nb_elem: number of counters in CC->children_type
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline void addNewElt(CC* cc, int position, int current_nb_elem){
-    ASSERT_NULL_PTR(cc, "addNewElt()")
-
-    if (cc->children_type[0] == 4){
-
-        if (IS_ODD(position)){
-
-            if ((cc->children_type[(position/2)+1] >> 4) + 1 == 0x10){
-
-                uint8_t* tmp_children_type = calloc((current_nb_elem+1),sizeof(uint8_t ));
-                ASSERT_NULL_PTR(tmp_children_type, "addNewElt()")
-
-                int i = 1, j = 1;
-                for (; j < (current_nb_elem/2)+1; i += 2, j++){
-                    tmp_children_type[i] = cc->children_type[j] & 0xf;
-                    tmp_children_type[i+1] = cc->children_type[j] >> 4;
-                }
-
-                if (IS_ODD(current_nb_elem)) tmp_children_type[i] = cc->children_type[j] & 0xf;
-
-                free(cc->children_type);
-
-                cc->children_type = tmp_children_type;
-                cc->children_type[position+1]++;
-                cc->children_type[0] = 8;
-            }
-            else cc->children_type[(position/2)+1] += 16;
-        }
-        else{
-            if ((cc->children_type[(position/2)+1] & 0xf) + 1 == 0x10){
-
-                uint8_t* tmp_children_type = calloc((current_nb_elem+1),sizeof(uint8_t ));
-                ASSERT_NULL_PTR(tmp_children_type, "addNewElt()")
-
-                int i = 1, j = 1;
-                for (; j < (current_nb_elem/2)+1; i += 2, j++){
-                    tmp_children_type[i] = cc->children_type[j] & 0xf;
-                    tmp_children_type[i+1] = cc->children_type[j] >> 4;
-                }
-
-                if (IS_ODD(current_nb_elem)) tmp_children_type[i] = cc->children_type[j] & 0xf;
-
-                free(cc->children_type);
-
-                cc->children_type = tmp_children_type;
-                cc->children_type[position+1]++;
-                cc->children_type[0] = 8;
-            }
-            else cc->children_type[(position/2)+1]++;
-        }
-    }
-    else cc->children_type[position+1]++;
-}*/
 
 inline uint8_t addNewElt(CC* cc, int position, int current_nb_elem, uint8_t type){
 
@@ -472,49 +435,6 @@ inline uint8_t addNewElt(CC* cc, int position, int current_nb_elem, uint8_t type
     return type;
 }
 
-/* ---------------------------------------------------------------------------------------------------------------
-*  realloc_and_int_children_type(obj, current_nb_elem, position_insert)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Insert a new counter initialized to 1 at position_insert in CC->children_type
-*  ---------------------------------------------------------------------------------------------------------------
-*  obj: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  current_nb_elem: number of counters in CC->children_type
-*  position_insert: position to insert the new counter
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline void realloc_and_int_children_type(CC* cc, int current_nb_elem, int position_insert){
-    ASSERT_NULL_PTR(cc, "realloc_and_int_children_type ()")
-
-    if (cc->children_type[0] == 8){
-        cc->children_type = realloc(cc->children_type, (current_nb_elem+2)*sizeof(uint8_t));
-        ASSERT_NULL_PTR(cc->children_type, "realloc_and_int_children_type ()")
-
-        memmove(&(cc->children_type[position_insert+2]),
-                &(cc->children_type[position_insert+1]),
-                (current_nb_elem-position_insert)*sizeof(uint8_t));
-
-        cc->children_type[position_insert+1] = 1;
-    }
-    else{
-        if (CEIL(current_nb_elem+1,2) > CEIL(current_nb_elem,2)){
-
-            cc->children_type = realloc(cc->children_type, (CEIL(current_nb_elem+1,2)+1)*sizeof(uint8_t));
-            ASSERT_NULL_PTR(cc->children_type, "realloc_and_int_children_type ()")
-
-            cc->children_type[CEIL(current_nb_elem+1,2)] = 0;
-        }
-
-        int i = 0;
-        for (i=current_nb_elem+2; i>position_insert+2; i--){
-            if (IS_ODD(i)) cc->children_type[i/2] <<= 4;
-            else cc->children_type[i/2] |= cc->children_type[(i-1)/2] >> 4;
-        }
-
-        if (IS_ODD(i)) cc->children_type[i/2] = (cc->children_type[i/2] & 0xf) + 16;
-        else cc->children_type[i/2] = (cc->children_type[i/2] & 0xf0) + 1;
-    }
-}*/
-
 inline void realloc_and_int_children_type(CC* cc, int current_nb_elem, int position_insert, uint8_t type){
 
     ASSERT_NULL_PTR(cc, "realloc_and_int_children_type ()")
@@ -549,23 +469,6 @@ inline void realloc_and_int_children_type(CC* cc, int current_nb_elem, int posit
     }
 }
 
-/* ---------------------------------------------------------------------------------------------------------------
-*  resetChildrenType (cc, position)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Set a position to 0 in CC->children_type
-*  ---------------------------------------------------------------------------------------------------------------
-*  cc: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  position: position to set to 0
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline void resetChildrenType (CC* cc, int position){
-    ASSERT_NULL_PTR(cc, "resetChildrenType()")
-
-    if (cc->children_type[0] == 8) cc->children_type[position+1] = 0;
-    else if (IS_ODD(position)) cc->children_type[(position/2)+1] &= 0xf;
-    else cc->children_type[(position/2)+1] &= 0xf0;
-}*/
-
 inline void resetChildrenType (CC* cc, int position, uint8_t type){
     ASSERT_NULL_PTR(cc, "resetChildrenType()")
 
@@ -575,37 +478,6 @@ inline void resetChildrenType (CC* cc, int position, uint8_t type){
 
     return;
 }
-
-/* ---------------------------------------------------------------------------------------------------------------
-*  count_Nodes (obj, start, end)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Count the number of Nodes between two positions in CC->children_Node_container
-*  ---------------------------------------------------------------------------------------------------------------
-*  obj: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  start: position of start (including itself)
-*  end: position of end (not including itself)
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline int count_nodes(CC* cc, int start, int end){
-
-    ASSERT_NULL_PTR(cc, "count_Nodes()")
-
-    int count = 0;
-    uint8_t* z;
-
-    if (cc->children_type[0] == 8){
-        for (z = cc->children_type + start + 1; z < cc->children_type + end + 1; z++) count += *z == 0;
-    }
-    else{
-        for (z = cc->children_type + (start+2)/2; z <= cc->children_type + (end+1)/2; z++)
-            count += (*z < 0x10) + ((*z & 0xf) == 0);
-
-        if (IS_ODD(start)) count -= (cc->children_type[(start+2)/2] & 0xf) == 0;
-        if (IS_EVEN(end-1)) count -= cc->children_type[(end+1)/2] < 0x10;
-    }
-
-    return count;
-}*/
 
 inline int count_nodes(CC* cc, int start, int end, uint8_t type){
 
@@ -626,57 +498,6 @@ inline int count_nodes(CC* cc, int start, int end, uint8_t type){
 
     return count;
 }
-
-/* ---------------------------------------------------------------------------------------------------------------
-*  count_Nodes_Children (obj, start, end, count_children, count_nodes)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Count the number of nodes and children between two positions in CC->children_Node_container
-*  ---------------------------------------------------------------------------------------------------------------
-*  obj: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  start: position of start (including itself)
-*  end: position of end (not including itself)
-*  count_children: pointer to an integer that will contain the count of children
-*  count_nodes: pointer to an integer that will contain the count of nodes
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline void count_Nodes_Children(CC* cc, int start, int end, int* count_children, int* count_nodes){
-    ASSERT_NULL_PTR(cc, "count_Nodes_Children()")
-    ASSERT_NULL_PTR(count_children, "count_Nodes_Children()")
-    ASSERT_NULL_PTR(count_nodes, "count_Nodes_Children()")
-
-    uint8_t* z;
-
-    *count_nodes = 0;
-    *count_children = 0;
-
-    if (cc->children_type[0] == 8){
-        for (z = cc->children_type + start + 1; z < cc->children_type + end + 1; z++){
-            *count_children += *z;
-            *count_nodes += *z == 0;
-        }
-    }
-    else {
-
-        int start_r = (start+2)/2;
-        int end_r = (end+1)/2;
-
-        for (z = cc->children_type + start_r; z <= cc->children_type + end_r; z++){
-            *count_nodes += (*z < 0x10) + ((*z & 0xf) == 0);
-            *count_children += (*z >> 4) + (*z & 0xf);
-        }
-
-        if (IS_ODD(start)){
-            *count_nodes -= (cc->children_type[start_r] & 0xf) == 0;
-            *count_children -= cc->children_type[start_r] & 0xf;
-        }
-        if (IS_EVEN(end-1)){
-            *count_nodes -= cc->children_type[end_r] < 0x10;
-            *count_children -= cc->children_type[end_r] >> 4;
-        }
-    }
-
-    return;
-}*/
 
 inline void count_Nodes_Children(CC* cc, int start, int end, int* count_children, int* count_nodes, uint8_t type){
     ASSERT_NULL_PTR(cc, "count_Nodes_Children()")
@@ -719,35 +540,6 @@ inline void count_Nodes_Children(CC* cc, int start, int end, int* count_children
 
     return;
 }
-/* ---------------------------------------------------------------------------------------------------------------
-*  count_Children (obj, start, end)
-*  ---------------------------------------------------------------------------------------------------------------
-*  Count the number of suffixes between two positions in CC->children
-*  ---------------------------------------------------------------------------------------------------------------
-*  obj: a CC for which we do not know the type (CC63, CC27, etc. ?)
-*  start: position of start (including itself)
-*  end: position of end (not including itself)
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-/*inline int count_children(CC* cc, int start, int end){
-    ASSERT_NULL_PTR(cc, "count_Children()")
-
-    int count = 0;
-    uint8_t* z;
-
-    if (cc->children_type[0] == 8){
-        for (z= cc->children_type + start + 1; z < cc->children_type + end + 1; z++) count += *z;
-    }
-    else {
-        for (z= cc->children_type + (start+2)/2; z <= cc->children_type + (end+1)/2; z++)
-            count += (*z >> 4) + (*z & 0xf);
-
-        if (IS_ODD(start)) count -= cc->children_type[(start+2)/2] & 0xf;
-        if (!IS_ODD(end-1)) count -= cc->children_type[(end+1)/2] >> 4;
-    }
-
-    return count;
-}*/
 
 inline int count_children(CC* cc, int start, int end, uint8_t type){
     ASSERT_NULL_PTR(cc, "count_Children()")
@@ -767,5 +559,3 @@ inline int count_children(CC* cc, int start, int end, uint8_t type){
 
     return count;
 }
-
-#endif

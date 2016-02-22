@@ -1,5 +1,4 @@
-#ifndef DEF_UC
-#define DEF_UC
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,5 +64,3 @@ inline void freeUC(UC* uc){
     free(uc);
     return;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef DEF_NODE
-#define DEF_NODE
+#pragma once
 
 /* ===================================================================================================================================
 *  INCLUDES AND DEFINES
@@ -15,6 +14,8 @@
 #include <string.h>
 
 #include <Judy.h>
+
+#include <omp.h>
 
 #include "./../lib/default_param.h"
 #include "./../lib/useful_macros.h"
@@ -51,34 +52,11 @@ typedef struct {
     UC UC_array;
 } __attribute__ ((__packed__)) Node;
 
-// The BFT root is a special node: it contains a node, the id of the last genome inserted and the size in bytes of these ideas
-// TODO: Include the file names associated to each genome ID
-typedef struct {
-    Node node;
-
-    char** filenames;
-
-    annotation_array_elem* comp_set_colors;
-
-    info_per_level* info_per_lvl;
-
-    uint64_t* hash_v;
-
-    uint8_t compressed;
-
-    int k;
-    int r1;
-    int r2;
-    int nb_genomes;
-    int length_comp_set_colors;
-    int treshold_compression;
-} Root;
-
 //resultPresence is a structure produced by presenceKmer(). It contains information about the presence of a prefix p into a given node.
 typedef struct{
-    void* restrict node;
-    void* restrict container; //Ptr to the container (UC or CC) which contain the prefix p or cc->children that contain the substring we are looking for
-    void* restrict link_child; //Ptr to the container (Node or uint8_t*) having potentially the suffix linked to the prefix p
+    void*  node;
+    void*  container; //Ptr to the container (UC or CC) which contain the prefix p or cc->children that contain the substring we are looking for
+    void*  link_child; //Ptr to the container (Node or uint8_t*) having potentially the suffix linked to the prefix p
 
     int level_node;
     int pos_container;
@@ -125,24 +103,77 @@ typedef struct{
     int nb_res_pres_ccs;
 } resultPresenceSeed;
 
+/** Root vertex of a BFT.
+ *  A BFT_Root contains the k-mer size as well as the number and name of the inserted genomes.
+ *  Other contained structures and variables are for internal use only and must not be modified.
+ */
+
+typedef struct {
+    char** filenames; /**< Inserted genome file names. */
+
+    uint64_t* hash_v;
+
+    uint16_t** skip_sp;
+
+    annotation_array_elem* comp_set_colors;
+
+    info_per_level* info_per_lvl;
+
+    annotation_inform* ann_inf;
+
+    resultPresence* res;
+
+    int k; /**< Size of k-mers. */
+    int r1;
+    int r2;
+    int nb_genomes; /**< Number of genomes inserted. It corresponds to the number of files stored in BFT_Root::filenames. */
+    int length_comp_set_colors;
+    int treshold_compression; /**< Color compression is triggered every BFT_Root::treshold_compression genome inserted. */
+
+    uint8_t compressed;
+    uint8_t marked;
+
+    Node node;
+} BFT_Root;
+
+/** K-mer stored in a BFT_Root.
+ *  A BFT_kmer contains the k-mer in its ASCII form and 2 bits encoded form,
+ *  as well as information about its location in a BFT_Root.
+ */
+
+typedef struct{
+    char* kmer; /**< ASCII null-terminated k-mer. */
+    uint8_t* kmer_comp; /**< 2 bits encoded form of BFT_kmer::kmer. */
+    resultPresence* res; /**< Contains information about the location of BFT_kmer::kmer in a BFT_Root. */
+} BFT_kmer;
+
 /* ===================================================================================================================================
 *  INLINE FUNCTIONS DECLARATION
 *  ===================================================================================================================================
 */
+
+inline bool are_genomes_ids_overlapping(BFT_Root* root_1, BFT_Root* root_2){
+
+    ASSERT_NULL_PTR(root_1,"get_overlap_genomes_ids()\n")
+    ASSERT_NULL_PTR(root_2,"get_overlap_genomes_ids()\n")
+
+    if (strcmp(root_1->filenames[root_1->nb_genomes-1], root_2->filenames[0]) == 0)
+        return true;
+
+    return false;
+}
 
 inline uint64_t* create_hash_v_array(int rand_seed1, int rand_seed2){
 
     int j, nb_bits;
     uint32_t nb_hash_v = pow(4, NB_CHAR_SUF_PREF);
 
-    uint32_t i;
-
     uint64_t* hash_v = malloc(nb_hash_v * 2 * sizeof(uint64_t));
     ASSERT_NULL_PTR(hash_v, "create_hash_v_array()")
 
     uint8_t gen_sub[SIZE_BYTES_SUF_PREF];
 
-    for (i = 0; i < nb_hash_v; i++){
+    for (uint32_t i = 0; i < nb_hash_v; i++){
 
         nb_bits = NB_CHAR_SUF_PREF * 2;
 
@@ -245,37 +276,6 @@ inline void initiateNode(Node* node){
     return;
 }
 
-/* ---------------------------------------------------------------------------------------------------------------
-*  createRoot()
-*  ---------------------------------------------------------------------------------------------------------------
-*  Create the root of a BFT
-*  ---------------------------------------------------------------------------------------------------------------
-*  ---------------------------------------------------------------------------------------------------------------
-*/
-inline Root* createRoot(char** filenames, int nb_files, int k, int treshold_compression, uint8_t compressed,
-                        int r1, int r2, info_per_level* info_per_lvl){
-
-    Root* root = malloc(sizeof(Root));
-    ASSERT_NULL_PTR(root,"createRoot()")
-
-    root->filenames = filenames;
-    root->nb_genomes = nb_files;
-    root->compressed = compressed;
-    root->comp_set_colors = NULL;
-    root->length_comp_set_colors = 0;
-    root->k = k;
-    root->r1 = r1;
-    root->r2 = r2;
-    root->treshold_compression = treshold_compression;
-    root->info_per_lvl = info_per_lvl;
-
-    root->hash_v = create_hash_v_array(root->r1, root->r2);
-
-    initiateNode(&(root->node));
-
-    return root;
-}
-
 inline resultPresence* create_resultPresence(){
 
     resultPresence* res = calloc(1,sizeof(resultPresence));
@@ -316,5 +316,3 @@ inline void initialize_resultPresence(resultPresence* res){
 
     return;
 }
-
-#endif

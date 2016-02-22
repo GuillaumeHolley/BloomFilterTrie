@@ -1,5 +1,4 @@
-#ifndef DEF_PRINT_MEMORY
-#define DEF_PRINT_MEMORY
+#pragma once
 
 /* ===================================================================================================================================
 *  INCLUDES AND DEFINES
@@ -55,10 +54,8 @@ typedef struct{
 */
 
 memory_Used* create_memory_Used();
-void add_memory_Used(memory_Used* restrict mem1, memory_Used* restrict mem2);
-memory_Used* printMemoryUsedFromNode(Node* restrict node, int lvl_node, int size_kmer, info_per_level* info_per_lvl);
-memory_Used* printMemoryUsedFrom_CC(CC* restrict cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl);
-memory_Used* printMemoryUsedFrom_UC(UC* restrict uc);
+void add_memory_Used(memory_Used*  mem1, memory_Used*  mem2);
+memory_Used* printMemoryUsedFromNode(Node*  node, int lvl_node, int size_kmer, info_per_level* info_per_lvl);
+memory_Used* printMemoryUsedFrom_CC(CC*  cc, int lvl_cc, int size_kmer, info_per_level* info_per_lvl);
+memory_Used* printMemoryUsedFrom_UC(UC*  uc);
 void printMemory(memory_Used* mem);
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef DEF_ANNOTATION
-#define DEF_ANNOTATION
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,5 +11,3 @@
 #include "./../lib/useful_macros.h"
 #include "./../lib/UC_annotation.h"
 #include "./../lib/marking.h"
-
-#endif

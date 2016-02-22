@@ -90,8 +90,8 @@ const uint8_t rev[256] = {0, 64, 128, 192, 16, 80, 144, 208, 32, 96, 160, 224, 4
 
 extern CC* createCC(int nb_bits_bf);
 extern void initiateCC(CC* cc, int nb_bits_bf);
-extern void freeCC(CC* cc, int lvl_cc, info_per_level* restrict info_per_level);
-extern void freeNode(Node* restrict node, int lvl_node, info_per_level* restrict info_per_lvl);
+extern void freeCC(CC* cc, int lvl_cc, info_per_level*  info_per_level);
+extern void freeNode(Node*  node, int lvl_node, info_per_level*  info_per_lvl);
 
 extern int count_nodes(CC* cc, int start, int end, uint8_t type);
 extern int count_children(CC* cc, int start, int end, uint8_t type);
@@ -108,9 +108,10 @@ extern uint16_t hash2_bis(uint8_t* kmer);
 extern uint16_t dbj2(uint8_t c1, uint8_t c2, int size_bf);
 extern uint16_t sdbm(uint8_t c1, uint8_t c2, int size_bf);
 
-extern UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+//extern UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
 extern int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
 extern int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
+extern void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array);
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  transform2CC(uc, cc, size_suffix, info_per_lvl)
@@ -123,7 +124,7 @@ extern int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
 *  info_per_lvl: info_per_level structure used to manipulate the compressed container field cc->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void transform2CC(UC* restrict uc, CC* restrict cc, Root* root, int lvl_cc, int size_suffix){
+void transform2CC(UC*  uc, CC*  cc, BFT_Root* root, int lvl_cc, int size_suffix){
 
     ASSERT_NULL_PTR(uc,"transform2CC()")
     ASSERT_NULL_PTR(cc,"transform2CC()")
@@ -465,7 +466,7 @@ void transform2CC(UC* restrict uc, CC* restrict cc, Root* root, int lvl_cc, int 
 *  info_per_lvl: info_per_level structure used to manipulate cc->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void transform2CC_from_arraySuffix(uint8_t* restrict array_suffix, CC* restrict cc, Root* root, int lvl_cc, int size_suffix,
+void transform2CC_from_arraySuffix(uint8_t*  array_suffix, CC*  cc, BFT_Root* root, int lvl_cc, int size_suffix,
                                    int size_annot, uint8_t** annot_extend, uint8_t** annot_cplx, int size_annot_cplx){
 
     ASSERT_NULL_PTR(array_suffix,"transform2CC_from_arraySuffix()")
@@ -799,12 +800,18 @@ void transform2CC_from_arraySuffix(uint8_t* restrict array_suffix, CC* restrict 
 *  ann_inf: ptr on annotation_inform structure, used to make the transition between reading and modifying an annot
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_sp, uint32_t id_genome, int size_id_genome,
-                 info_per_level* restrict info_per_lvl, annotation_inform* ann_inf, annotation_array_elem* annot_sorted){
+void insertSP_CC(resultPresence*  pres, BFT_Root* root, int lvl_node_insert,
+                 uint8_t*  sp, int size_sp, uint32_t id_genome, int size_id_genome){
 
     ASSERT_NULL_PTR(pres,"insertSP_CC()")
 
+    UC* uc;
+
     CC* cc = pres->container;
+
+    annotation_inform* ann_inf = root->ann_inf;
+    annotation_array_elem* annot_sorted = root->comp_set_colors;
+    info_per_level*  info_per_lvl = &(root->info_per_lvl[lvl_node_insert]);
 
     uint16_t size_bf = cc->type >> 7; //Bloom filter size in bytes
 
@@ -846,8 +853,6 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
 
     uint8_t word_tmp;
     uint8_t suffix = 0;
-
-    UC* uc;
 
     // If the prefix is not present in filter2
     if (pres->presFilter2 == 0){
@@ -1573,7 +1578,7 @@ void insertSP_CC(resultPresence* restrict pres, uint8_t* restrict sp, int size_s
 *  suf_size: Current size of suf in the CC
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void transform_Filter2n3(CC* cc, int pref_size, int suf_size, info_per_level* restrict info_per_lvl){
+void transform_Filter2n3(CC* cc, int pref_size, int suf_size, info_per_level*  info_per_lvl){
 
     ASSERT_NULL_PTR(cc,"transform_Filter2n3()")
     ASSERT_NULL_PTR(info_per_lvl,"transform_Filter2n3()")
@@ -1760,7 +1765,7 @@ void transform_Filter2n3(CC* cc, int pref_size, int suf_size, info_per_level* re
 *  size_annot: annotation size, in bytes
 *  ---------------------------------------------------------------------------------------------------------------
 */
-int add_skp_annotation(CC* cc, int position_type, int size_annot, info_per_level* restrict info_per_level){
+int add_skp_annotation(CC* cc, int position_type, int size_annot, info_per_level*  info_per_level){
 
     ASSERT_NULL_PTR(cc, "add_skp_annotation()")
 
@@ -2058,7 +2063,7 @@ info_per_level* create_info_per_level(int size_max){
 */
 
 void add_skp_children(CC* cc, int position_type, int position_child, int count_before_child, int size_substrings,
-                      int size_annot, info_per_level* restrict info_per_lvl){
+                      int size_annot, info_per_level*  info_per_lvl){
     ASSERT_NULL_PTR(cc, "add_skp_children()")
     ASSERT_NULL_PTR(info_per_lvl, "add_skp_children()")
 
@@ -2391,7 +2396,7 @@ void free_skip_nodes(Node* node, uint16_t** skp_nodes){
         i++;
         free(skp_nodes[i]);
     }
-    while ((((CC*)node->CC_array)[i].type & 0x1) == 0);
+    while (IS_EVEN(((CC*)node->CC_array)[i].type));
 
     free(skp_nodes);
 
