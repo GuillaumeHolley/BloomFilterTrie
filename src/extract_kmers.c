@@ -520,6 +520,11 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
     uint8_t kmer_tmp[size_kmer_array];
 
+    resultPresence* res_cpy = malloc(sizeof(resultPresence));
+    ASSERT_NULL_PTR(res_cpy, "l_iterate_over_kmers_from_node()\n");
+
+    memcpy(res_cpy, bft_kmer->res, sizeof(resultPresence));
+
     initialize_resultPresence(bft_kmer->res);
 
     if ((CC*)n->CC_array != NULL){
@@ -613,9 +618,9 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
                                         it_node++;
 
-                                        bft_kmer->res->container = uc;
+                                        /*bft_kmer->res->container = uc;
                                         bft_kmer->res->posFilter2 = info_per_lvl->size_kmer_in_bytes_minus_1;
-                                        bft_kmer->res->posFilter3 = uc->nb_children;
+                                        bft_kmer->res->posFilter3 = uc->nb_children;*/
                                     }
                                 }
                                 else{
@@ -703,9 +708,9 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
                                             it_node++;
 
-                                            bft_kmer->res->container = uc;
+                                            /*bft_kmer->res->container = uc;
                                             bft_kmer->res->posFilter2 = info_per_lvl->size_kmer_in_bytes_minus_1;
-                                            bft_kmer->res->posFilter3 = uc->nb_children;
+                                            bft_kmer->res->posFilter3 = uc->nb_children;*/
                                         }
                                         else goto OUT_LOOP_S8;
                                     }
@@ -835,9 +840,9 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
                                         it_node++;
 
-                                        bft_kmer->res->container = uc;
+                                        /*bft_kmer->res->container = uc;
                                         bft_kmer->res->posFilter2 = info_per_lvl->size_kmer_in_bytes_minus_1;
-                                        bft_kmer->res->posFilter3 = uc->nb_children;
+                                        bft_kmer->res->posFilter3 = uc->nb_children;*/
                                     }
                                 }
                                 else{
@@ -930,9 +935,9 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
                                             it_node++;
 
-                                            bft_kmer->res->container = uc;
+                                            /*bft_kmer->res->container = uc;
                                             bft_kmer->res->posFilter2 = info_per_lvl->size_kmer_in_bytes_minus_1;
-                                            bft_kmer->res->posFilter3 = uc->nb_children;
+                                            bft_kmer->res->posFilter3 = uc->nb_children;*/
                                         }
                                         else goto OUT_LOOP_S4;
                                     }
@@ -1065,6 +1070,10 @@ void iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8_t
 
         bft_kmer->res->container_is_UC = 0;
     }
+
+    memcpy(bft_kmer->res, res_cpy, sizeof(resultPresence));
+
+    free(res_cpy);
 
     return;
 }
