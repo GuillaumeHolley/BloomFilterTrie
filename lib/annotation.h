@@ -84,7 +84,8 @@ inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it
 
         if (size_id_genome <= 0){
 
-            curr_ann_tmp[it_tmp] = ((id_genome >> size_id_genome) & 0xfc) | flag_ext;
+            //curr_ann_tmp[it_tmp] = ((id_genome >> size_id_genome) & 0xfc) | flag_ext;
+	    curr_ann_tmp[it_tmp] = (id_genome << 2) | flag_ext;
             it_tmp++;
 
             if (it_tmp >= size_tmp){
