@@ -1,6 +1,6 @@
 # BloomFilterTrie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) version 0.5.5 for Linux and Mac OS X systems.
+This repository contains the source code of the Bloom Filter Trie (BFT) version 0.6 for Linux and Mac OS X systems.
 
 The BFT library depends on two external libraries that are required to compile and use the library: Judy Arrays (http://judy.sourceforge.net) and Jemalloc (http://www.canonware.com/jemalloc). Both can be downloaded and installed by following instructions on their respective websites.
 
