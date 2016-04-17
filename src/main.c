@@ -55,7 +55,10 @@ int main(int argc, char *argv[])
     }
     else {
 
-        if ((strcmp("--version", argv[1]) == 0) || (strcmp("-v", argv[1]) == 0)) ERROR("0.5.5\n")
+        if ((strcmp("--version", argv[1]) == 0) || (strcmp("-v", argv[1]) == 0)){
+		printf("0.5.5\n");
+		exit(0);
+	}
         else if (strcmp("build", argv[1]) == 0){
 
             size_kmer = atoi(argv[2]); //Length k argument reading
