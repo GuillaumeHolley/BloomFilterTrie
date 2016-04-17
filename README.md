@@ -59,6 +59,9 @@ Options:
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
 [-query_branching {kmers|kmers_comp} list_kmer_files]
 [-extract_kmers {kmers|kmers_comp} kmers_file]
+
+Version:
+./bft --version
 ```
 ### Commands
 
