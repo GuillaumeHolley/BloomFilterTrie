@@ -2099,6 +2099,9 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
                 }
             }
             else {
+                uint32_t pow2 = 0;
+                uint32_t tmp = 1;
+
                 int nb_id_stored_cpy = 0;
 
                 uint32_t* id_stored_cpy = malloc(ann_inf->nb_id_stored * sizeof(uint32_t));
@@ -2109,18 +2112,34 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
                 for (i = 0; i < ann_inf->nb_id_stored; i++){
 
                     if (i%2){
-                        for (uint32_t z = ann_inf->id_stored[i-1]+1; z <= ann_inf->id_stored[i]; z++){
-                            id_stored_cpy[nb_id_stored_cpy] = z;
+                        for (uint32_t z = id_stored_cpy[i-1]+1; z <= id_stored_cpy[i]; z++){
+
+                            ann_inf->id_stored[nb_id_stored_cpy] = z;
+
+                            if (ann_inf->id_stored[nb_id_stored_cpy] >= pow2){
+                                pow2 = round_up_next_highest_power2(ann_inf->id_stored[nb_id_stored_cpy]);
+                                tmp = get_nb_bytes_power2_annot_bis(ann_inf->id_stored[nb_id_stored_cpy], pow2);
+                            }
+
+                            ann_inf->size_id_stored[nb_id_stored_cpy] = tmp;
+
                             nb_id_stored_cpy++;
                         }
                     }
                     else{
-                        id_stored_cpy[nb_id_stored_cpy] = ann_inf->id_stored[i];
+                        ann_inf->id_stored[nb_id_stored_cpy] = id_stored_cpy[i];
+
+                        if (ann_inf->id_stored[nb_id_stored_cpy] >= pow2){
+                            pow2 = round_up_next_highest_power2(ann_inf->id_stored[nb_id_stored_cpy]);
+                            tmp = get_nb_bytes_power2_annot_bis(ann_inf->id_stored[nb_id_stored_cpy], pow2);
+                        }
+
+                        ann_inf->size_id_stored[nb_id_stored_cpy] = tmp;
+
                         nb_id_stored_cpy++;
                     }
                 }
 
-                memcpy(ann_inf->id_stored, id_stored_cpy, nb_id_stored_cpy * sizeof(uint32_t));
                 ann_inf->nb_id_stored = nb_id_stored_cpy;
 
                 free(id_stored_cpy);
