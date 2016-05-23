@@ -2098,6 +2098,33 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
                     it = !it;
                 }
             }
+            else {
+                int nb_id_stored_cpy = 0;
+
+                uint32_t* id_stored_cpy = malloc(ann_inf->nb_id_stored * sizeof(uint32_t));
+                ASSERT_NULL_PTR(id_stored_cpy, "get_id_genomes_from_annot()\n")
+
+                memcpy(id_stored_cpy, ann_inf->id_stored, ann_inf->nb_id_stored * sizeof(uint32_t));
+
+                for (i = 0; i < ann_inf->nb_id_stored; i++){
+
+                    if (i%2){
+                        for (uint32_t z = ann_inf->id_stored[i-1]+1; z <= ann_inf->id_stored[i]; z++){
+                            id_stored_cpy[nb_id_stored_cpy] = z;
+                            nb_id_stored_cpy++;
+                        }
+                    }
+                    else{
+                        id_stored_cpy[nb_id_stored_cpy] = ann_inf->id_stored[i];
+                        nb_id_stored_cpy++;
+                    }
+                }
+
+                memcpy(ann_inf->id_stored, id_stored_cpy, nb_id_stored_cpy * sizeof(uint32_t));
+                ann_inf->nb_id_stored = nb_id_stored_cpy;
+
+                free(id_stored_cpy);
+            }
         }
         else if (ann_inf->current_mode == 2){ //<Present nowhere except in x> mode
 
