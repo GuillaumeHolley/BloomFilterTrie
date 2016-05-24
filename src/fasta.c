@@ -57,12 +57,18 @@ void kmer_comp_to_ascii(const uint8_t* kmer_comp, int k, char* kmer){
 
     uint8_t tmp;
 
-    int i = 0;
-    int j = 0;
+    int i = 0, j = 0;
 
-    for (i = 0; i < CEIL(k * 2, SIZE_BITS_UINT_8T) - 1; i++){
-        for (j = 0, tmp = kmer_comp[i]; j < 4; j++, kmer++, tmp >>= 2)
-            *kmer = COMP_TO_ASCII[tmp & 0x3];
+    for (i = 0; i < CEIL(k * 2, SIZE_BITS_UINT_8T) - (k % 4 != 0); i++){
+        tmp = kmer_comp[i];
+        *kmer = COMP_TO_ASCII[tmp & 0x3];
+        kmer++; tmp >>= 2;
+        *kmer = COMP_TO_ASCII[tmp & 0x3];
+        kmer++; tmp >>= 2;
+        *kmer = COMP_TO_ASCII[tmp & 0x3];
+        kmer++; tmp >>= 2;
+        *kmer = COMP_TO_ASCII[tmp & 0x3];
+        kmer++;
     }
 
     for (j = 0, tmp = kmer_comp[i]; j < k % 4; j++, kmer++, tmp >>= 2)
