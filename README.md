@@ -40,7 +40,7 @@ cd <BFT directory>
 make
 ```
 
-## Library documentation:
+## API documentation:
 
 Documentation for the BFT library is available in the /doc/doxygen folder (HTML and Latex).
 
