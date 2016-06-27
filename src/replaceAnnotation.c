@@ -94,7 +94,7 @@ void load_annotation_from_UC(UC* uc, int size_substring, int nb_children, int lo
 
         UC_SIZE_ANNOT_T *min_sizes = min_size_per_sub(uc->suffixes, nb_children, size_substring, uc->size_annot);
 
-        uint8_t* annot = calloc(longest_annot + CEIL(longest_annot, SIZE_BITS_UINT_8T) + 4, sizeof(uint8_t));
+        uint8_t* annot = calloc(longest_annot + CEIL(longest_annot, SIZE_BITS_UINT_8T-1) + 4, sizeof(uint8_t));
         ASSERT_NULL_PTR(annot, "load_annotation_from_UC()")
 
         for (i=0; i<nb_children; i++){
