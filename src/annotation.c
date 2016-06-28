@@ -1518,7 +1518,7 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
     uint32_t size_annot_list = 0;
     uint32_t pos_annot_list = 0;
     //uint32_t tot_cell_index = SIZE_MAX_BYTE_ANNOT + CEIL(SIZE_MAX_BYTE_ANNOT, SIZE_BITS_UINT_8T) + 4;
-    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, SIZE_BITS_UINT_8T) + 4;
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, SIZE_BITS_UINT_8T-1) + 4;
     uint32_t length_index;
 
     //uint32_t nb_annot_with_first_size;
