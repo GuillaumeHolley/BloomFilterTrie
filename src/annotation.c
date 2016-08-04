@@ -1148,7 +1148,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
                     imin = ann_inf->id_stored[i];
                     imax = ann_inf->id_stored[i+1];
 
-                    while (imin < imax){
+                    while (imin <= imax){
 
                         pow2_imin = round_up_next_highest_power2(imin);
 
