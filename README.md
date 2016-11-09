@@ -1,6 +1,6 @@
 # BFT: Bloom Filter Trie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) library. The BFT is an alignment-free, reference-free and incremental succinct data structure for colored de Bruijn graphs. It is based on the *burst trie* and use Bloom filters for efficient trie and graph traversals. The data structure indexes k-mers and their colors based on a new representation of trie vertices that
+This repository contains the source code of the Bloom Filter Trie (BFT) library. The BFT is an alignment-free, reference-free and incremental succinct data structure for colored de Bruijn graphs. It is based on the burst trie and use Bloom filters for efficient trie and graph traversals. The data structure indexes *k*-mers and their colors based on a new representation of trie vertices that
 compress and index shared substrings. A typical application of the BFT is pan-genome indexing.
 
 ## Dependencies
@@ -82,7 +82,7 @@ To install the BFT library in a specific directory, see Linux compilation and in
 
 Using the BFT library is very simple. Once the library is installed on your system, just use
 ```
-\#include<bft/bft.h>
+#include<bft/bft.h>
 ```
 in your C or C++ code. Then, compile your code with the flag
 ```
@@ -99,11 +99,11 @@ cd <BFT_directory>
 doxygen Doxyfile
 ```
 
-The documentation contains a description of all the functions and structure of the library as well as code snippets.
+The documentation contains a description of all the functions and structures of the library as well as code snippets.
 
 ## Binary usage:
 
-Installing the BFT library also produce a binary that shows what it is possible to do with the library. Therefore, the binary can perform a limited number of operations described in the following.
+Installing the BFT library also produces a binary that shows what it is possible to do with the library. Therefore, the binary can perform a limited number of operations described in the following.
 
 ```
 bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]
