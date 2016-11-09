@@ -52,6 +52,7 @@ cd <BFT_directory>
 ./configure --prefix=<a_directory>
 make
 make install
+```
 
 Make sure that your environment variables are all set with <a_directory>.
 
