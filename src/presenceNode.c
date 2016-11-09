@@ -1,13 +1,4 @@
-#include "./../lib/presenceNode.h"
-
-extern void init_resultPresenceSeed(resultPresenceSeed* res_seed);
-extern void init_resultPresenceSeedCC(resultPresenceSeedCC* res_pres_CC);
-extern void free_resultPresenceSeedCC(resultPresenceSeedCC* res_pres_CC, int free_res_pres_CC_or_not);
-extern void free_resultPresenceSeed(resultPresenceSeed* res_seed, int free_res_seed_or_not);
-
-extern int suffix_matching(CC* cc, int position, uint8_t mask, uint8_t suffix, uint8_t size_suffix_bit);
-
-extern void sum_up_duos(Duo* d1, Duo* d2);
+#include "presenceNode.h"
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  presenceKmer(node, kmer, size_kmer, nb_CC_node, info_per_lvl)
@@ -1278,7 +1269,7 @@ int* get_bf_presence_per_cc(BFT_Root* root){
 *  info_per_lvl: ptr on info_per_level structure, contains information to manipulate CCs field CC->children_type
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void presenceKmer(Node*  node, BFT_Root* root, uint8_t*  kmer, int size_kmer, int posCC_start_search,
+void presenceKmer(Node* node, BFT_Root* root, uint8_t* kmer, int size_kmer, int posCC_start_search,
                   int verify_UC_or_not, resultPresence* res){
 
     if (size_kmer == 0) ERROR("presenceKmer(): this case should not happen")
@@ -1568,782 +1559,6 @@ void presenceKmer(Node*  node, BFT_Root* root, uint8_t*  kmer, int size_kmer, in
     return;
 }
 
-void presenceSeed(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  seed, int size_seed, int size_kmer,
-                  int posCC_start_search, int id_genome, int search_for_id_genome, int stop_if_2idgenomes_found,
-                  resultPresenceSeed* res, annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
-
-    if ((size_kmer == 0) || (size_seed == 0)) ERROR("presenceSeed(): this case should not happen")
-
-    ASSERT_NULL_PTR(node, "presenceSeed()")
-    ASSERT_NULL_PTR(seed, "presenceSeed()")
-    ASSERT_NULL_PTR(res, "presenceSeed()")
-    ASSERT_NULL_PTR(ann_inf, "presenceSeed()")
-    ASSERT_NULL_PTR(d1, "presenceSeed()")
-
-    CC* cc;
-    UC* uc;
-
-    resultPresenceSeedCC* res_pres_ccs;
-
-    uint8_t* annot;
-    uint8_t* annot_ext;
-    uint8_t* annot_cplx;
-
-    uint8_t** annot2;
-    uint8_t** annot_ext2;
-    uint8_t** annot_cplx2;
-
-    uint8_t* annot_ext_tmp;
-
-    int* size_annot2;
-    int* size_annot_cplx2;
-
-    int j = 0, k = 0;
-    int cpt_pv = 0;
-    int cpt_node = 0;
-    int it_filter2 = 0;
-    int hamming_weight_0 = 0;
-
-    int cpt_node_tmp = -1;
-    int first_it_filter2 = -1;
-    int i = posCC_start_search-1;
-
-    int size_seed_array = CEIL(size_seed * 2, SIZE_BITS_UINT_8T);
-    int shift = (SIZE_BYTES_SUF_PREF - 1) * SIZE_BITS_UINT_8T;
-    int search_for_id_genome_cpy = search_for_id_genome;
-
-    int nb_skp;
-    int nb_elt;
-    int first_bit;
-    int it_filter3;
-    int prev_it_filter3_pv;
-    int prev_it_filter3_node;
-    int it_children_bucket;
-    int prev_it_children_bucket;
-    int pos_pres_in_filter;
-    int pos_extra_filter3;
-    int size_line;
-
-    int size_annot;
-    int size_annot_cplx;
-
-    uint8_t mask_end_seed = MASK_POWER_16[SIZE_BITS_UINT_8T - (size_seed_array * SIZE_BITS_UINT_8T - size_seed * 2)]-1;
-    uint8_t nuc_tmp = seed[0] & 0x3;
-
-    uint8_t s;
-    uint8_t p;
-    uint8_t mask;
-    uint8_t suffix;
-    uint8_t type;
-
-    uint8_t substring[SIZE_BYTES_SUF_PREF];
-    uint8_t seed_tmp[SIZE_BYTES_SUF_PREF];
-
-    uint16_t size_bf;
-
-    uint32_t seed_concat_rev = 0;
-
-    res->n = node;
-
-    memset(seed_tmp, 0, SIZE_BYTES_SUF_PREF * sizeof(uint8_t));
-    for (j=0; j<size_seed_array; j++) seed_tmp[j] = seed[j];
-    seed_tmp[size_seed_array-1] &= mask_end_seed;
-
-    if (root->compressed > 0){
-        seed_concat_rev = (reverse_word_8(seed_tmp[0]) << SIZE_BITS_UINT_8T) | reverse_word_8(seed_tmp[1]);
-        seed_concat_rev = (seed_concat_rev << SIZE_BITS_UINT_8T) | reverse_word_8(seed_tmp[2]);
-    }
-    else{
-        seed_concat_rev = (reverse_word_8(seed_tmp[0] & 0xfc) << SIZE_BITS_UINT_8T) | reverse_word_8(seed_tmp[1]);
-        seed_concat_rev = (seed_concat_rev << SIZE_BITS_UINT_8T) | reverse_word_8(seed_tmp[2]);
-        seed_concat_rev = (seed_concat_rev << 2) | (nuc_tmp << 6);
-    }
-
-    //Keep in resultPresence->substring only the prefix we are looking for
-    substring[0] = seed_concat_rev >> shift;
-    shift -= SIZE_BITS_UINT_8T;
-    substring[1] = seed_concat_rev >> shift;
-    shift -= SIZE_BITS_UINT_8T;
-    substring[2] = seed_concat_rev >> shift;
-
-    //We first iterate on the CCs
-    if ((CC*)node->CC_array != NULL){
-        do {
-            i++;
-
-            cpt_pv = 0;
-            cpt_node = -1;
-            cpt_node_tmp = -1;
-            first_it_filter2 = -1;
-            prev_it_children_bucket = -1;
-            pos_extra_filter3 = INT_MAX;
-
-            res->res_pres_ccs = realloc(res->res_pres_ccs, (i+1) * sizeof(resultPresenceSeedCC));
-            res_pres_ccs = &(res->res_pres_ccs[i]);
-            res->nb_res_pres_ccs++;
-
-            init_resultPresenceSeedCC(res_pres_ccs);
-
-            cc = &(((CC*)node->CC_array)[i]);
-
-            nb_skp = CEIL(cc->nb_elem, root->info_per_lvl[lvl_node].nb_ucs_skp);
-
-            size_bf = cc->type >> 7;
-            s = (cc->type >> 1) & 0x1f;
-            p = NB_CHAR_SUF_PREF*2-s;
-            type = (cc->type >> 6) & 0x1;
-
-            if (s==8){ //if the length of p_vs is 8bits
-
-                int nb_bits_used = (size_seed - 1) * 2 - p;
-
-                mask = 0;
-                if (nb_bits_used > 0) mask = 0xff - MASK_POWER_8[SIZE_BITS_UINT_8T - nb_bits_used] + 1;
-                mask |= 0x3;
-
-                suffix = (substring[1] << 2) | (substring[2] >> 6);
-            }
-            else{
-                mask = 0x3;
-                if (size_seed == NB_CHAR_SUF_PREF) mask = 0xff;
-
-                suffix = ((substring[1] & 0x3) << 2) | (substring[2] >> 6);
-            }
-
-            if (p==10) res_pres_ccs->start_pos_filter2 = (((uint16_t)substring[0]) << 2) | (((uint16_t)substring[1]) >> 6);
-            else res_pres_ccs->start_pos_filter2 = (((uint16_t)substring[0]) << 6) | (((uint16_t)substring[1]) >> 2);
-
-            if ((size_seed - 1) * 2 >= p) res_pres_ccs->end_pos_filter2 = res_pres_ccs->start_pos_filter2;
-            else res_pres_ccs->end_pos_filter2 = res_pres_ccs->start_pos_filter2 + MASK_POWER_16[p - (size_seed - 1) * 2] - 1;
-
-            //res_pres_ccs->pres_in_filter2 = calloc(CEIL(res_pres_ccs->end_pos_filter2 - res_pres_ccs->start_pos_filter2 + 1, SIZE_BITS_UINT_8T), sizeof(uint8_t));
-            //ASSERT_NULL_PTR(res_pres_ccs->pres_in_filter2, "presenceSeed()");
-
-            it_filter2 = res_pres_ccs->start_pos_filter2;
-            pos_pres_in_filter = 0;
-
-            while (it_filter2 <= res_pres_ccs->end_pos_filter2){
-
-                if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T]) != 0){
-
-                    //res_pres_ccs->pres_in_filter2[pos_pres_in_filter / SIZE_BITS_UINT_8T] |= MASK_POWER_8[pos_pres_in_filter % SIZE_BITS_UINT_8T];
-
-                    //if (first_it_filter2 == -1){
-                        first_it_filter2 = it_filter2;
-                        break;
-                    //}
-                }
-
-                it_filter2++;
-                pos_pres_in_filter++;
-            }
-
-            it_filter2 = first_it_filter2;
-
-            if ((it_filter2 != -1) && ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T]) != 0)){
-
-                findCluster(cc, it_filter2, &cpt_node_tmp, &pos_extra_filter3, &hamming_weight_0, NULL, &(root->info_per_lvl[lvl_node]));
-                res_pres_ccs->start_pos_filter3 = pos_extra_filter3;
-
-                pos_pres_in_filter = 0;
-                it_filter3 = pos_extra_filter3;
-
-                //res_pres_ccs->pres_in_filter3 = calloc(CEIL(cc->nb_elem - it_filter3 + 1, SIZE_BITS_UINT_8T), sizeof(uint8_t));
-                //ASSERT_NULL_PTR(res_pres_ccs->pres_in_filter3, "presenceSeed()")
-
-                if (root->info_per_lvl[lvl_node].level_min == 1){
-
-                    for (; it_filter2 <= res_pres_ccs->end_pos_filter2; it_filter2++){
-
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
-
-                            first_bit = 1;
-
-                            while((it_filter3 < cc->nb_elem)
-                                  && (((cc->extra_filter3[it_filter3/SIZE_BITS_UINT_8T] & MASK_POWER_8[it_filter3%SIZE_BITS_UINT_8T]) == 0) || (first_bit == 1))){
-
-                                if (size_kmer != NB_CHAR_SUF_PREF){
-
-                                    if (suffix_matching(cc, it_filter3, mask, suffix, s) != 0){
-
-                                        nb_elt = getNbElts(cc, it_filter3, type);
-
-                                        //res_pres_ccs->pres_in_filter3[pos_pres_in_filter/SIZE_BITS_UINT_8T] |= MASK_POWER_8[pos_pres_in_filter%SIZE_BITS_UINT_8T];
-
-                                        if (nb_elt == 0){
-
-                                            if (cpt_node == -1){
-                                                if (it_filter3 < cc->nb_elem - it_filter3) cpt_node = count_nodes(cc, 0, it_filter3, type);
-                                                else cpt_node = cc->nb_Node_children - count_nodes(cc, it_filter3, cc->nb_elem, type);
-                                            }
-                                            else cpt_node += count_nodes(cc, prev_it_filter3_node, it_filter3, type);
-
-                                            countKmers_Node(&(cc->children_Node_container[cpt_node]), lvl_node-1, size_kmer - NB_CHAR_SUF_PREF,
-                                                            id_genome, search_for_id_genome_cpy, stop_if_2idgenomes_found, root->info_per_lvl, ann_inf,
-                                                            annot_sorted, d1);
-
-                                            if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END_PRESENCE_SEED;
-
-                                            prev_it_filter3_node = it_filter3;
-                                        }
-                                        else{
-                                            d1->elem1 += nb_elt;
-
-                                            if (search_for_id_genome_cpy > 0){
-
-                                                it_children_bucket = it_filter3/root->info_per_lvl[lvl_node].nb_ucs_skp;
-
-                                                if (it_children_bucket == prev_it_children_bucket){
-                                                    cpt_pv += count_children(cc, prev_it_filter3_pv, it_filter3, type);
-                                                }
-                                                else{
-                                                    prev_it_children_bucket = it_children_bucket;
-                                                    uc = &(((UC*)cc->children)[it_children_bucket]);
-
-                                                    cpt_pv = count_children(cc, it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp, it_filter3, type);
-                                                }
-
-                                                get_annots(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
-                                                               root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1, uc->nb_children, cpt_pv,
-                                                               cpt_pv + nb_elt - 1);
-
-                                                for (k = 0; k < nb_elt; k++){
-
-                                                    if (annot_ext2 == NULL) annot_ext_tmp = NULL;
-                                                    else annot_ext_tmp = annot_ext2[k];
-
-                                                    if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot2[k],
-                                                                                         size_annot2[k], annot_ext_tmp, 1, id_genome) == 1){
-                                                        d1->elem2 = 1;
-                                                        search_for_id_genome_cpy = 0;
-                                                        break;
-                                                    }
-                                                }
-
-                                                FREE_5PTRS(annot2, size_annot2, size_annot_cplx2, annot_ext2, annot_cplx2)
-                                                prev_it_filter3_pv = it_filter3;
-
-                                                if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END_PRESENCE_SEED;
-                                            }
-                                        }
-                                    }
-                                }
-                                else{
-                                    if (suffix_matching(cc, it_filter3, mask, suffix, s) != 0){
-                                        //res_pres_ccs->pres_in_filter3[pos_pres_in_filter/SIZE_BITS_UINT_8T] |= MASK_POWER_8[pos_pres_in_filter%SIZE_BITS_UINT_8T];
-                                        d1->elem1++;
-
-                                        if (search_for_id_genome_cpy > 0){
-
-                                            it_children_bucket = it_filter3/root->info_per_lvl[lvl_node].nb_ucs_skp;
-
-                                            if (it_children_bucket != prev_it_children_bucket){
-                                                prev_it_children_bucket = it_children_bucket;
-                                                uc = &(((UC*)cc->children)[it_children_bucket]);
-
-                                                if (it_children_bucket == nb_skp-1) nb_elt = cc->nb_elem - it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp;
-                                                else nb_elt = root->info_per_lvl[lvl_node].nb_ucs_skp;
-                                            }
-
-                                            get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
-                                                            0, nb_elt, it_filter3 % root->info_per_lvl[lvl_node].nb_ucs_skp);
-
-                                            if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot,
-                                                                                size_annot, annot_ext, 1, id_genome) == 1){
-                                                d1->elem2 = 1;
-                                                search_for_id_genome_cpy = 0;
-                                            }
-
-                                            if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END_PRESENCE_SEED;
-                                        }
-                                    }
-                                }
-
-                                it_filter3++;
-                                pos_pres_in_filter++;
-                                first_bit = 0;
-                            }
-                        }
-                    }
-                }
-                else {
-
-                    it_children_bucket = it_filter3/root->info_per_lvl[lvl_node].nb_ucs_skp;
-
-                    int end = it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp;
-                    int it = it_filter3 - it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp;
-                    int nb_cell_children = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1-1;
-
-                    count_Nodes_Children(cc, it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp, it_filter3, &cpt_pv, &cpt_node, type);
-
-                    if (end < cc->nb_elem - end) cpt_node += count_nodes(cc, 0, end, type);
-                    else cpt_node += cc->nb_Node_children - count_nodes(cc, end, cc->nb_elem, type);
-
-                    for (; it_filter2 <= res_pres_ccs->end_pos_filter2; it_filter2++){
-
-                        if ((cc->BF_filter2[size_bf+it_filter2/SIZE_BITS_UINT_8T] & (MASK_POWER_8[it_filter2%SIZE_BITS_UINT_8T])) != 0){
-
-                            first_bit = 1;
-
-                            while (it_children_bucket < nb_skp){
-
-                                if (it_children_bucket == nb_skp - 1) end = cc->nb_elem - it_children_bucket * root->info_per_lvl[lvl_node].nb_ucs_skp;
-                                else end = root->info_per_lvl[lvl_node].nb_ucs_skp;
-
-                                uc = &(((UC*)cc->children)[it_children_bucket]);
-                                size_line = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1 + uc->size_annot;
-
-                                while (it < end){
-
-                                    if ((nb_elt = getNbElts(cc, it_filter3, type)) == 0){
-
-                                        if (((cc->children_Node_container[cpt_node].UC_array.nb_children & 0x1) == 0) || (first_bit == 1)){
-
-                                            if (suffix_matching(cc, it_filter3, mask, suffix, s) != 0){
-
-                                                //res_pres_ccs->pres_in_filter3[pos_pres_in_filter/SIZE_BITS_UINT_8T] |= MASK_POWER_8[pos_pres_in_filter%SIZE_BITS_UINT_8T];
-
-                                                countKmers_Node(&(cc->children_Node_container[cpt_node]), lvl_node-1, size_kmer - NB_CHAR_SUF_PREF,
-                                                                id_genome, search_for_id_genome_cpy, stop_if_2idgenomes_found, root->info_per_lvl, ann_inf,
-                                                                annot_sorted, d1);
-
-                                                if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END_PRESENCE_SEED;
-                                            }
-
-                                            first_bit = 0;
-                                            cpt_node++;
-                                        }
-                                        else goto OUT_LOOP_FILTER2_IT;
-                                    }
-                                    else{
-                                        if (((uc->suffixes[cpt_pv*size_line+nb_cell_children] >> 7) == 0)  || (first_bit == 1)){
-
-                                            if (suffix_matching(cc, it_filter3, mask, suffix, s) != 0){
-
-                                                //res_pres_ccs->pres_in_filter3[pos_pres_in_filter/SIZE_BITS_UINT_8T] |= MASK_POWER_8[pos_pres_in_filter%SIZE_BITS_UINT_8T];
-
-                                                d1->elem1 += nb_elt;
-
-                                                if (search_for_id_genome_cpy > 0){
-
-                                                    get_annots(uc, &annot2, &annot_ext2, &annot_cplx2, &size_annot2, &size_annot_cplx2,
-                                                                   root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1, uc->nb_children, cpt_pv,
-                                                                   cpt_pv + nb_elt - 1);
-
-                                                    for (k = 0; k < nb_elt; k++){
-
-                                                        if (annot_ext2 == NULL) annot_ext_tmp = NULL;
-                                                        else annot_ext_tmp = annot_ext2[k];
-
-                                                        if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot2[k],
-                                                                                             size_annot2[k], annot_ext_tmp, 1, id_genome) == 1){
-                                                            d1->elem2 = 1;
-                                                            search_for_id_genome_cpy = 0;
-                                                            break;
-                                                        }
-                                                    }
-
-                                                    FREE_5PTRS(annot2, size_annot2, size_annot_cplx2, annot_ext2, annot_cplx2)
-                                                }
-
-                                                if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END_PRESENCE_SEED;
-                                            }
-
-                                            first_bit = 0;
-                                            cpt_pv += nb_elt;
-                                        }
-                                        else goto OUT_LOOP_FILTER2_IT;
-                                    }
-
-                                    it++;
-                                    it_filter3++;
-                                    pos_pres_in_filter++;
-                                }
-
-                                it = 0;
-                                cpt_pv = 0;
-                                it_children_bucket++;
-                            }
-                        }
-
-                        OUT_LOOP_FILTER2_IT: continue;
-                    }
-                }
-
-                res_pres_ccs->end_pos_filter3 = it_filter3 - 1;
-                //res_pres_ccs->pres_in_filter3 = realloc(res_pres_ccs->pres_in_filter3,
-                //                               CEIL(res_pres_ccs->end_pos_filter3 - res_pres_ccs->start_pos_filter3 + 1, SIZE_BITS_UINT_8T) * sizeof(uint8_t));
-            }
-        }
-        while ((((CC*)node->CC_array)[i].type & 0x1) == 0);
-    }
-
-    //If the prefix was not found in any CC Bloom filters, we search in the UC of the node
-    if (node->UC_array.suffixes != NULL){
-
-        int nb_elt = node->UC_array.nb_children >> 1;
-        int size_line = root->info_per_lvl[lvl_node].size_kmer_in_bytes + node->UC_array.size_annot;
-
-        //res->pres_uc = calloc(CEIL(nb_elt, SIZE_BITS_UINT_8T), sizeof(uint8_t));
-        //ASSERT_NULL_PTR(res->pres_uc, "presenceSeed()")
-
-        for (i = 0, j = 0; i < nb_elt * size_line; i += size_line, j++){
-
-            if ((memcmp(&(node->UC_array.suffixes[i]), seed_tmp, (size_seed_array - 1) * sizeof(uint8_t)) == 0) &&
-                ((node->UC_array.suffixes[i + size_seed_array - 1] & mask_end_seed) == seed_tmp[size_seed_array-1])){
-                    //res->pres_uc[j/SIZE_BITS_UINT_8T] |= MASK_POWER_8[j % SIZE_BITS_UINT_8T];
-                    d1->elem1++;
-
-                    if (search_for_id_genome_cpy > 0){
-                        get_annot(&(node->UC_array), &annot, &annot_ext, &annot_cplx,
-                                       &size_annot, &size_annot_cplx, root->info_per_lvl[lvl_node].size_kmer_in_bytes,
-                                       nb_elt, j);
-
-                        if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot, size_annot,
-                                                             annot_ext, 1, id_genome) == 1){
-                            d1->elem2 = 1;
-                            search_for_id_genome_cpy = 0;
-                        }
-                    }
-
-                    if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) break;
-            }
-        }
-    }
-
-    END_PRESENCE_SEED: return;
-}
-
-void isSeedPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  seed, int size_seed, int size_kmer,
-                   int id_genome, int search_for_id_genome, int stop_if_2idgenomes_found, annotation_inform* ann_inf,
-                   annotation_array_elem* annot_sorted, Duo* d1){
-
-    ASSERT_NULL_PTR(node,"isSeedPresent() 1")
-    ASSERT_NULL_PTR(seed,"isSeedPresent() 2")
-    ASSERT_NULL_PTR(root,"isSeedPresent() 3")
-    ASSERT_NULL_PTR(ann_inf,"isSeedPresent() 4")
-    ASSERT_NULL_PTR(d1,"isSeedPresent() 5")
-
-    int nb_cell;
-    int size_line;
-    int nb_cell_to_delete;
-
-    int size_annot;
-    int size_annot_cplx;
-
-    int j = 0, k = 0;
-    int search_for_id_genome_cpy = search_for_id_genome;
-
-    int size_seed_array = CEIL(size_seed * 2, SIZE_BITS_UINT_8T);
-    int size_seed_array_children = CEIL((size_seed - NB_CHAR_SUF_PREF) * 2, SIZE_BITS_UINT_8T);
-
-    uint8_t mask_end_seed;
-
-    uint16_t nb_elt;
-
-    CC* cc;
-    UC* uc;
-
-    resultPresence* res;
-
-    resultPresenceSeed* res_pres_seed;
-
-    uint8_t* annot;
-    uint8_t* annot_ext;
-    uint8_t* annot_cplx;
-
-    __builtin_prefetch (&(root->info_per_lvl[lvl_node]), 0, 0);
-
-    uint8_t seed_tmp[root->info_per_lvl[lvl_node].size_kmer_in_bytes];
-    memcpy(seed_tmp, seed, root->info_per_lvl[lvl_node].size_kmer_in_bytes);
-
-    //We want to start the search at the beginning of the node so 4th argument is 0
-    if (size_seed > NB_CHAR_SUF_PREF){
-
-        res = malloc(sizeof(resultPresence));
-        ASSERT_NULL_PTR(res,"isSeedPresent()")
-
-        presenceKmer(node, root, seed_tmp, size_kmer, 0, 0, res);
-
-        if (res->link_child != NULL){
-
-            nb_cell_to_delete = 2;
-            if (size_kmer == 45) nb_cell_to_delete++;
-
-            nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
-
-            for (j=0; j < nb_cell - nb_cell_to_delete; j++){
-                seed_tmp[j] = seed_tmp[j+2] >> 2;
-                if (j+3 < nb_cell) seed_tmp[j] |= seed_tmp[j+3] << 6;
-            }
-
-            seed_tmp[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
-
-            if (res->children_type_leaf == 0){
-                isSeedPresent((Node*)res->link_child, root, lvl_node-1, seed_tmp, size_seed - NB_CHAR_SUF_PREF, size_kmer-NB_CHAR_SUF_PREF,
-                                id_genome, search_for_id_genome_cpy, stop_if_2idgenomes_found, ann_inf, annot_sorted, d1);
-            }
-            else{
-
-                cc = (CC*)res->container;
-                uc = &(((UC*)cc->children)[res->bucket]);
-
-                nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
-                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
-                size_line = nb_cell + uc->size_annot;
-
-                mask_end_seed = MASK_POWER_16[SIZE_BITS_UINT_8T - (size_seed_array_children * SIZE_BITS_UINT_8T - (size_seed - NB_CHAR_SUF_PREF) * 2)]-1;
-
-                for (j = res->pos_sub_bucket * size_line, k = res->pos_sub_bucket; j < (res->pos_sub_bucket + nb_elt) * size_line; j += size_line, k++){
-                    if ((memcmp(&(uc->suffixes[j]), seed_tmp, (size_seed_array_children - 1) * sizeof(uint8_t)) == 0) &&
-                        ((uc->suffixes[j + size_seed_array_children - 1] & mask_end_seed) == seed_tmp[size_seed_array_children - 1])){
-                            d1->elem1++;
-
-                            if (search_for_id_genome_cpy > 0){
-                                get_annot(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
-                                               nb_cell, uc->nb_children, k);
-
-                                if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome) == 1){
-                                    d1->elem2 = 1;
-                                    search_for_id_genome_cpy = 0;
-                                }
-                            }
-
-                            if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)){
-                                free(res);
-                                return;
-                            }
-                        }
-                }
-            }
-        }
-        else if (node->UC_array.suffixes != NULL){
-
-            mask_end_seed = MASK_POWER_16[SIZE_BITS_UINT_8T - (size_seed_array * SIZE_BITS_UINT_8T - size_seed * 2)]-1;
-            size_line = root->info_per_lvl[lvl_node].size_kmer_in_bytes + node->UC_array.size_annot;
-            nb_elt = node->UC_array.nb_children >> 1;
-
-            for (j = 0, k = 0; j < (node->UC_array.nb_children >> 1) * size_line; j += size_line, k++){
-
-                if ((memcmp(&(node->UC_array.suffixes[j]), seed_tmp, (size_seed_array - 1) * sizeof(uint8_t)) == 0) &&
-                    ((node->UC_array.suffixes[j + size_seed_array - 1] & mask_end_seed) == seed_tmp[size_seed_array-1])){
-                        d1->elem1++;
-
-                        if (search_for_id_genome_cpy > 0){
-                            get_annot(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
-                                           root->info_per_lvl[lvl_node].size_kmer_in_bytes, nb_elt, k);
-
-                            if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome) == 1){
-                                d1->elem2 = 1;
-                                search_for_id_genome_cpy = 0;
-                            }
-                        }
-
-                        if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)){
-                            free(res);
-                            return;
-                        }
-                }
-            }
-        }
-
-        free(res);
-    }
-    else{
-
-        res_pres_seed = malloc(sizeof(resultPresenceSeed));
-        ASSERT_NULL_PTR(res_pres_seed, "isSeedPresent()")
-
-        init_resultPresenceSeed(res_pres_seed);
-
-        presenceSeed(node, root, lvl_node, seed_tmp, size_seed, size_kmer, 0, id_genome,
-                    search_for_id_genome_cpy, stop_if_2idgenomes_found, res_pres_seed,
-                    ann_inf, annot_sorted, d1);
-
-        free_resultPresenceSeed(res_pres_seed, 1);
-    }
-
-    return;
-}
-
-void countKmers_Node(Node*  node, int lvl_node, int size_kmer, int id_genome,
-                     int search_for_id_genome, int stop_if_2idgenomes_found, info_per_level*  info_per_lvl,
-                     annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
-
-    ASSERT_NULL_PTR(node,"countKmers_Node()")
-    ASSERT_NULL_PTR(info_per_lvl, "countKmers_CC()")
-    ASSERT_NULL_PTR(d1, "countKmers_CC()")
-
-    int i = 0;
-    int search_for_id_genome_cpy = search_for_id_genome;
-
-    if (node->CC_array != NULL){
-
-        while ((((CC*)node->CC_array)[i].type & 0x1) == 0){
-            countKmers_CC(&(((CC*)node->CC_array)[i]), lvl_node, size_kmer, id_genome, search_for_id_genome_cpy,
-                        stop_if_2idgenomes_found, info_per_lvl, ann_inf, annot_sorted, d1);
-
-            if (d1->elem2 == 1){
-                if (stop_if_2idgenomes_found > 0) goto END_COUNT_KMERS_NODE;
-                search_for_id_genome_cpy = 0;
-            }
-
-            i++;
-        }
-
-        countKmers_CC(&(((CC*)node->CC_array)[i]), lvl_node, size_kmer, id_genome, search_for_id_genome_cpy,
-                        stop_if_2idgenomes_found, info_per_lvl, ann_inf, annot_sorted, d1);
-
-        if (d1->elem2 == 1){
-            if (stop_if_2idgenomes_found > 0) goto END_COUNT_KMERS_NODE;
-            search_for_id_genome_cpy = 0;
-        }
-    }
-
-    if (node->UC_array.suffixes != NULL){
-
-        uint8_t** annot;
-        uint8_t** annot_ext;
-        uint8_t** annot_cplx;
-
-        uint8_t* annot_ext_tmp;
-
-        int* size_annot;
-        int* size_annot_cplx;
-
-        uint16_t nb_elt = node->UC_array.nb_children >> 1;
-
-        d1->elem1 += nb_elt;
-
-        if (search_for_id_genome_cpy > 0){
-
-            get_annots(&(node->UC_array), &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
-                           info_per_lvl[lvl_node].size_kmer_in_bytes, nb_elt, 0, nb_elt-1);
-
-            for (i=0; i<nb_elt; i++){
-
-                if (annot_ext == NULL) annot_ext_tmp = NULL;
-                else annot_ext_tmp = annot_ext[i];
-
-                if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot[i], size_annot[i],
-                                                     annot_ext_tmp, 1, id_genome) == 1){
-                    d1->elem2 = 1;
-                    break;
-                }
-            }
-
-            FREE_5PTRS(annot, size_annot, size_annot_cplx, annot_ext, annot_cplx)
-        }
-    }
-
-    END_COUNT_KMERS_NODE: return;
-}
-
-void countKmers_CC(CC*  cc, int lvl_cont, int size_kmer, int id_genome, int search_for_id_genome,
-                   int stop_if_2idgenomes_found, info_per_level*  info_per_lvl,
-                   annotation_inform* ann_inf, annotation_array_elem* annot_sorted, Duo* d1){
-
-    ASSERT_NULL_PTR(cc, "countKmers_CC()")
-    ASSERT_NULL_PTR(info_per_lvl, "countKmers_CC()")
-
-    int i = 0, j = 0;
-    int nb_skp = CEIL(cc->nb_elem, info_per_lvl[lvl_cont].nb_ucs_skp);
-    int search_for_id_genome_cpy = search_for_id_genome;
-
-    uint8_t** annot = NULL;
-    uint8_t** annot_ext = NULL;
-    uint8_t** annot_cplx = NULL;
-
-    uint8_t* annot_ext_tmp;
-
-    int* size_annot = NULL;
-    int* size_annot_cplx = NULL;
-
-    uint16_t nb_elt;
-
-    UC* uc;
-
-    if (size_kmer == NB_CHAR_SUF_PREF){
-
-        d1->elem1 += cc->nb_elem;
-
-        if (search_for_id_genome_cpy > 0){
-
-            for (i = 0; i < nb_skp; i++){
-
-                uc = &(((UC*)cc->children)[i]);
-
-                if (i == nb_skp-1) nb_elt = cc->nb_elem - i * info_per_lvl[lvl_cont].nb_ucs_skp;
-                else nb_elt = info_per_lvl[lvl_cont].nb_ucs_skp;
-
-                get_annots(uc, &annot, &annot_ext, &annot_cplx, &size_annot,
-                                   &size_annot_cplx, 0, nb_elt, 0, nb_elt-1);
-
-                for (j = 0; j < nb_elt; j++){
-
-                    if (annot_ext == NULL) annot_ext_tmp = NULL;
-                    else annot_ext_tmp = annot_ext[j];
-
-                    if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot[j], size_annot[j],
-                                                         annot_ext_tmp, 1, id_genome) == 1){
-                        d1->elem2 = 1;
-                        FREE_5PTRS(annot, size_annot, size_annot_cplx, annot_ext, annot_cplx)
-
-                        goto END;
-                    }
-                }
-
-                FREE_5PTRS(annot, size_annot, size_annot_cplx, annot_ext, annot_cplx)
-            }
-        }
-    }
-    else {
-
-        for (i=0; i<nb_skp; i++){
-
-            uc = &(((UC*)cc->children)[i]);
-            d1->elem1 += uc->nb_children;
-
-            if (search_for_id_genome_cpy > 0){
-
-                get_annots(uc, &annot, &annot_ext, &annot_cplx, &size_annot, &size_annot_cplx,
-                               info_per_lvl[lvl_cont].size_kmer_in_bytes_minus_1, uc->nb_children, 0,
-                               uc->nb_children-1);
-
-                for (j = 0; j < uc->nb_children; j++){
-
-                    if (annot_ext == NULL) annot_ext_tmp = NULL;
-                    else annot_ext_tmp = annot_ext[j];
-
-                    if (is_genome_present_from_end_annot(ann_inf, annot_sorted, annot[j], size_annot[j],
-                                                         annot_ext_tmp, 1, id_genome) == 1){
-                        d1->elem2 = 1;
-                        search_for_id_genome_cpy = 0;
-
-                        break;
-                    }
-                }
-
-                FREE_5PTRS(annot, size_annot, size_annot_cplx, annot_ext, annot_cplx)
-            }
-
-            if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END;
-        }
-
-        for (i=0; i < cc->nb_Node_children ; i++){
-
-            //Because we know a node here contains at least a CC with > 1 suffix
-            if ((stop_if_2idgenomes_found > 0) && (d1->elem2 > 0)) goto END;
-
-            countKmers_Node(&(cc->children_Node_container[i]), lvl_cont-1, size_kmer - NB_CHAR_SUF_PREF, id_genome,
-                            search_for_id_genome_cpy, stop_if_2idgenomes_found, info_per_lvl,
-                            ann_inf, annot_sorted, d1);
-        }
-    }
-
-    END: return;
-}
-
 void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_filter3, int* hamming_weight_0,
                 resultPresence* res, info_per_level*  info_per_lvl){
 
@@ -2413,13 +1628,6 @@ void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_f
 
     //This loop tries to use SkipFilter3 (if it exists) to accelerate the Hamming weight comput.
     //in extra_filter3 by skipping counting 1s directly in extra_filter3
-    /*while(m<cc->nb_elem/info_per_lvl->nb_bits_per_cell_skip_filter3){
-        if ((sum = hamming_weight + cc->BF_filter2[size_filter2_n_skip+m]) < posFilter2){
-            hamming_weight = sum;
-            m++;
-        }
-        else break;
-    }*/
 
     while ((m < cc->nb_elem / info_per_lvl->nb_bits_per_cell_skip_filter3)
            && ((hamming_weight += cc->BF_filter2[size_filter2_n_skip+m]) < posFilter2)) m++;
@@ -2455,22 +1663,10 @@ void findCluster(CC* cc, int pos_filter2, int* cpt_node_return, int* pos_extra_f
 
         MATCH: if (pos_extra_filter3_tmp == INT_MAX) pos_extra_filter3_tmp = cc->nb_elem;
 
-        /*int a;
-        for (a = k, sum = a * SIZE_BITS_UINT_8T + j; a < nb_cell_3rdlist; a++){
-
-            while (j < SIZE_BITS_UINT_8T){
-
-                if ((IS_ODD(cc->extra_filter3[a] >> j)) || (sum >= cc->nb_elem)) goto OUT_LOOP;
-                else hamming_weight_0_tmp += 1;
-
-                j++;
-                sum++;
-            }
-            j=0;
-        }*/
-
         for (sum = k * SIZE_BITS_UINT_8T + j, word_tmp = cc->extra_filter3[k] >> j; sum < cc->nb_elem; sum++, word_tmp >>= 1){
+
             if (sum%SIZE_BITS_UINT_8T == 0) word_tmp = cc->extra_filter3[sum/SIZE_BITS_UINT_8T];
+
             if (IS_ODD(word_tmp)) break;
             else hamming_weight_0_tmp++;
         }
@@ -2638,10 +1834,8 @@ resultPresence* isKmerPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t
     if (size_kmer == NB_CHAR_SUF_PREF) return res;
     else{
 
-        int nb_cell_to_delete = 2;
+        int nb_cell_to_delete = 2 + ((size_kmer == 45) || (size_kmer == 81) || (size_kmer == 117));
         nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
-
-        if (size_kmer == 45) nb_cell_to_delete++;
 
         for (j=0; j < nb_cell - nb_cell_to_delete; j++){
             kmer_tmp[j] = kmer_tmp[j+2] >> 2;
@@ -2674,7 +1868,7 @@ resultPresence* isKmerPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t
                 res->container = NULL;
 
                 if (nb_elt != 0){
-                    if (size_kmer == 45){
+                    if ((size_kmer == 45) || (size_kmer == 81) || (size_kmer == 117)){
                         j = binary_search_UC(uc, res->pos_sub_bucket, res->pos_sub_bucket + nb_elt - 1, kmer_tmp, nb_cell, 0xff);
 
                         if (memcmp(&(uc->suffixes[j * size_line]), kmer_tmp, nb_cell*sizeof(uint8_t)) == 0){
@@ -2708,4 +1902,776 @@ resultPresence* isKmerPresent(Node*  node, BFT_Root* root, int lvl_node, uint8_t
     }
 
     return res;
+}
+
+bool prefix_matching_comp(BFT* bft, uint8_t* prefix_comp, int length_prefix, BFT_func_ptr f, ...){
+
+    ASSERT_NULL_PTR(bft, "prefix_matching_comp()\n")
+    ASSERT_NULL_PTR(prefix_comp, "prefix_matching_comp()\n")
+
+    va_list args;
+
+    va_start(args, f);
+
+    if (length_prefix > bft->k) ERROR("prefix_matching_comp(): Prefix length is larger than k-mer length.\n")
+    if (length_prefix == 0) ERROR("prefix_matching_comp(): Prefix length is 0.\n")
+
+    int size_prefix_comp = CEIL(length_prefix * 2, SIZE_BITS_UINT_8T);
+    int size_kmer_comp = CEIL(bft->k * 2, SIZE_BITS_UINT_8T);
+
+    size_t return_value;
+
+    uint8_t* prefix_comp_cpy = calloc(size_kmer_comp, sizeof(uint8_t));
+    ASSERT_NULL_PTR(prefix_comp_cpy, "prefix_matching()\n")
+
+    uint8_t* shifted_prefix_comp = calloc(size_kmer_comp, sizeof(uint8_t));
+    ASSERT_NULL_PTR(shifted_prefix_comp, "prefix_matching_comp()\n")
+
+    BFT_kmer* bft_kmer = create_empty_kmer();
+
+    bft_kmer->kmer = malloc((bft->k + 1) * sizeof(char));
+    ASSERT_NULL_PTR(bft_kmer->kmer, "prefix_matching_comp()\n")
+
+    bft_kmer->kmer_comp = calloc(CEIL(bft->k * 2, SIZE_BITS_UINT_8T), sizeof(uint8_t));
+    ASSERT_NULL_PTR(bft_kmer->kmer_comp, "prefix_matching_comp()\n")
+
+    bft_kmer->res = create_resultPresence();
+
+    memcpy(shifted_prefix_comp, prefix_comp, size_prefix_comp * sizeof(uint8_t));
+    memcpy(prefix_comp_cpy, prefix_comp, size_prefix_comp * sizeof(uint8_t));
+
+    return_value = v_prefix_matching(&(bft->node), bft, bft->k / NB_CHAR_SUF_PREF - 1,
+                                     shifted_prefix_comp, prefix_comp_cpy, length_prefix, length_prefix,
+                                     bft_kmer, f, args);
+
+    free_BFT_kmer(bft_kmer, 1);
+    free(shifted_prefix_comp);
+    free(prefix_comp_cpy);
+
+    va_end(args);
+
+    if (return_value > 1) return false;
+    return true;
+}
+
+/*size_t v_prefix_matching(Node* node, BFT_Root* root, int lvl_node,
+                         uint8_t* shifted_prefix, uint8_t* prefix, int size_prefix_shifted, int size_prefix,
+                         BFT_kmer* bft_kmer, size_t (*f)(BFT_kmer*, BFT_Root*, va_list), va_list args){
+
+    ASSERT_NULL_PTR(node,"prefix_matching()\n")
+    ASSERT_NULL_PTR(shifted_prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(root,"prefix_matching()\n")
+
+    int j;
+    int nb_cell;
+    int size_line;
+    int nb_cell_to_delete;
+    int length_rounded_prefix;
+
+    int size_suffix = (lvl_node + 1) * NB_CHAR_SUF_PREF;
+    int size_kmer_bytes = CEIL(root->k * 2, SIZE_BITS_UINT_8T);
+    int size_prefix_shifted_bytes = CEIL(size_prefix_shifted * 2, SIZE_BITS_UINT_8T);
+
+    uint16_t nb_elt;
+
+    uint32_t i, l;
+    uint32_t prefix_src;
+    uint32_t prefix_tmp;
+    uint32_t prefix_shift;
+    uint32_t prefix_inc;
+    uint32_t nb_prefixes_possible;
+
+    size_t return_value = 2;
+    size_t return_value_bis = 2;
+
+    va_list args_tmp;
+
+    CC* cc;
+    UC* uc;
+
+    resultPresence* res = malloc(sizeof(resultPresence));
+    ASSERT_NULL_PTR(res,"prefix_matching()\n")
+
+    uint8_t* prefix_comp;
+    uint8_t* kmer_comp;
+
+    uint8_t* shifted_prefix_cpy = malloc(root->info_per_lvl[lvl_node].size_kmer_in_bytes * sizeof(uint8_t));
+    ASSERT_NULL_PTR(shifted_prefix_cpy, "prefix_matching()\n")
+
+    memcpy(shifted_prefix_cpy, shifted_prefix, size_prefix_shifted_bytes * sizeof(uint8_t));
+
+    memset(&shifted_prefix_cpy[size_prefix_shifted_bytes], 0,
+           (root->info_per_lvl[lvl_node].size_kmer_in_bytes - size_prefix_shifted_bytes) * sizeof(uint8_t));
+
+    kmer_comp_to_ascii(prefix, size_prefix, bft_kmer->kmer);
+
+    if (size_prefix_shifted >= NB_CHAR_SUF_PREF){
+
+        presenceKmer(node, root, shifted_prefix_cpy, size_suffix, 0, 0, res);
+
+        if (res->link_child != NULL){
+
+            if (lvl_node){
+
+                nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+
+                for (j = 0; j < nb_cell - nb_cell_to_delete; j++){
+                    shifted_prefix_cpy[j] = shifted_prefix_cpy[j+2] >> 2;
+                    if (j+3 < nb_cell) shifted_prefix_cpy[j] |= shifted_prefix_cpy[j+3] << 6;
+                }
+
+                shifted_prefix_cpy[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
+            }
+
+            if (res->children_type_leaf == 0){
+
+                if (res->container_is_UC == 0){
+
+                    return_value_bis = v_prefix_matching((Node*)res->link_child, root, lvl_node - 1,
+                                                         shifted_prefix_cpy, prefix, size_prefix_shifted - NB_CHAR_SUF_PREF, size_prefix,
+                                                         bft_kmer, f, args);
+
+                    return_value = MIN(return_value, return_value_bis);
+                    if (return_value == 0) goto RETURN;
+                }
+            }
+            else{
+
+                cc = (CC*)res->container;
+                uc = &(((UC*)cc->children)[res->bucket]);
+
+                nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
+                size_line = nb_cell + uc->size_annot;
+
+                bft_kmer->res->container = uc;
+                bft_kmer->res->posFilter2 = nb_cell;
+                bft_kmer->res->posFilter3 = uc->nb_children;
+
+                res->link_child = NULL;
+                res->container = NULL;
+
+                if (lvl_node){
+
+                    for (i = res->pos_sub_bucket * size_line; i < (res->pos_sub_bucket + nb_elt) * size_line; i += size_line){
+
+                        if (memcmp_bits(&(uc->suffixes[i]), shifted_prefix_cpy, (size_prefix_shifted - NB_CHAR_SUF_PREF) * 2)){
+
+                            bft_kmer->res->link_child = &(uc->suffixes[i]);
+                            bft_kmer->res->pos_sub_bucket = i/size_line;
+
+                            kmer_comp_to_ascii(&(uc->suffixes[i]), size_suffix - NB_CHAR_SUF_PREF, &(bft_kmer->kmer[root->k - size_suffix + NB_CHAR_SUF_PREF]));
+
+                            memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                            parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                            va_copy(args_tmp, args);
+                            return_value = (*f)(bft_kmer, root, args_tmp);
+                            va_end(args_tmp);
+
+                            if (return_value == 0) goto RETURN;
+                            return_value = 1;
+                        }
+                    }
+                }
+                else{
+
+                    memcpy(&(bft_kmer->res), res, sizeof(resultPresence));
+
+                    memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                    parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                    va_copy(args_tmp, args);
+                    return_value = (*f)(bft_kmer, root, args_tmp);
+                    va_end(args_tmp);
+
+                    if (return_value == 0) goto RETURN;
+                    return_value = 1;
+                }
+            }
+        }
+    }
+    else{
+
+        prefix_src = 0;
+        prefix_tmp = 0;
+        prefix_shift = 0;
+        prefix_inc = 1;
+
+        nb_prefixes_possible = pow(4, NB_CHAR_SUF_PREF - size_prefix_shifted);
+
+        prefix_comp = calloc(root->info_per_lvl[lvl_node].size_kmer_in_bytes, sizeof(uint8_t));
+        ASSERT_NULL_PTR(prefix_comp, "serialize_subpaths_recycling()\n")
+
+        if (NB_CHAR_SUF_PREF % 4) prefix_shift = SIZE_BITS_UINT_8T - ((NB_CHAR_SUF_PREF % 4) * 2);
+
+        prefix_inc <<= prefix_shift;
+
+        for (l = 0; l < SIZE_BYTES_SUF_PREF; l++)
+            prefix_src = (prefix_src << SIZE_BITS_UINT_8T) | reverse_word_8(shifted_prefix_cpy[l]);
+
+        for (l = prefix_src; l <= prefix_src + ((nb_prefixes_possible - 1) << prefix_shift); l += prefix_inc){
+
+            prefix_tmp = l;
+
+            for (j = SIZE_BYTES_SUF_PREF - 1; j >= 0; j--, prefix_tmp >>= SIZE_BITS_UINT_8T)
+                prefix_comp[j] = reverse_word_8(prefix_tmp & 0xff);
+
+            presenceKmer(node, root, prefix_comp, size_suffix, 0, 0, res);
+
+            if (res->link_child != NULL){
+
+                kmer_comp_to_ascii(prefix_comp, NB_CHAR_SUF_PREF, &(bft_kmer->kmer[size_prefix - size_prefix_shifted]));
+
+                if (res->children_type_leaf == 0){
+
+                    if (res->container_is_UC == 0){
+
+                        kmer_comp = calloc(size_kmer_bytes, sizeof(uint8_t));
+                        ASSERT_NULL_PTR(kmer_comp, "prefix_matching()\n")
+
+
+                        length_rounded_prefix = root->k - lvl_node * NB_CHAR_SUF_PREF;
+
+                        parseKmerCount(bft_kmer->kmer, length_rounded_prefix, kmer_comp, 0);
+
+                        for (i = 0; i < size_kmer_bytes; i++) kmer_comp[i] = reverse_word_8(kmer_comp[i]);
+
+                        length_rounded_prefix *= 2;
+
+                        return_value = iterate_over_kmers_from_node((Node*)res->link_child, root, lvl_node - 1, kmer_comp, bft_kmer,
+                                                                    lvl_node * NB_CHAR_SUF_PREF, length_rounded_prefix / SIZE_BITS_UINT_8T,
+                                                                    length_rounded_prefix % SIZE_BITS_UINT_8T == 0 ? 0 : SIZE_BITS_UINT_8T - (length_rounded_prefix % SIZE_BITS_UINT_8T),
+                                                                    f, args);
+
+                        free(kmer_comp);
+
+                        if (return_value == 0) goto RETURN;
+                        return_value = 1;
+                    }
+                }
+                else{
+
+                    //printf("Here 3\n");
+
+                    cc = (CC*)res->container;
+                    uc = &(((UC*)cc->children)[res->bucket]);
+
+                    nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
+                    nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
+                    size_line = nb_cell + uc->size_annot;
+
+                    bft_kmer->res->container = uc;
+                    bft_kmer->res->posFilter2 = nb_cell;
+                    bft_kmer->res->posFilter3 = uc->nb_children;
+
+                    for (i = res->pos_sub_bucket * size_line; i < (res->pos_sub_bucket + nb_elt) * size_line; i += size_line){
+
+                        bft_kmer->res->link_child = &(uc->suffixes[i]);
+                        bft_kmer->res->pos_sub_bucket = i/size_line;
+
+                        kmer_comp_to_ascii(&(uc->suffixes[i]), size_suffix - NB_CHAR_SUF_PREF, &(bft_kmer->kmer[root->k - size_suffix + NB_CHAR_SUF_PREF]));
+
+                        memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                        parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                        va_copy(args_tmp, args);
+                        return_value = (*f)(bft_kmer, root, args_tmp);
+                        va_end(args_tmp);
+
+                        if (return_value == 0) goto RETURN;
+                        return_value = 1;
+                    }
+                }
+            }
+        }
+
+        free(prefix_comp);
+    }
+
+    if (node->UC_array.suffixes != NULL){
+
+        int nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        int size_line = nb_cell + node->UC_array.size_annot;
+        int nb_elt = node->UC_array.nb_children >> 1;
+
+        bft_kmer->res->container = &(node->UC_array);
+        bft_kmer->res->posFilter2 = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        bft_kmer->res->posFilter3 = nb_elt;
+
+        for (i = 0; i < nb_elt * size_line; i += size_line){
+
+            if (memcmp_bits(&(node->UC_array.suffixes[i]), shifted_prefix_cpy, size_prefix_shifted * 2)){
+
+                bft_kmer->res->link_child = &(node->UC_array.suffixes[i]);
+                bft_kmer->res->pos_sub_bucket = i/size_line;
+                bft_kmer->res->container_is_UC = 1;
+
+                kmer_comp_to_ascii(&(node->UC_array.suffixes[i]), size_suffix, &(bft_kmer->kmer[root->k - size_suffix]));
+
+                memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                va_copy(args_tmp, args);
+                return_value = (*f)(bft_kmer, root, args_tmp);
+                va_end(args_tmp);
+
+                if (return_value == 0) goto RETURN;
+                return_value = 1;
+            }
+        }
+    }
+
+    RETURN:
+    free(res);
+    free(shifted_prefix_cpy);
+
+    return return_value;
+}*/
+
+size_t v_prefix_matching(Node* node, BFT_Root* root, int lvl_node,
+                         uint8_t* shifted_prefix, uint8_t* prefix, int size_prefix_shifted, int size_prefix,
+                         BFT_kmer* bft_kmer, size_t (*f)(BFT_kmer*, BFT_Root*, va_list), va_list args){
+
+    ASSERT_NULL_PTR(node,"prefix_matching()\n")
+    ASSERT_NULL_PTR(shifted_prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(root,"prefix_matching()\n")
+
+    int j;
+    int nb_cell;
+    int size_line;
+    int nb_cell_to_delete;
+    int length_rounded_prefix;
+
+    int size_suffix = (lvl_node + 1) * NB_CHAR_SUF_PREF;
+    int size_kmer_bytes = CEIL(root->k * 2, SIZE_BITS_UINT_8T);
+    int size_prefix_shifted_bytes = CEIL(size_prefix_shifted * 2, SIZE_BITS_UINT_8T);
+
+    uint16_t nb_elt;
+
+    uint32_t i;
+
+    size_t return_value = 2;
+    size_t return_value_bis = 2;
+
+    va_list args_tmp;
+
+    CC* cc;
+    UC* uc;
+
+    resultPresence* res = malloc(sizeof(resultPresence));
+    ASSERT_NULL_PTR(res,"prefix_matching()\n")
+
+    uint8_t* kmer_comp;
+
+    uint8_t* shifted_prefix_cpy = malloc(root->info_per_lvl[lvl_node].size_kmer_in_bytes * sizeof(uint8_t));
+    ASSERT_NULL_PTR(shifted_prefix_cpy, "prefix_matching()\n")
+
+    memcpy(shifted_prefix_cpy, shifted_prefix, size_prefix_shifted_bytes * sizeof(uint8_t));
+
+    memset(&shifted_prefix_cpy[size_prefix_shifted_bytes], 0,
+           (root->info_per_lvl[lvl_node].size_kmer_in_bytes - size_prefix_shifted_bytes) * sizeof(uint8_t));
+
+    kmer_comp_to_ascii(prefix, size_prefix, bft_kmer->kmer);
+
+    if (size_prefix_shifted >= NB_CHAR_SUF_PREF){
+
+        presenceKmer(node, root, shifted_prefix_cpy, size_suffix, 0, 0, res);
+
+        if (res->link_child != NULL){
+
+            if (lvl_node){
+
+                nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+
+                for (j = 0; j < nb_cell - nb_cell_to_delete; j++){
+                    shifted_prefix_cpy[j] = shifted_prefix_cpy[j+2] >> 2;
+                    if (j+3 < nb_cell) shifted_prefix_cpy[j] |= shifted_prefix_cpy[j+3] << 6;
+                }
+
+                shifted_prefix_cpy[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
+            }
+
+            if (res->children_type_leaf == 0){
+
+                if (res->container_is_UC == 0){
+
+                    return_value_bis = v_prefix_matching((Node*)res->link_child, root, lvl_node - 1,
+                                                         shifted_prefix_cpy, prefix, size_prefix_shifted - NB_CHAR_SUF_PREF, size_prefix,
+                                                         bft_kmer, f, args);
+
+                    return_value = MIN(return_value, return_value_bis);
+                    if (return_value == 0) goto RETURN;
+                }
+            }
+            else{
+
+                cc = (CC*)res->container;
+                uc = &(((UC*)cc->children)[res->bucket]);
+
+                nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
+                size_line = nb_cell + uc->size_annot;
+
+                bft_kmer->res->container = uc;
+                bft_kmer->res->posFilter2 = nb_cell;
+                bft_kmer->res->posFilter3 = uc->nb_children;
+
+                res->link_child = NULL;
+                res->container = NULL;
+
+                if (lvl_node){
+
+                    for (i = res->pos_sub_bucket * size_line; i < (res->pos_sub_bucket + nb_elt) * size_line; i += size_line){
+
+                        if (memcmp_bits(&(uc->suffixes[i]), shifted_prefix_cpy, (size_prefix_shifted - NB_CHAR_SUF_PREF) * 2)){
+
+                            bft_kmer->res->link_child = &(uc->suffixes[i]);
+                            bft_kmer->res->pos_sub_bucket = i/size_line;
+
+                            kmer_comp_to_ascii(&(uc->suffixes[i]), size_suffix - NB_CHAR_SUF_PREF, &(bft_kmer->kmer[root->k - size_suffix + NB_CHAR_SUF_PREF]));
+
+                            memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                            parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                            va_copy(args_tmp, args);
+                            return_value = (*f)(bft_kmer, root, args_tmp);
+                            va_end(args_tmp);
+
+                            if (return_value == 0) goto RETURN;
+                            return_value = 1;
+                        }
+                    }
+                }
+                else{
+
+                    memcpy(&(bft_kmer->res), res, sizeof(resultPresence));
+
+                    memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                    parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                    va_copy(args_tmp, args);
+                    return_value = (*f)(bft_kmer, root, args_tmp);
+                    va_end(args_tmp);
+
+                    if (return_value == 0) goto RETURN;
+                    return_value = 1;
+                }
+            }
+        }
+    }
+    else{
+
+        kmer_comp = calloc(size_kmer_bytes, sizeof(uint8_t));
+        ASSERT_NULL_PTR(kmer_comp, "prefix_matching()\n")
+
+        length_rounded_prefix = root->k - (lvl_node + 1) * NB_CHAR_SUF_PREF;
+
+        parseKmerCount(bft_kmer->kmer, length_rounded_prefix, kmer_comp, 0);
+
+        for (i = 0; i < size_kmer_bytes; i++) kmer_comp[i] = reverse_word_8(kmer_comp[i]);
+
+        length_rounded_prefix *= 2;
+
+        return_value = iterate_over_prefixes_from_node(node, root, lvl_node, kmer_comp, bft_kmer, (lvl_node + 1) * NB_CHAR_SUF_PREF,
+                                                       shifted_prefix_cpy, size_prefix_shifted, length_rounded_prefix / SIZE_BITS_UINT_8T,
+                                                       length_rounded_prefix % SIZE_BITS_UINT_8T, f, args);
+
+        free(kmer_comp);
+
+        if (return_value == 0) goto RETURN;
+        return_value = 1;
+    }
+
+    if (node->UC_array.suffixes != NULL){
+
+        memcpy(shifted_prefix_cpy, shifted_prefix, size_prefix_shifted_bytes * sizeof(uint8_t));
+
+        memset(&shifted_prefix_cpy[size_prefix_shifted_bytes], 0,
+               (root->info_per_lvl[lvl_node].size_kmer_in_bytes - size_prefix_shifted_bytes) * sizeof(uint8_t));
+
+        int nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        int size_line = nb_cell + node->UC_array.size_annot;
+        int nb_elt = node->UC_array.nb_children >> 1;
+
+        bft_kmer->res->container = &(node->UC_array);
+        bft_kmer->res->posFilter2 = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        bft_kmer->res->posFilter3 = nb_elt;
+
+        for (i = 0; i < nb_elt * size_line; i += size_line){
+
+            if (memcmp_bits(&(node->UC_array.suffixes[i]), shifted_prefix_cpy, size_prefix_shifted * 2)){
+
+                bft_kmer->res->link_child = &(node->UC_array.suffixes[i]);
+                bft_kmer->res->pos_sub_bucket = i/size_line;
+                bft_kmer->res->container_is_UC = 1;
+
+                kmer_comp_to_ascii(&(node->UC_array.suffixes[i]), size_suffix, &(bft_kmer->kmer[root->k - size_suffix]));
+
+                memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                va_copy(args_tmp, args);
+                return_value = (*f)(bft_kmer, root, args_tmp);
+                va_end(args_tmp);
+
+                if (return_value == 0) goto RETURN;
+                return_value = 1;
+            }
+        }
+    }
+
+    RETURN:
+    free(res);
+    free(shifted_prefix_cpy);
+
+    return return_value;
+}
+
+size_t v_prefix_matching_custom(Node* node, BFT_Root* root, int lvl_node,
+                                uint8_t* shifted_prefix, uint8_t* prefix, int size_prefix_shifted, int size_prefix,
+                                BFT_kmer* bft_kmer, resultPresence** junction_prefix, size_t (*f)(BFT_kmer*, BFT_Root*, va_list), va_list args){
+
+    ASSERT_NULL_PTR(node,"prefix_matching()\n")
+    ASSERT_NULL_PTR(shifted_prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(prefix,"prefix_matching()\n")
+    ASSERT_NULL_PTR(root,"prefix_matching()\n")
+
+    int j;
+    int nb_cell;
+    int size_line;
+    int nb_cell_to_delete;
+    int length_rounded_prefix;
+
+    int size_suffix = (lvl_node + 1) * NB_CHAR_SUF_PREF;
+    int size_kmer_bytes = CEIL(root->k * 2, SIZE_BITS_UINT_8T);
+    int size_prefix_shifted_bytes = CEIL(size_prefix_shifted * 2, SIZE_BITS_UINT_8T);
+
+    uint16_t nb_elt;
+
+    uint32_t i;
+
+    size_t return_value = 2;
+    size_t return_value_bis = 2;
+
+    va_list args_tmp;
+
+    CC* cc;
+    UC* uc;
+
+    uint8_t* kmer_comp;
+    uint8_t* shifted_prefix_cpy;
+
+    resultPresence* res = malloc(sizeof(resultPresence));
+    ASSERT_NULL_PTR(res,"prefix_matching()\n")
+
+    shifted_prefix_cpy = malloc(root->info_per_lvl[lvl_node].size_kmer_in_bytes * sizeof(uint8_t));
+    ASSERT_NULL_PTR(shifted_prefix_cpy, "prefix_matching()\n")
+
+    memcpy(shifted_prefix_cpy, shifted_prefix, size_prefix_shifted_bytes * sizeof(uint8_t));
+
+    memset(&shifted_prefix_cpy[size_prefix_shifted_bytes], 0,
+           (root->info_per_lvl[lvl_node].size_kmer_in_bytes - size_prefix_shifted_bytes) * sizeof(uint8_t));
+
+    kmer_comp_to_ascii(prefix, size_prefix, bft_kmer->kmer);
+
+    if (size_prefix_shifted >= NB_CHAR_SUF_PREF){
+
+        if (*junction_prefix == NULL) presenceKmer(node, root, shifted_prefix_cpy, size_suffix, 0, 0, res);
+        else {
+
+            res = *junction_prefix;
+
+            if (size_prefix_shifted == size_prefix){
+
+                while (lvl_node > (res->level_node + 1)){
+
+                    nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
+                    nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+
+                    for (j = 0; j < nb_cell - nb_cell_to_delete; j++){
+                        shifted_prefix_cpy[j] = shifted_prefix_cpy[j+2] >> 2;
+                        if (j+3 < nb_cell) shifted_prefix_cpy[j] |= shifted_prefix_cpy[j+3] << 6;
+                    }
+
+                    shifted_prefix_cpy[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
+
+                    lvl_node--;
+                    size_suffix -= NB_CHAR_SUF_PREF;
+                    size_prefix_shifted -= NB_CHAR_SUF_PREF;
+                }
+            }
+        }
+
+        if (res->link_child != NULL){
+
+            if (lvl_node){
+
+                nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+
+                for (j = 0; j < nb_cell - nb_cell_to_delete; j++){
+                    shifted_prefix_cpy[j] = shifted_prefix_cpy[j+2] >> 2;
+                    if (j+3 < nb_cell) shifted_prefix_cpy[j] |= shifted_prefix_cpy[j+3] << 6;
+                }
+
+                shifted_prefix_cpy[j-1] &= root->info_per_lvl[lvl_node].mask_shift_kmer;
+            }
+
+            if (res->children_type_leaf == 0){
+
+                if (res->container_is_UC == 0){
+
+                    return_value_bis = v_prefix_matching_custom((Node*)res->link_child, root, lvl_node - 1,
+                                                                shifted_prefix_cpy, prefix, size_prefix_shifted - NB_CHAR_SUF_PREF, size_prefix,
+                                                                bft_kmer, junction_prefix, f, args);
+
+                    if (*junction_prefix == NULL) *junction_prefix = res;
+
+                    return_value = MIN(return_value, return_value_bis);
+                    if (return_value == 0) goto RETURN;
+                }
+            }
+            else{
+
+                cc = (CC*)res->container;
+                uc = &(((UC*)cc->children)[res->bucket]);
+
+                nb_elt = getNbElts(cc, res->posFilter3, (cc->type >> 6) & 0x1);
+                nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes_minus_1;
+                size_line = nb_cell + uc->size_annot;
+
+                bft_kmer->res->container = uc;
+                bft_kmer->res->posFilter2 = nb_cell;
+                bft_kmer->res->posFilter3 = uc->nb_children;
+
+                res->link_child = NULL;
+                res->container = NULL;
+
+                if (lvl_node){
+
+                    for (i = res->pos_sub_bucket * size_line; i < (res->pos_sub_bucket + nb_elt) * size_line; i += size_line){
+
+                        if (memcmp_bits(&(uc->suffixes[i]), shifted_prefix_cpy, (size_prefix_shifted - NB_CHAR_SUF_PREF) * 2)){
+
+                            bft_kmer->res->link_child = &(uc->suffixes[i]);
+                            bft_kmer->res->pos_sub_bucket = i/size_line;
+
+                            kmer_comp_to_ascii(&(uc->suffixes[i]), size_suffix - NB_CHAR_SUF_PREF, &(bft_kmer->kmer[root->k - size_suffix + NB_CHAR_SUF_PREF]));
+
+                            memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                            parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                            va_copy(args_tmp, args);
+                            return_value = (*f)(bft_kmer, root, args_tmp);
+                            va_end(args_tmp);
+
+                            if (return_value == 0) goto RETURN;
+                            return_value = 1;
+                        }
+                    }
+                }
+                else{
+
+                    memcpy(&(bft_kmer->res), res, sizeof(resultPresence));
+
+                    memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                    parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                    va_copy(args_tmp, args);
+                    return_value = (*f)(bft_kmer, root, args_tmp);
+                    va_end(args_tmp);
+
+                    if (return_value == 0) goto RETURN;
+                    return_value = 1;
+                }
+            }
+        }
+    }
+    else{
+
+        kmer_comp = calloc(size_kmer_bytes, sizeof(uint8_t));
+        ASSERT_NULL_PTR(kmer_comp, "prefix_matching()\n")
+
+        length_rounded_prefix = root->k - (lvl_node + 1) * NB_CHAR_SUF_PREF;
+
+        parseKmerCount(bft_kmer->kmer, length_rounded_prefix, kmer_comp, 0);
+
+        for (i = 0; i < size_kmer_bytes; i++) kmer_comp[i] = reverse_word_8(kmer_comp[i]);
+
+        length_rounded_prefix *= 2;
+
+        return_value = iterate_over_prefixes_from_node(node, root, lvl_node, kmer_comp, bft_kmer, (lvl_node + 1) * NB_CHAR_SUF_PREF,
+                                                       shifted_prefix_cpy, size_prefix_shifted, length_rounded_prefix / SIZE_BITS_UINT_8T,
+                                                       length_rounded_prefix % SIZE_BITS_UINT_8T, f, args);
+
+        free(kmer_comp);
+
+        if (return_value == 0) goto RETURN;
+        return_value = 1;
+    }
+
+    if (node->UC_array.suffixes != NULL){
+
+        int nb_cell = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        int size_line = nb_cell + node->UC_array.size_annot;
+        int nb_elt = node->UC_array.nb_children >> 1;
+
+        bft_kmer->res->container = &(node->UC_array);
+        bft_kmer->res->posFilter2 = root->info_per_lvl[lvl_node].size_kmer_in_bytes;
+        bft_kmer->res->posFilter3 = nb_elt;
+
+        for (i = 0; i < nb_elt * size_line; i += size_line){
+
+            if (memcmp_bits(&(node->UC_array.suffixes[i]), shifted_prefix_cpy, size_prefix_shifted * 2)){
+
+                bft_kmer->res->link_child = &(node->UC_array.suffixes[i]);
+                bft_kmer->res->pos_sub_bucket = i/size_line;
+                bft_kmer->res->container_is_UC = 1;
+
+                kmer_comp_to_ascii(&(node->UC_array.suffixes[i]), size_suffix, &(bft_kmer->kmer[root->k - size_suffix]));
+
+                memset(bft_kmer->kmer_comp, 0, size_kmer_bytes * sizeof(uint8_t));
+                parseKmerCount(bft_kmer->kmer, root->k, bft_kmer->kmer_comp, 0);
+
+                va_copy(args_tmp, args);
+                return_value = (*f)(bft_kmer, root, args_tmp);
+                va_end(args_tmp);
+
+                if (return_value == 0) goto RETURN;
+                return_value = 1;
+            }
+        }
+    }
+
+    RETURN:
+
+    if (*junction_prefix != res) free(res);
+
+    free(shifted_prefix_cpy);
+
+    return return_value;
+}
+
+
+int memcmp_bits(uint8_t* s1, uint8_t* s2, int length){
+
+    int nb_bytes_comp = length / SIZE_BITS_UINT_8T;
+
+    if ((nb_bytes_comp == 0) || (memcmp(s1, s2, nb_bytes_comp * sizeof(uint8_t)) == 0)){
+
+        uint8_t tmp_s1 = s1[nb_bytes_comp];
+        uint8_t tmp_s2 = s2[nb_bytes_comp];
+
+        for (int i = 0; i < length % SIZE_BITS_UINT_8T; i++, tmp_s1 >>= 1, tmp_s2 >>= 1){
+            if ((tmp_s1 & 0x1) != (tmp_s2 & 0x1)) return 0;
+        }
+
+        return 1;
+    }
+    else return 0;
 }

@@ -1,8 +1,4 @@
-#include "./../lib/snippets.h"
-
-extern uint8_t intersection_annots(const uint8_t a, const uint8_t b);
-extern uint8_t union_annots(const uint8_t a, const uint8_t b);
-extern uint8_t sym_difference_annots(const uint8_t a, const uint8_t b);
+#include "snippets.h"
 
 /** Function of type BFT_func_ptr extracting a core k-mer to disk.
 *   A core k-mer contains in its annotation all genome ids inserted in the graph.

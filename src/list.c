@@ -1,4 +1,4 @@
-#include "./../lib/list.h"
+#include "list.h"
 
 List *List_create()
 {
@@ -54,7 +54,7 @@ void List_push(List *list, void *value)
     return;
 }
 
-void *List_remove_first(List *list)
+void *List_pop_first(List *list)
 {
     ListNode* node = list->first;
     return node != NULL ? List_remove(list, node) : NULL;
@@ -118,4 +118,38 @@ void *List_first_become_last(List *list)
     }
 
     return node->value;
+}
+
+ListNode* List_insert(List *list, ListNode *node_after_insert, void* value)
+{
+    if (node_after_insert == NULL){
+
+        List_push(list, value);
+
+        return list->first;
+    }
+    else {
+
+        ListNode *new_node = calloc(1, sizeof(ListNode));
+        ASSERT_NULL_PTR(new_node, "List_push()\n")
+
+        new_node->value = value;
+
+        if (node_after_insert == list->first){
+            list->first = new_node;
+            new_node->next = node_after_insert;
+            new_node->prev = NULL;
+            node_after_insert->prev = new_node;
+        }
+        else {
+            new_node->next = node_after_insert;
+            new_node->prev = node_after_insert->prev;
+            node_after_insert->prev = new_node;
+            new_node->prev->next = new_node;
+        }
+
+        list->count++;
+
+        return new_node;
+    }
 }

@@ -1,4 +1,4 @@
-#include "./../lib/marking.h"
+#include "marking.h"
 
 void create_marking_Node_4states(Node* n, int lvl_node, int size_kmer, info_per_level*  info_per_lvl){
 

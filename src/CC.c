@@ -1,4 +1,4 @@
-#include "./../lib/CC.h"
+#include "CC.h"
 
 const uint8_t POPCOUNT_8bit[256] = {
     /* 0 */ 0, /* 1 */ 1, /* 2 */ 1, /* 3 */ 2,
@@ -67,7 +67,7 @@ const uint8_t POPCOUNT_8bit[256] = {
     /* fc */ 6, /* fd */ 7, /* fe */ 7, /* ff */ 8
 };
 
-const uint64_t MASK_POWER_16[17] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
+const uint64_t MASK_POWER_16[19] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
 
 const uint8_t rev_MSB[16] = {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
 const uint8_t rev_LSB[16] = {0, 64, 128, 192, 16, 80, 144, 208, 32, 96, 160, 224, 48, 112, 176, 240};
@@ -88,30 +88,29 @@ const uint8_t rev[256] = {0, 64, 128, 192, 16, 80, 144, 208, 32, 96, 160, 224, 4
                             75, 139, 203, 27, 91, 155, 219, 43, 107, 171, 235, 59, 123, 187, 251, 15,
                             79, 143, 207, 31, 95, 159, 223, 47, 111, 175, 239, 63, 127, 191, 255};
 
-extern CC* createCC(int nb_bits_bf);
-extern void initiateCC(CC* cc, int nb_bits_bf);
-extern void freeCC(CC* cc, int lvl_cc, info_per_level*  info_per_level);
-extern void freeNode(Node*  node, int lvl_node, info_per_level*  info_per_lvl);
+extern inline CC* createCC(int nb_bits_bf);
+extern inline void initiateCC(CC* cc, int nb_bits_bf);
+extern inline void freeCC(CC* cc, int lvl_cc, info_per_level*  info_per_level);
 
-extern int count_nodes(CC* cc, int start, int end, uint8_t type);
-extern int count_children(CC* cc, int start, int end, uint8_t type);
+extern inline void freeNode(Node* node, int lvl_node, info_per_level*  info_per_lvl);
 
-extern void initializeUC(UC* uc);
+extern inline BFT_Root* createBFT_Root(int k, int treshold_compression, uint8_t compressed);
+extern inline void initialize_BFT_Root(BFT_Root* root, int k, int treshold_compression, uint8_t compressed);
+extern inline void freeBFT_Root(BFT_Root* root);
+extern inline void free_content_BFT_Root(BFT_Root* root);
+extern inline BFT_Root* copy_BFT_Root(BFT_Root* root_src);
+extern inline void add_genomes_BFT_Root(int nb_files, char** filenames, BFT_Root* root);
 
-extern uint8_t reverse_word_8(uint8_t v);
-extern int popcnt_8(uint8_t v);
-extern int popcnt_8_par(const uint8_t* v, int start, int end);
+extern inline void allocate_children_type (CC* cc, int nb_elt);
+extern inline int is_child(CC* cc, int position, uint8_t type);
+extern inline int getNbElts(CC* cc, int position, uint8_t type);
+extern inline uint8_t addNewElt(CC* cc, int position, int current_nb_elem, uint8_t type);
 
-extern uint16_t hash1(uint8_t* kmer);
-extern uint16_t hash2_bis(uint8_t* kmer);
-
-extern uint16_t dbj2(uint8_t c1, uint8_t c2, int size_bf);
-extern uint16_t sdbm(uint8_t c1, uint8_t c2, int size_bf);
-
-//extern UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
-extern int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
-extern int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
-extern void free_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array);
+extern inline void realloc_and_int_children_type(CC* cc, int current_nb_elem, int position_insert, uint8_t type);
+extern inline void resetChildrenType (CC* cc, int position, uint8_t type);
+extern inline int count_nodes(CC* cc, int start, int end, uint8_t type);
+extern inline void count_Nodes_Children(CC* cc, int start, int end, int* count_children, int* count_nodes, uint8_t type);
+extern inline int count_children(CC* cc, int start, int end, uint8_t type);
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  transform2CC(uc, cc, size_suffix, info_per_lvl)
@@ -363,8 +362,7 @@ void transform2CC(UC*  uc, CC*  cc, BFT_Root* root, int lvl_cc, int size_suffix)
             //Remove the prefix (which was inserted into filter2 and filter3) from the suffix
             int j=0;
 
-            int nb_cell_to_delete = 2;
-            if (size_suffix == 45) nb_cell_to_delete++;
+            int nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
 
             for (j=0; j < nb_cell - nb_cell_to_delete; j++){
                 uc->suffixes[real_pos_i_uc+j] = uc->suffixes[real_pos_i_uc+j+2] >> 2;
@@ -698,8 +696,7 @@ void transform2CC_from_arraySuffix(uint8_t*  array_suffix, CC*  cc, BFT_Root* ro
 
             if (size_suffix != 36) array_suffix[real_pos_i_uc+nb_cell-1] &= 0x7f;
 
-            int nb_cell_to_delete = 2;
-            if (size_suffix == 45) nb_cell_to_delete++;
+            int nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
 
             for (j=0; j < nb_cell - nb_cell_to_delete; j++){
                 array_suffix[real_pos_i_uc+j] = array_suffix[real_pos_i_uc+j+2] >> 2;
@@ -1350,9 +1347,7 @@ void insertSP_CC(resultPresence*  pres, BFT_Root* root, int lvl_node_insert,
     //we only need to keep only the suffix s to insert it into CC->children
     if (size_sp != NB_CHAR_SUF_PREF){
         int j=0;
-        int nb_cell_to_delete = 2;
-
-        if (size_sp == 45) nb_cell_to_delete++;
+        int nb_cell_to_delete = 2 + ((size_sp == 45) || (size_sp == 81) || (size_sp == 117));
 
         for (j=0; j<info_per_lvl->size_kmer_in_bytes - nb_cell_to_delete; j++){
             sp[j] = sp[j+2] >> 2;
@@ -2002,6 +1997,43 @@ info_per_level* create_info_per_level(int size_max){
         }
 
         switch(i){
+            case 126: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC126;
+                ptr[nb_sizes].mask_shift_kmer = 0x3;
+                break;
+            }
+            case 117: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC117;
+                ptr[nb_sizes].mask_shift_kmer = 0xff;
+                ptr[nb_sizes].level_min = 1;
+                break;
+            }
+            case 108: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC108;
+                ptr[nb_sizes].mask_shift_kmer = 0x3f;
+                break;
+            }
+            case 99: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC99;
+                ptr[nb_sizes].mask_shift_kmer = 0xf;
+                break;
+            }
+            case 90: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC90;
+                ptr[nb_sizes].mask_shift_kmer = 0x3;
+                break;
+            }
+            case 81: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC81;
+                ptr[nb_sizes].mask_shift_kmer = 0xff;
+                ptr[nb_sizes].level_min = 1;
+                break;
+            }
+            case 72: {
+                ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC72;
+                ptr[nb_sizes].mask_shift_kmer = 0x3f;
+                break;
+            }
             case 63: {
                 ptr[nb_sizes].nb_kmers_uc = NB_KMERS_PER_UC63;
                 ptr[nb_sizes].mask_shift_kmer = 0xf;

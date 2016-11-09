@@ -1,4 +1,4 @@
-#include "./../lib/printMemory.h"
+#include "printMemory.h"
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  add_memory_Used(mem1, mem2)
@@ -145,6 +145,7 @@ memory_Used* printMemoryUsedFrom_CC(CC*  cc, int lvl_cc, int size_kmer, info_per
         mem->nb_CC9 += 1;
 
         for (i=0; i<nb_skp; i++){
+
             uc = &(((UC*)cc->children)[i]);
 
             mem->size_biggest_annot = MAX(mem->size_biggest_annot, uc->size_annot);
@@ -188,6 +189,7 @@ memory_Used* printMemoryUsedFrom_CC(CC*  cc, int lvl_cc, int size_kmer, info_per
         }
 
         for (i=0; i<nb_skp; i++){
+
             uc = &(((UC*)cc->children)[i]);
             mem->nb_kmers_in_UCptr += uc->nb_children;
             mem->size_biggest_annot = MAX(mem->size_biggest_annot, uc->size_annot);
@@ -262,7 +264,7 @@ void printMemory(memory_Used* mem){
     printf("Size greatest annotation (bytes) = %f\n", mem->size_biggest_annot);
     printf("Total size used by annotations = %f\n", mem->memory);
 
-    printf("\nNb of CC63s = %f\n", mem->nb_CC63);
+    /*printf("\nNb of CC63s = %f\n", mem->nb_CC63);
     printf("Nb of CC54s = %f\n", mem->nb_CC54);
     printf("Nb of CC45s = %f\n", mem->nb_CC45);
     printf("Nb of CC36s = %f\n", mem->nb_CC36);
@@ -276,7 +278,7 @@ void printMemory(memory_Used* mem){
     printf("Nb k-mers in CC36s = %f\n", mem->kmers_in_CC36);
     printf("Nb k-mers in CC27s = %f\n", mem->kmers_in_CC27);
     printf("Nb k-mers in CC18s = %f\n", mem->kmers_in_CC18);
-    printf("Nb k-mers in CC9s = %f\n\n", mem->kmers_in_CC9);
+    printf("Nb k-mers in CC9s = %f\n\n", mem->kmers_in_CC9);*/
 
     return;
 }

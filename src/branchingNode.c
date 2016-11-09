@@ -1,4 +1,4 @@
-#include "./../lib/branchingNode.h"
+#include "branchingNode.h"
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  insertKmer_Node(node, kmer, size_kmer, id_genome, info_per_lvl, ann_inf)
@@ -60,9 +60,7 @@ int isBranchingRight(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  kmer, 
     else{
         int j=0;
         int nb_cell = info_per_lvl->size_kmer_in_bytes;
-        int nb_cell_to_delete = 2;
-
-        if (size_kmer == 45) nb_cell_to_delete++;
+        int nb_cell_to_delete = 2 + ((size_kmer == 45) || (size_kmer == 81) || (size_kmer == 117));
 
         for (j=0; j<nb_cell-nb_cell_to_delete; j++){
             right_shifting[j] = right_shifting[j+2] >> 2;
@@ -288,9 +286,7 @@ int isBranchingLeft(Node*  node, BFT_Root* root, int lvl_node, uint8_t*  kmer, i
 
     int j=0;
     int nb_cell = info_per_lvl->size_kmer_in_bytes;
-    int nb_cell_to_delete = 2;
-
-    if (size_kmer == 45) nb_cell_to_delete++;
+    int nb_cell_to_delete = 2 + ((size_kmer == 45) || (size_kmer == 81) || (size_kmer == 117));
 
     for (j=0; j<nb_cell-nb_cell_to_delete; j++){
         left_shifting[j] = left_shifting[j+2] >> 2;

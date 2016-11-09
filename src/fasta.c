@@ -1,4 +1,4 @@
-#include "./../lib/fasta.h"
+#include "fasta.h"
 
 int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
     ASSERT_NULL_PTR(line,"parseKmerCount()")
@@ -7,7 +7,7 @@ int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
     uint8_t* tab_tmp = &(tab[pos_tab]);
 
     int pos_car = 0;
-    for (pos_car=0; pos_car < size_kmer; pos_car++){
+    for (; pos_car < size_kmer; pos_car++){
 
         switch(line[pos_car]){
             case 'a':
@@ -81,6 +81,29 @@ void kmer_comp_to_ascii(const uint8_t* kmer_comp, int k, char* kmer){
     return;
 }
 
+void kmer_iupac_comp_to_ascii(const uint8_t* kmer_comp, int k, char* kmer){
+    ASSERT_NULL_PTR(kmer_comp,"parseKmerCount()")
+    ASSERT_NULL_PTR(kmer,"parseKmerCount()")
+
+    int i = 0;
+
+    for (i = 0; i < (k * 4) / SIZE_BITS_UINT_8T; i++){
+        *kmer = COMP_IUPAC_TO_ASCII[kmer_comp[i] & 0xf];
+        kmer++;
+        *kmer = COMP_IUPAC_TO_ASCII[kmer_comp[i] >> 4];
+        kmer++;
+    }
+
+    if (k % 2){
+        *kmer = COMP_IUPAC_TO_ASCII[kmer_comp[i] & 0xf];
+        kmer++;
+    }
+
+    *kmer = '\0';
+
+    return;
+}
+
 void parseSequenceBuffer(char* buf, uint8_t* tab, int* nb_kmers, int size_kmers, int nb_cell){
     int nb_ACGT_kmers = 0;
 
@@ -143,12 +166,15 @@ void parseSequenceBuffer(char* buf, uint8_t* tab, int* nb_kmers, int size_kmers,
 }
 
 int parseKmerCount_IUPAC(char* line, int size_kmer, uint8_t* tab, int pos_tab){
+
     ASSERT_NULL_PTR(line,"parseKmerCount_IUPAC()")
     ASSERT_NULL_PTR(tab,"parseKmerCount_IUPAC()")
 
     int pos_car = 0;
-    for (pos_car=0; pos_car < size_kmer; pos_car++){
+    for (pos_car = 0; pos_car < size_kmer; pos_car++){
+
         switch(line[pos_car]){
+
             case 'a':
             case 'A': break;
             case 'c':
@@ -195,16 +221,19 @@ int parseKmerCount_IUPAC(char* line, int size_kmer, uint8_t* tab, int pos_tab){
 }
 
 void parseSequenceBuffer_IUPAC(char* buf, uint8_t* tab, int* nb_kmers, int size_kmers, int nb_cell){
-    int nb_IUPAC_kmers = 0;
 
     ASSERT_NULL_PTR(buf,"parseSequenceBuffer_IUPAC()")
     ASSERT_NULL_PTR(tab,"parseSequenceBuffer_IUPAC()")
 
+    int nb_IUPAC_kmers = 0;
     int i = 0, k = 0;
+
     while (i < *nb_kmers){
-        int pos_car = 0;
-        for (pos_car=0; pos_car < size_kmers; pos_car++){
+
+        for (int pos_car = 0; pos_car < size_kmers; pos_car++){
+
             switch(buf[i+pos_car]){
+
                 case 'a':
                 case 'A': break;
                 case 'c':
@@ -309,20 +338,22 @@ int parseKmerCount_IUPAC_rev(char* line, int size_kmer, uint8_t* tab, int pos_ta
     return 0;
 }
 
-int parseKmerCount_xIUPAC(char* line, int size_kmer, uint8_t* kmers_arr_no_iupac, uint8_t* kmers_arr_iupac,
+int parseKmerCount_xIUPAC(char* line, int length_to_parse, uint8_t* kmers_arr_no_iupac, uint8_t* kmers_arr_iupac,
                           int pos_kmers_arr_no_iupac, int pos_kmers_arr_iupac){
 
     ASSERT_NULL_PTR(line,"parseKmerCount_xIUPAC()")
     ASSERT_NULL_PTR(kmers_arr_no_iupac,"parseKmerCount_xIUPAC()")
     ASSERT_NULL_PTR(kmers_arr_iupac,"parseKmerCount_xIUPAC()")
 
-    if (strpbrk(line, "rRyYsSwWkKmMbBdDhHvVnN.-") != NULL){
-        if (parseKmerCount_IUPAC(line, size_kmer, kmers_arr_iupac, pos_kmers_arr_iupac) < 1)
+    const char* pos = strpbrk(line, "rRyYsSwWkKmMbBdDhHvVnN.-");
+
+    if ((pos != NULL) && (pos < line + length_to_parse)){
+        if (parseKmerCount_IUPAC(line, length_to_parse, kmers_arr_iupac, pos_kmers_arr_iupac) < 1)
             ERROR("parseKmerCount_xIUPAC(): invalid character encountered in the input data")
         return 1;
     }
     else{
-        if (parseKmerCount(line, size_kmer, kmers_arr_no_iupac, pos_kmers_arr_no_iupac) < 1)
+        if (parseKmerCount(line, length_to_parse, kmers_arr_no_iupac, pos_kmers_arr_no_iupac) < 1)
             ERROR("parseKmerCount_xIUPAC(): invalid character encountered in the input data")
         return 0;
     }
@@ -332,7 +363,7 @@ int parseKmerCount_xIUPAC(char* line, int size_kmer, uint8_t* kmers_arr_no_iupac
 
 int is_substring_IUPAC(char* line){
 
-    ASSERT_NULL_PTR(line,"parseKmerCount_xIUPAC()")
+    ASSERT_NULL_PTR(line,"is_substring_IUPAC()\n")
 
     if (strpbrk(line, "rRyYsSwWkKmMbBdDhHvVnN.-") != NULL) return 1;
     return 0;
@@ -346,7 +377,9 @@ void reverse_complement(const char* s1, char* s2, int length){
     int pos, i;
 
     for (pos = length-1, i = 0; pos >= 0; pos--, i++){
+
         switch(s1[pos]){
+
             case 'a': s2[i] = 't'; break;
             case 'A': s2[i] = 'T'; break;
             case 'c': s2[i] = 'g'; break;
@@ -357,6 +390,26 @@ void reverse_complement(const char* s1, char* s2, int length){
             case 'U': s2[i] = 'A'; break;
             case 't': s2[i] = 'a'; break;
             case 'T': s2[i] = 'A'; break;
+            case 'm': s2[i] = 'k'; break;
+            case 'M': s2[i] = 'K'; break;
+            case 'r': s2[i] = 'y'; break;
+            case 'R': s2[i] = 'Y'; break;
+            case 'w': s2[i] = 'w'; break;
+            case 'W': s2[i] = 'W'; break;
+            case 's': s2[i] = 's'; break;
+            case 'S': s2[i] = 'S'; break;
+            case 'y': s2[i] = 'r'; break;
+            case 'Y': s2[i] = 'R'; break;
+            case 'k': s2[i] = 'm'; break;
+            case 'K': s2[i] = 'M'; break;
+            case 'v': s2[i] = 'b'; break;
+            case 'V': s2[i] = 'B'; break;
+            case 'h': s2[i] = 'd'; break;
+            case 'H': s2[i] = 'D'; break;
+            case 'd': s2[i] = 'h'; break;
+            case 'D': s2[i] = 'H'; break;
+            case 'b': s2[i] = 'v'; break;
+            case 'B': s2[i] = 'V'; break;
             case 'n': s2[i] = 'n'; break;
             case 'N': s2[i] = 'N'; break;
             default: {
@@ -366,5 +419,52 @@ void reverse_complement(const char* s1, char* s2, int length){
         }
     }
 
+    s2[length] = '\0';
+
     return;
+}
+
+char reverse_complement_char(char c){
+
+    switch(c){
+
+        case 'a': return 't';
+        case 'A': return 'T';
+        case 'c': return 'g';
+        case 'C': return 'G';
+        case 'g': return 'c';
+        case 'G': return 'C';
+        case 'u': return 'a';
+        case 'U': return 'A';
+        case 't': return 'a';
+        case 'T': return 'A';
+        case 'm': return 'k';
+        case 'M': return 'K';
+        case 'r': return 'y';
+        case 'R': return 'Y';
+        case 'w': return 'w';
+        case 'W': return 'W';
+        case 's': return 's';
+        case 'S': return 'S';
+        case 'y': return 'r';
+        case 'Y': return 'R';
+        case 'k': return 'm';
+        case 'K': return 'M';
+        case 'v': return 'b';
+        case 'V': return 'B';
+        case 'h': return 'd';
+        case 'H': return 'D';
+        case 'd': return 'h';
+        case 'D': return 'H';
+        case 'b': return 'v';
+        case 'B': return 'V';
+        case 'n': return 'n';
+        case 'N': return 'N';
+        default: {
+            printf("%c\n", c);
+            ERROR("reverse_complement(): encountered an non-IUPAC character");
+        }
+    }
+
+    return c;
 }

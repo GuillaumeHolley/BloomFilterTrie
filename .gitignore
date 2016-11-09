@@ -1,8 +1,17 @@
+### C ###
+# Prerequisites
+*.d
+
 # Object files
 *.o
 *.ko
 *.obj
 *.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
 
 # Precompiled Headers
 *.gch
@@ -30,5 +39,32 @@
 
 # Debug files
 *.dSYM/
+*.su
+*.idb
+*.pdb
 
-*.*~
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# Autoconf files
+*.ac
+
+# Code Blocks IDE files
+*.save
+*.depend
+*.cbp
+*.layout
+*.log
+*.status
+
+# BFT binary and generated files
+*.bft
+
+Makefile
+autom4te.cache/
+*~

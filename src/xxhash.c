@@ -106,7 +106,7 @@ You can contact the author at :
 /**************************************
 *  Includes & Memory related functions
 ***************************************/
-#include "./../lib/xxhash.h"
+#include "xxhash.h"
 /* Modify the local functions below should you wish to use some other memory routines */
 /* for malloc(), free() */
 #include <stdlib.h>

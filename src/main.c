@@ -1,33 +1,20 @@
-//#include <sys/types.h>
-//#include <sys/stat.h>
-//#include <fcntl.h>
-//#include <sys/resource.h>
-
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <stdint.h>
-
-//#include <unistd.h>
-//#include <inttypes.h>
-//#include <limits.h>
+#include <libgen.h>
 
 #include <jemalloc/jemalloc.h>
 const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 
 #include <Judy.h>
 
-#include "./../lib/insertNode.h"
-#include "./../lib/printMemory.h"
-#include "./../lib/write_to_disk.h"
-#include "./../lib/snippets.h"
+#include "insertNode.h"
+#include "printMemory.h"
+#include "write_to_disk.h"
+#include "snippets.h"
 
 int main(int argc, char *argv[])
 {
     BFT_Root* root = NULL;
 
-    int i = 0;
-    int j = 0;
-    int cpt = 0;
+    int i = 0, j = 0, cpt = 0;
     int size_kmer = 27;
     int binary_files = 0;
     int nb_files_2_read = 0;
@@ -56,16 +43,16 @@ int main(int argc, char *argv[])
     else {
 
         if ((strcmp("--version", argv[1]) == 0) || (strcmp("-v", argv[1]) == 0)){
-		printf("0.5.5\n");
-		exit(0);
-	}
+            printf("0.8\n");
+            exit(0);
+        }
         else if (strcmp("build", argv[1]) == 0){
 
             size_kmer = atoi(argv[2]); //Length k argument reading
 
             //Test if k is valid
             if (size_kmer <= 0) ERROR("Provided length k (for k-mers) is either <= 0 or not a number\n")
-            else if (size_kmer > 63) ERROR("Length k (for k-mers) cannot be superior to 63\n")
+            else if (size_kmer > KMER_LENGTH_MAX) ERROR("Length k (for k-mers) cannot be superior to 63\n")
             else if (size_kmer%NB_CHAR_SUF_PREF != 0) ERROR("Length k (for k-mers) must be a multiple of 9\n")
 
             //Open the file containing the input files
@@ -135,7 +122,7 @@ int main(int argc, char *argv[])
 
             if ((file_input = fopen(argv[5], "r")) == NULL) ERROR("Invalid list_genome_files.\n")
 
-            paths_and_names = malloc(nb_files_2_read*sizeof(char*)); //Allocate the array of paths + filenames
+            paths_and_names = malloc(nb_files_2_read * sizeof(char*)); //Allocate the array of paths + filenames
             ASSERT_NULL_PTR(paths_and_names,"main()")
 
             i = 0;
@@ -157,28 +144,26 @@ int main(int argc, char *argv[])
             //Read and test if the type of input files is valid
             //Insert k-mers of the input files in the BFT
             if (strcmp("kmers_comp", argv[4]) == 0){
+
                 root = createBFT_Root(size_kmer, atoi(argv[3]), 0);
-                insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 1);
+                insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 1, argv[6]);
             }
             else if (strcmp("kmers", argv[4]) == 0){
+
                 root = createBFT_Root(size_kmer, atoi(argv[3]), 0);
-                insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 0);
+                insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 0, argv[6]);
             }
-            /*else if (strcmp("fastx", argv[4]) == 0){
-                root = createBFT_Root(size_kmer, atoi(argv[3]), 0);
-                insert_Genomes_from_FASTxFiles(root, nb_files_2_read, paths_and_names);
-            }*/
             else
                 ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
                       "'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
 
-            write_BFT_Root_sparse(root, argv[6]);
+            write_BFT_Root(root, argv[6], false);
 
             memory_Used* mem = printMemoryUsedFromNode(&(root->node), (root->k / NB_CHAR_SUF_PREF) - 1, root->k, root->info_per_lvl);
             printMemory(mem);
             free(mem);
 
-            printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
+            //printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
 
             for (i=7; i<argc; i+=3){
 
@@ -234,8 +219,7 @@ int main(int argc, char *argv[])
             }
 
             if (paths_and_names != NULL){
-                int i = 0;
-                for (i=0; i<root->nb_genomes; i++) free(paths_and_names[i]);
+                for (int i=0; i<root->nb_genomes; i++) free(paths_and_names[i]);
                 free(paths_and_names);
             }
 
@@ -243,7 +227,7 @@ int main(int argc, char *argv[])
         }
         else if (strcmp("load", argv[1]) == 0){
 
-            root = read_BFT_Root_sparse(argv[2]);
+            root = read_BFT_Root(argv[2]);
 
             memory_Used* mem = printMemoryUsedFromNode(&(root->node), (root->k / NB_CHAR_SUF_PREF) - 1, root->k, root->info_per_lvl);
             printMemory(mem);
@@ -392,10 +376,10 @@ int main(int argc, char *argv[])
                     //Read and test if the type of input files is valid
                     //Insert k-mers of the input files in the BFT
                     if (strcmp("kmers_comp", argv[i+1]) == 0){
-                        insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 1);
+                        insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 1, argv[i+3]);
                     }
                     else if (strcmp("kmers", argv[i+1]) == 0){
-                        insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 0);
+                        insert_Genomes_from_KmerFiles(root, nb_files_2_read, paths_and_names, 0, argv[i+3]);
                     }
                     /*else if (strcmp("fastx", argv[i+1]) == 0){
                         insert_Genomes_from_FASTxFiles(root, nb_files_2_read, paths_and_names);
@@ -404,7 +388,7 @@ int main(int argc, char *argv[])
                         ERROR("Unrecognized type of input files.\nChoice must be 'fastx' for FASTA/FASTQ files, "
                               "'kmers' for k-mers files or 'kmers_comp' for compressed k-mer files.\n")
 
-                    write_BFT_Root_sparse(root, argv[i+3]);
+                    write_BFT_Root(root, argv[i+3], false);
 
                     i++;
                 }

@@ -1,4 +1,4 @@
-#include "./../lib/annotation.h"
+#include "annotation.h"
 
 const uint8_t MASK_POWER_8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 
@@ -8,599 +8,20 @@ const int MultiplyDeBruijnBitPosition_power2[32] =
   31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
 };
 
-extern int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot,
+extern inline annotation_inform* create_annotation_inform(int nb_id_genomes, bool disable_flag_0);
+extern inline void reinit_annotation_inform(annotation_inform* ann_inf);
+extern inline void free_annotation_inform(annotation_inform* ann_inf);
+extern inline int size_annot_sub(uint8_t* annot, int size_substring, int size_annot);
+extern inline int modify_annot_bis(uint8_t** current_annot, uint8_t* annot_sup, int* it_annot, int* size_current_annot,
                             uint32_t id_genome, int size_id_genome, uint8_t flag, uint8_t flag_ext);
-extern uint8_t* extract_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position, int* size_annot);
-
-void shift_extended_annot(UC* uc, int size_substring, int nb_substring, int pos_insert){
-
-    if (uc->nb_extended_annot != 0){
-
-        uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
-
-        int end_ext = uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT;
-        int pos = 0;
-        int i = 0;
-
-        /*while (1){
-
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
-            if (pos < pos_insert){
-                i += SIZE_BYTE_EXT_ANNOT;
-                if (i == end_ext) break;
-            }
-            else break;
-        }*/
-
-        pos += ((((uint16_t)extend_annot[0]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[1]));
-
-        while (pos < pos_insert){
-            i += SIZE_BYTE_EXT_ANNOT;
-            if (i == end_ext) break;
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
-        }
-
-        if (i < end_ext){
-            if (extend_annot[i+1] != 0xff) extend_annot[i+1]++;
-            else {
-                extend_annot[i]++;
-                extend_annot[i+1] = 0x0;
-            }
-        }
-    }
-}
-
-void insert_extend_annot(UC* uc, int size_substring, int nb_substring, int pos_insert, uint8_t annot, int shift_or_not){
-
-    ASSERT_NULL_PTR(uc,"insert_extend_annot()")
-
-    uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
-    int tot = uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
-
-    if (uc->nb_extended_annot != 0){
-
-        int pos = 0;
-        int i = 0;
-        int old_pos = 0;
-        int delta;
-        int sum;
-
-        /*while (1){
-            old_pos = pos;
-            pos += ((((uint16_t)extend_annot[i*SIZE_BYTE_EXT_ANNOT]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i*SIZE_BYTE_EXT_ANNOT+1]));
-            if (pos < pos_insert){
-                i++;
-                if (i == uc->nb_extended_annot) break;
-            }
-            else break;
-        }*/
-
-        pos += ((((uint16_t)extend_annot[0]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[1]));
-
-        while (pos < pos_insert){
-            i++;
-            if (i == uc->nb_extended_annot) break;
-            old_pos = pos;
-            pos += ((((uint16_t)extend_annot[i*SIZE_BYTE_EXT_ANNOT]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i*SIZE_BYTE_EXT_ANNOT+1]));
-        }
-
-        delta = pos_insert - pos;
-
-        if (i == 0){
-            memmove(&(extend_annot[SIZE_BYTE_EXT_ANNOT]), &(extend_annot[0]), (uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot) * sizeof(uint8_t));
-
-            extend_annot[0] = pos_insert >> SIZE_BITS_UINT_8T;
-            extend_annot[1] = pos_insert & 0xff;
-            extend_annot[2] = annot;
-
-            delta = pos - pos_insert;
-        }
-        else if (i == uc->nb_extended_annot) extend_annot[(i+1)*SIZE_BYTE_EXT_ANNOT-1] = annot;
-        else {
-            sum = i*SIZE_BYTE_EXT_ANNOT;
-            memmove(&(extend_annot[sum+SIZE_BYTE_EXT_ANNOT]), &(extend_annot[sum]), ((uc->nb_extended_annot - i) * SIZE_BYTE_EXT_ANNOT + tot) * sizeof(uint8_t));
-
-            delta = pos_insert - old_pos;
-
-            extend_annot[sum] = delta >> SIZE_BITS_UINT_8T;
-            extend_annot[sum+1] = delta & 0xff;
-            extend_annot[sum+2] = annot;
-
-            delta = pos - pos_insert;
-        }
-
-        if (i != uc->nb_extended_annot){
-            if (shift_or_not == 1) delta++;
-        }
-        else i--;
-
-        extend_annot[(i+1)*SIZE_BYTE_EXT_ANNOT] = delta >> SIZE_BITS_UINT_8T;
-        extend_annot[(i+1)*SIZE_BYTE_EXT_ANNOT+1] = delta & 0xff;
-
-        uc->nb_extended_annot++;
-    }
-    else{
-        extend_annot[0] = pos_insert >> SIZE_BITS_UINT_8T;
-        extend_annot[1] = pos_insert & 0xff;
-        extend_annot[2] = annot;
-        uc->nb_extended_annot = 1;
-    }
-
-    return;
-}
-
-void delete_extend_annots(UC* uc, int size_substring, int nb_substring, int pos_sub_start, int pos_sub_end, int delete_sub,
-                          int delete_ext_sub_array, int realloc_table){
-
-    ASSERT_NULL_PTR(uc,"delete_extend_annots()")
-
-    int size_line = size_substring + uc->size_annot;
-    int tot = uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
-
-    if (uc->nb_extended_annot != 0){
-
-        uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
-        int pos = 0;
-        int old_pos = pos;
-        int size_delta_list = uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT;
-        int i = 0;
-        int it_pos = pos_sub_start;
-        int tmp_pos_sub_end = pos_sub_end;
-        int shift;
-        int deleted = 0;
-
-        while(1){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
-
-            if (pos > tmp_pos_sub_end){
-
-                if (delete_ext_sub_array == 1){
-                    pos = ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1])) - (pos_sub_end - pos_sub_start + 1 - deleted);
-                    extend_annot[i] = pos >> SIZE_BITS_UINT_8T;
-                    extend_annot[i+1] = pos & 0xff;
-                }
-
-                break;
-            }
-
-            if (it_pos <= pos){
-
-                shift = pos - it_pos + 1;
-
-                if (i < size_delta_list-SIZE_BYTE_EXT_ANNOT){
-
-                    memmove(&(extend_annot[i]), &(extend_annot[i+SIZE_BYTE_EXT_ANNOT]), (size_delta_list-i-SIZE_BYTE_EXT_ANNOT + tot)*sizeof(uint8_t));
-                    pos += (((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1])));
-                    if (delete_ext_sub_array == 1) pos -= shift;
-                    extend_annot[i] = (pos - old_pos) >> SIZE_BITS_UINT_8T;
-                    extend_annot[i+1] = (pos - old_pos) & 0xff;
-                    it_pos = pos;
-                    pos = old_pos;
-                }
-
-                deleted += shift;
-                if (delete_ext_sub_array == 1) tmp_pos_sub_end -= shift;
-                uc->nb_extended_annot--;
-                size_delta_list -= SIZE_BYTE_EXT_ANNOT;
-
-                if (i >= size_delta_list) break;
-            }
-            else{
-                i += SIZE_BYTE_EXT_ANNOT;
-                if (i >= size_delta_list) break;
-                old_pos = pos;
-            }
-        }
-    }
-
-    if (delete_sub == 1){
-        memmove(&(uc->suffixes[pos_sub_start * size_line]),
-                &(uc->suffixes[(pos_sub_end+1) * size_line]),
-                ((nb_substring - pos_sub_end  - 1) * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot) * sizeof(uint8_t));
-
-        if (realloc_table == 1){
-            uc->suffixes = realloc(uc->suffixes, ((nb_substring - (pos_sub_end - pos_sub_start + 1)) * size_line +
-                                    uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot) * sizeof(uint8_t));
-            ASSERT_NULL_PTR(uc->suffixes,"delete_extend_annots()")
-        }
-    }
-    else if (realloc_table == 1){
-        uc->suffixes = realloc(uc->suffixes, (nb_substring * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot) * sizeof(uint8_t));
-        ASSERT_NULL_PTR(uc->suffixes,"delete_extend_annots()")
-    }
-
-    return;
-}
-
-uint8_t* get_extend_annot(UC* uc, int size_substring, int nb_substring, int pos_substring){
-
-    ASSERT_NULL_PTR(uc,"get_extend_annot()")
-
-    if (uc->nb_extended_annot != 0){
-
-        uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
-
-        /*int pos = 0;
-        int i = 0;
-
-        for (i=0; i<uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT; i+=SIZE_BYTE_EXT_ANNOT){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
-            if (pos == pos_substring) return &(extend_annot[i+2]);
-            else if (pos > pos_substring) return NULL;
-        }*/
-
-        int pos = (extend_annot[0] << SIZE_BITS_UINT_8T) | extend_annot[1];
-        int i = SIZE_BYTE_EXT_ANNOT;
-
-        while ((pos < pos_substring) && (i < uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT)){
-            pos += (extend_annot[i] << SIZE_BITS_UINT_8T) | extend_annot[i+1];
-            i += SIZE_BYTE_EXT_ANNOT;
-        }
-
-        if (pos == pos_substring) return &(extend_annot[i-1]);
-    }
-
-    return NULL;
-}
-
-uint8_t** get_extend_annots(UC* uc, int size_substring, int nb_substring, int pos_substring_begin, int pos_substring_end){
-
-    ASSERT_NULL_PTR(uc,"get_extend_annots()")
-
-    int i;
-    int count_sub = pos_substring_end - pos_substring_begin + 1;
-    uint8_t** ptr_extend_annot = NULL;
-
-    if (uc->nb_extended_annot != 0){
-        ptr_extend_annot = malloc(count_sub*sizeof(uint8_t*));
-        ASSERT_NULL_PTR(ptr_extend_annot,"get_extend_annots()")
-
-        for (i=0; i<count_sub; i++) ptr_extend_annot[i] = NULL;
-
-        uint8_t* extend_annot = &(uc->suffixes[nb_substring * (size_substring + uc->size_annot)]);
-        int pos = 0;
-        int it_pos = pos_substring_begin;
-        int bool_pres_extend_annot = 0;
-
-        for (i=0; i < uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT; i+=SIZE_BYTE_EXT_ANNOT){
-            pos += ((((uint16_t)extend_annot[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)extend_annot[i+1]));
-
-            if (pos > pos_substring_end) break;
-            if (it_pos <= pos){
-                it_pos = pos;
-                ptr_extend_annot[it_pos-pos_substring_begin] = &(extend_annot[i+2]);
-                bool_pres_extend_annot = 1;
-            }
-        }
-
-        if (bool_pres_extend_annot == 1) return ptr_extend_annot;
-        else free(ptr_extend_annot);
-    }
-
-    return NULL;
-}
-
-void recopy_back_annot_extend(UC* uc, int size_substring, int nb_substring){
-
-    ASSERT_NULL_PTR(uc,"recopy_back_annot_extend()")
-
-    if (nb_substring == 0){
-        uc->size_annot++;
-        return;
-    }
-
-    int i, j;
-    int old_size_line = size_substring + uc->size_annot;
-    int new_size_line = old_size_line + 1;
-    int tot_size_line = nb_substring * old_size_line;
-    int pos = old_size_line;
-
-    uint8_t* new_suffixes;
-
-    new_suffixes = calloc(nb_substring * new_size_line + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes), sizeof(uint8_t));
-    ASSERT_NULL_PTR(new_suffixes,"recopy_back_annot_extend()")
-
-    for (i = 0, j = 0; i < nb_substring * new_size_line; i += new_size_line, j += old_size_line)
-        memcpy(&(new_suffixes[i]), &(uc->suffixes[j]), old_size_line*sizeof(uint8_t));
-
-    if (uc->nb_extended_annot != 0){
-
-        for (i = tot_size_line; i < tot_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT; i += SIZE_BYTE_EXT_ANNOT){
-
-            pos += ((((uint16_t)uc->suffixes[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)uc->suffixes[i + 1])) * new_size_line;
-            new_suffixes[pos] = uc->suffixes[i + SIZE_BYTE_EXT_ANNOT - 1];
-        }
-
-        uc->nb_extended_annot = 0;
-    }
-
-    memcpy(&(new_suffixes[nb_substring * new_size_line]), &(uc->suffixes[tot_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT]),
-           uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes) * sizeof(uint8_t));
-
-    uc->size_annot++;
-
-    free(uc->suffixes);
-    uc->suffixes = new_suffixes;
-
-    return;
-}
-
-void create_annot_extended(UC* uc, int size_substring, int nb_substring){
-
-    if (nb_substring == 0) return;
-
-    ASSERT_NULL_PTR(uc,"create_annot_extended()")
-    ASSERT_NULL_PTR(uc->suffixes,"create_annot_extended()")
-
-    if (uc->size_annot <= 1) return;
-
-    int i = 0;
-    int old_pos = 0;
-    int it_annot_extend = 0;
-    int nb_possible_annot_extend = 0;
-    int size_line = size_substring + uc->size_annot;
-
-    int delta;
-    int new_size_line;
-    int tot_new_size_line;
-
-    uint8_t* new_tab_suffixes;
-    uint8_t* extend_annot;
-
-    for (i = size_line - 1; i < nb_substring * size_line; i += size_line)
-        nb_possible_annot_extend += uc->suffixes[i] != 0;
-
-    if ((nb_possible_annot_extend * SIZE_BYTE_EXT_ANNOT) > nb_substring) return;
-
-    new_size_line = size_substring + uc->size_annot - 1;
-    tot_new_size_line = nb_substring * new_size_line;
-
-    new_tab_suffixes = calloc(tot_new_size_line + nb_possible_annot_extend * SIZE_BYTE_EXT_ANNOT
-                              + uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes), sizeof(uint8_t));
-    ASSERT_NULL_PTR(new_tab_suffixes,"create_annot_extended()")
-
-    extend_annot = &(new_tab_suffixes[tot_new_size_line]);
-
-    for (i=0; i<nb_substring; i++){
-        memcpy(&(new_tab_suffixes[i*new_size_line]), &(uc->suffixes[i*size_line]), new_size_line*sizeof(uint8_t));
-
-        if (uc->suffixes[(i+1) * size_line - 1] != 0){
-            delta = i - old_pos;
-
-            extend_annot[it_annot_extend] = delta >> SIZE_BITS_UINT_8T;
-            extend_annot[it_annot_extend+1] = delta & 0xff;
-            extend_annot[it_annot_extend+2] = uc->suffixes[(i+1) * size_line - 1];
-            old_pos = i;
-            it_annot_extend += SIZE_BYTE_EXT_ANNOT;
-        }
-    }
-
-    memcpy(&(new_tab_suffixes[tot_new_size_line + it_annot_extend]), &(uc->suffixes[nb_substring * size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT]),
-           uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes) * sizeof(uint8_t));
-
-    uc->size_annot--;
-    uc->nb_extended_annot = nb_possible_annot_extend;
-
-    free(uc->suffixes);
-    uc->suffixes = new_tab_suffixes;
-
-    return;
-}
-
-uint8_t* realloc_annotation(UC* uc, int size_substring, int nb_substring, int new_size_annotation, int new_insertion, int pos_insert_extend){
-
-    ASSERT_NULL_PTR(uc,"realloc_annotation()")
-
-    if (nb_substring == 0){
-        uc->size_annot = new_size_annotation;
-        uc->nb_extended_annot = 0;
-        return NULL;
-    }
-
-    ASSERT_NULL_PTR(uc->suffixes,"realloc_annotation()")
-
-    int i = 0, j;
-    int old_size_line = size_substring + uc->size_annot;
-    int new_size_line = size_substring + new_size_annotation;
-    int tot_size_line_cplx = uc->nb_cplx_nodes * (SIZE_BYTE_CPLX_N + uc->size_annot_cplx_nodes);
-
-    int tot_size_line;
-
-    uint8_t* new_tab_suffixes;
-    uint8_t* to_return = NULL;
-
-    if (new_size_annotation > uc->size_annot+1){
-
-        if (new_insertion == 1) new_size_line--;
-
-        new_tab_suffixes = calloc(((nb_substring + new_insertion) * new_size_line + new_insertion * SIZE_BYTE_EXT_ANNOT + tot_size_line_cplx), sizeof(uint8_t));
-        ASSERT_NULL_PTR(new_tab_suffixes,"realloc_annotation()")
-
-        tot_size_line = nb_substring * old_size_line;
-
-        for (i = 0, j = 0; i < nb_substring * new_size_line; i += new_size_line, j += old_size_line)
-            memcpy(&(new_tab_suffixes[i]), &(uc->suffixes[j]), old_size_line*sizeof(uint8_t));
-
-        if (uc->nb_extended_annot != 0){
-            int pos = old_size_line;
-            for (i = tot_size_line; i < tot_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT; i += SIZE_BYTE_EXT_ANNOT){
-                pos += ((((uint16_t)uc->suffixes[i]) << SIZE_BITS_UINT_8T) | ((uint16_t)uc->suffixes[i + 1])) * new_size_line;
-                new_tab_suffixes[pos] = uc->suffixes[i + SIZE_BYTE_EXT_ANNOT - 1];
-            }
-        }
-
-        if (new_insertion == 1){
-            memmove(&(new_tab_suffixes[(pos_insert_extend+1) * new_size_line]),
-                    &(new_tab_suffixes[pos_insert_extend * new_size_line]),
-                    (nb_substring - pos_insert_extend) * new_size_line * sizeof(uint8_t));
-
-            nb_substring = (nb_substring+1) * new_size_line;
-            new_tab_suffixes[nb_substring] = pos_insert_extend >> SIZE_BITS_UINT_8T;
-            new_tab_suffixes[nb_substring + 1] = pos_insert_extend & 0xff;
-            to_return = &(new_tab_suffixes[nb_substring + SIZE_BYTE_EXT_ANNOT - 1]);
-
-            memcpy(&(to_return[1]), &(uc->suffixes[tot_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT]), tot_size_line_cplx * sizeof(uint8_t));
-        }
-        else memcpy(&(new_tab_suffixes[nb_substring * new_size_line]),
-                    &(uc->suffixes[tot_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT]),
-                    tot_size_line_cplx * sizeof(uint8_t));
-
-        free(uc->suffixes);
-        uc->suffixes = new_tab_suffixes;
-        uc->size_annot = new_size_line - size_substring;
-        uc->nb_extended_annot = new_insertion;
-    }
-    else if (new_size_annotation > uc->size_annot){
-
-        if (uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT > nb_substring){
-            recopy_back_annot_extend(uc, size_substring, nb_substring);
-            return realloc_annotation(uc, size_substring, nb_substring, new_size_annotation, new_insertion, pos_insert_extend);
-        }
-
-        uc->suffixes = realloc(uc->suffixes, ((nb_substring + new_insertion) * old_size_line + (uc->nb_extended_annot+1) * SIZE_BYTE_EXT_ANNOT
-                                + tot_size_line_cplx) * sizeof(uint8_t));
-        ASSERT_NULL_PTR(uc->suffixes,"realloc_annotation()")
-
-        tot_size_line = nb_substring*old_size_line;
-
-        if (new_insertion == 1){
-            memmove(&(uc->suffixes[(pos_insert_extend+1) * old_size_line]),
-                    &(uc->suffixes[pos_insert_extend * old_size_line]),
-                    (((nb_substring - pos_insert_extend) * old_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot_size_line_cplx) * sizeof(uint8_t)));
-
-            memset(&(uc->suffixes[pos_insert_extend * old_size_line]), 0, old_size_line * sizeof(uint8_t));
-
-            tot_size_line += old_size_line;
-        }
-
-        if (uc->nb_extended_annot != 0){
-            uint8_t* extended_annot = &(uc->suffixes[tot_size_line]);
-
-            int pos = 0;
-            int old_pos = 0;
-            int delta;
-            int sum;
-
-            i = 0;
-
-            /*while (1){
-                old_pos = pos;
-                pos += ((((uint16_t)extended_annot[i*SIZE_BYTE_EXT_ANNOT]) << SIZE_BITS_UINT_8T) | ((uint16_t)extended_annot[i*SIZE_BYTE_EXT_ANNOT+1]));
-                if (pos < pos_insert_extend){
-                    i++;
-                    if (i >= uc->nb_extended_annot) break;
-                }
-                else break;
-            }*/
-
-            pos += ((((uint16_t)extended_annot[0]) << SIZE_BITS_UINT_8T) | ((uint16_t)extended_annot[1]));
-
-            while (pos < pos_insert_extend){
-                i++;
-                if (i == uc->nb_extended_annot) break;
-                old_pos = pos;
-                pos += ((((uint16_t)extended_annot[i*SIZE_BYTE_EXT_ANNOT]) << SIZE_BITS_UINT_8T) | ((uint16_t)extended_annot[i*SIZE_BYTE_EXT_ANNOT+1]));
-            }
-
-            sum = i*SIZE_BYTE_EXT_ANNOT;
-
-            if (i==0){
-                memmove(&(extended_annot[SIZE_BYTE_EXT_ANNOT]), extended_annot, (uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot_size_line_cplx) * sizeof(uint8_t));
-
-                extended_annot[0] = pos_insert_extend >> SIZE_BITS_UINT_8T;
-                extended_annot[1] = pos_insert_extend & 0xff;
-
-                delta = pos - pos_insert_extend + new_insertion;
-            }
-            else if (i != uc->nb_extended_annot){
-                memmove(&(extended_annot[sum + SIZE_BYTE_EXT_ANNOT]), &(extended_annot[sum]),
-                        ((uc->nb_extended_annot - i) * SIZE_BYTE_EXT_ANNOT + tot_size_line_cplx) * sizeof(uint8_t));
-
-                delta = pos_insert_extend - old_pos;
-
-                extended_annot[sum] = delta >> SIZE_BITS_UINT_8T;
-                extended_annot[sum+1] = delta & 0xff;
-
-                delta = pos - pos_insert_extend + new_insertion;
-            }
-            else delta = pos_insert_extend - pos;
-
-            if (i == uc->nb_extended_annot){
-                extended_annot[sum] = delta >> SIZE_BITS_UINT_8T;
-                extended_annot[sum+1] = delta & 0xff;
-            }
-            else{
-                extended_annot[sum+SIZE_BYTE_EXT_ANNOT] = delta >> SIZE_BITS_UINT_8T;
-                extended_annot[sum+SIZE_BYTE_EXT_ANNOT+1] = delta & 0xff;
-            }
-
-            to_return = &(extended_annot[sum+SIZE_BYTE_EXT_ANNOT-1]);
-        }
-        else {
-            uc->suffixes[tot_size_line] = pos_insert_extend >> SIZE_BITS_UINT_8T;
-            uc->suffixes[tot_size_line+1] = pos_insert_extend & 0xff;
-            to_return = &(uc->suffixes[tot_size_line+2]);
-        }
-
-        uc->nb_extended_annot++;
-    }
-    else if (new_size_annotation == uc->size_annot){
-        if (new_insertion == 1){
-            uc->suffixes = realloc(uc->suffixes, ((nb_substring + 1) * old_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT
-                                    + tot_size_line_cplx) * sizeof(uint8_t));
-            ASSERT_NULL_PTR(uc->suffixes,"realloc_annotation()")
-
-            memmove(&(uc->suffixes[(pos_insert_extend+1) * old_size_line]),
-                    &(uc->suffixes[pos_insert_extend * old_size_line]),
-                    (((nb_substring - pos_insert_extend) * old_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT + tot_size_line_cplx) * sizeof(uint8_t)));
-
-            memset(&(uc->suffixes[pos_insert_extend * old_size_line]), 0, old_size_line * sizeof(uint8_t));
-        }
-    }
-    else{
-
-        new_tab_suffixes = calloc(((nb_substring + new_insertion) * new_size_line + tot_size_line_cplx), sizeof(uint8_t));
-        ASSERT_NULL_PTR(new_tab_suffixes,"realloc_annotation()")
-
-        if (new_insertion == 1){
-
-            for (i = 0, j = 0; j < pos_insert_extend * old_size_line; i += new_size_line, j += old_size_line)
-                memcpy(&(new_tab_suffixes[i]), &(uc->suffixes[j]), new_size_line * sizeof(uint8_t));
-
-            i += new_size_line;
-
-            for (; j < nb_substring * old_size_line; i += new_size_line,j += old_size_line)
-                memcpy(&(new_tab_suffixes[i]), &(uc->suffixes[j]), new_size_line * sizeof(uint8_t));
-
-
-        }
-        else{
-            for (i=0; i<nb_substring; i++)
-                memcpy(&(new_tab_suffixes[i*new_size_line]), &(uc->suffixes[i*old_size_line]), new_size_line*sizeof(uint8_t));
-        }
-
-        /*if (new_insertion == 1){
-            memmove(&(new_tab_suffixes[(pos_insert_extend+1) * new_size_line]),
-                    &(new_tab_suffixes[pos_insert_extend * new_size_line]),
-                    ((nb_substring - pos_insert_extend) * new_size_line)* sizeof(uint8_t));
-
-            memset(&(new_tab_suffixes[pos_insert_extend * new_size_line]), 0, new_size_line*sizeof(uint8_t));
-        }*/
-
-        memcpy(&(new_tab_suffixes[(nb_substring + new_insertion) * new_size_line]),
-               &(uc->suffixes[nb_substring * old_size_line + uc->nb_extended_annot * SIZE_BYTE_EXT_ANNOT]),
-               tot_size_line_cplx * sizeof(uint8_t));
-
-        free(uc->suffixes);
-        uc->suffixes = new_tab_suffixes;
-        uc->size_annot = new_size_annotation;
-        uc->nb_extended_annot = 0;
-    }
-
-    if (to_return != NULL) memset(to_return, 0, sizeof(uint8_t));
-
-    return to_return;
-}
+extern inline UC_SIZE_ANNOT_T *min_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+extern inline int max_size_per_sub(uint8_t* annot, int nb_substrings, int size_substring, int size_annot);
+extern inline uint8_t* extract_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position,
+                                                   int* size_annot);
+extern inline int getSize_from_annotation_array_elem(annotation_array_elem* annot_sorted, uint32_t position);
+extern inline double getTotalSize_annotation_array_elem(annotation_array_elem* annot_sorted, int size_array);
+extern inline int getMaxSize_annotation_array_elem(annotation_array_elem* annot_sorted);
+extern inline void free_annotation_array_elem(annotation_array_elem** annot_sorted, int* size_array);
 
 int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot,
                       int size_annot, uint8_t* annot_sup, int size_annot_sup, uint32_t id_genome){
@@ -635,12 +56,16 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
         uint8_t* annot_tmp = extract_from_annotation_array_elem(annot_sorted, position, &size);
         memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
 
-        decomp_annotation(ann_inf, ann_inf->annotation, size, NULL, 0, 0);
+        i = decomp_annotation(ann_inf, ann_inf->annotation, size, NULL, 0, 0);
+        if (i) size = i;
     }
     else{
+
         size = size_annot;
         memcpy(ann_inf->annotation, annot, size_annot*sizeof(uint8_t));
+
         if (annot_sup != NULL){
+
             memcpy(&(ann_inf->annotation[size_annot]), annot_sup, size_annot_sup*sizeof(uint8_t));
             size += size_annot_sup;
         }
@@ -651,17 +76,20 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
     ann_inf->current_mode = ann_inf->annotation[0] & 0x3;
 
     if (ann_inf->current_mode == 0){
-        if ((ann_inf->annotation[(id_genome+2)/SIZE_BITS_UINT_8T] & MASK_POWER_8[(id_genome+2)%SIZE_BITS_UINT_8T]) != 0) to_return = 1;
+        if (ann_inf->annotation[(id_genome+2)/SIZE_BITS_UINT_8T] & MASK_POWER_8[(id_genome+2)%SIZE_BITS_UINT_8T]) to_return = 1;
     }
     else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
 
         if (ann_inf->comp_annot > 0){
+
             for (i = 0; i < ann_inf->nb_id_stored; i += 2){
+
                 if ((id_genome >= ann_inf->id_stored[i]) && (id_genome <= ann_inf->id_stored[i+1])){
+
                     to_return = 1;
                     break;
                 }
-                else if (id_genome > ann_inf->id_stored[i+1]) break;
+                else if (id_genome < ann_inf->id_stored[i+1]) break;
             }
         }
         else{
@@ -678,6 +106,7 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
                 }
 
                 if (ann_inf->nb_id_stored == 2){
+
                     if ((id_genome >= ann_inf->id_stored[0]) && (id_genome <= ann_inf->id_stored[1])){
                         to_return = 1;
                         break;
@@ -692,12 +121,15 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
     else if (ann_inf->current_mode == 2){
 
         if (ann_inf->comp_annot > 0){
+
             for (i = 0; i < ann_inf->nb_id_stored; i++){
+
                 if (id_genome == ann_inf->id_stored[i]){
+
                     to_return = 1;
                     break;
                 }
-                else if (id_genome > ann_inf->id_stored[i]) break;
+                else if (id_genome < ann_inf->id_stored[i]) break;
             }
         }
         else{
@@ -708,11 +140,13 @@ int is_genome_present(annotation_inform* ann_inf, annotation_array_elem* annot_s
                 i++;
 
                 while ((i<size) && (ann_inf->annotation[i] & 0x1)){
+
                     ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
 
                 if (id_genome == ann_inf->id_stored[0]){
+
                     to_return = 1;
                     break;
                 }
@@ -762,7 +196,8 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
         uint8_t* annot_tmp = extract_from_annotation_array_elem(annot_sorted, position, &size);
         memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
 
-        decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 0);
+        i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 0);
+        if (i) size = i;
     }
     else{
         size = size_annot;
@@ -778,13 +213,16 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
     ann_inf->current_mode = ann_inf->annotation[0] & 0x3;
 
     if (ann_inf->current_mode == 0){
-        if ((ann_inf->annotation[(id_genome+2)/SIZE_BITS_UINT_8T] & MASK_POWER_8[(id_genome+2)%SIZE_BITS_UINT_8T]) != 0) to_return = 1;
+        if (ann_inf->annotation[(id_genome+2)/SIZE_BITS_UINT_8T] & MASK_POWER_8[(id_genome+2)%SIZE_BITS_UINT_8T]) to_return = 1;
     }
     else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
 
         if (ann_inf->comp_annot > 0){
+
             for (i = ann_inf->nb_id_stored - 1; i >= 0; i -= 2){
+
                 if ((id_genome >= ann_inf->id_stored[i-1]) && (id_genome <= ann_inf->id_stored[i])){
+
                     to_return = 1;
                     goto END_IS_GENOME_PRES_END;
                 }
@@ -803,6 +241,7 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
                 i++;
 
                 while ((i<size) && (ann_inf->annotation[i] & 0x2)){
+
                     ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -810,7 +249,9 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
                 ann_inf->nb_id_stored++;
 
                 if (ann_inf->nb_id_stored == 2){
+
                     if ((id_genome >= ann_inf->id_stored[1]) && (id_genome <= ann_inf->id_stored[0])){
+
                         to_return = 1;
                         goto END_IS_GENOME_PRES_END;
                     }
@@ -848,6 +289,7 @@ int is_genome_present_from_end_annot(annotation_inform* ann_inf, annotation_arra
                 i++;
 
                 while ((i<size) && (ann_inf->annotation[i] & 0x1)){
+
                     ann_inf->id_stored[0] = (ann_inf->id_stored[0] << 6) | (ann_inf->annotation[i] >> 2);
                     i++;
                 }
@@ -977,12 +419,11 @@ int get_last_genome_inserted(annotation_inform* ann_inf, annotation_array_elem* 
     return i;
 }
 
-void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot, int size_annot,
-                       uint8_t* annot_sup, int size_annot_sup, uint32_t id_genome2insert, int size_id_genome){
+void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_sorted,
+                       uint8_t* annot, int size_annot, uint8_t* annot_sup, int size_annot_sup,
+                       uint32_t id_genome2insert, int size_id_genome){
 
     ASSERT_NULL_PTR(ann_inf,"compute_best_mode()")
-
-    ann_inf->last_added = INT_MIN;
 
     int size;
 
@@ -990,13 +431,18 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
     int tmp = 1, tmp2 = 1;
     int tot_size_ids_flag1 = 0;
     int tot_size_ids_flag2 = 0;
+    int lim_flag0;
+
+    int new_sizes_mode[3] = {0};
 
     uint32_t pow2_imin = 0;
     uint32_t imin, imax;
 
-    int new_sizes_mode[3] = {0};
+    bool start_run = false;
 
-    if (size_annot != 0){ //If the annotation is not new
+    ann_inf->last_added = INT_MIN;
+
+    if (size_annot){ //If the annotation is not new
 
         if ((annot[0] & 0x3) == 3){
 
@@ -1018,8 +464,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
             uint8_t* annot_tmp = extract_from_annotation_array_elem(annot_sorted, position, &size);
             memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
 
-            i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 1);
-            if (i != 0) size = i;
+            if ((i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 1))) size = i;
         }
         else{
             size = size_annot;
@@ -1037,46 +482,25 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
 
         if (ann_inf->current_mode == 0){ //Bitwize mode
 
-            int start_run = -1;
+            if (size*SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]) lim_flag0 = size*SIZE_BITS_UINT_8T;
+            else lim_flag0 = 66;
 
-            if (size*SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]){
+            for (i=2; i < lim_flag0; i++){
 
-                start_run = 0;
-
-                for (i=2; i<size*SIZE_BITS_UINT_8T; i++){
-
-                    if ((ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]) != 0){
-                        ann_inf->last_added = i-2;
-                        tot_size_ids_flag2++;
-                        tot_size_ids_flag1 += start_run == 0;
-                        start_run = 1;
-                    }
-                    else {
-                        tot_size_ids_flag1 += start_run;
-                        start_run = 0;
-                    }
+                if (ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]){
+                    ann_inf->last_added = i-2;
+                    tot_size_ids_flag2++;
+                    tot_size_ids_flag1 += start_run == false;
+                    start_run = true;
                 }
-
-                tot_size_ids_flag1 += start_run;
+                else {
+                    tot_size_ids_flag1 += start_run == true;
+                    start_run = false;
+                }
             }
+
+            if (size*SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]) tot_size_ids_flag1 += start_run == true;
             else{
-
-                start_run = 0;
-
-                for (i=2; i<66; i++){
-
-                    if ((ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]) != 0){
-
-                        ann_inf->last_added = i-2;
-                        tot_size_ids_flag2++;
-                        tot_size_ids_flag1 += start_run == 0;
-                        start_run = 1;
-                    }
-                    else {
-                        tot_size_ids_flag1 += start_run;
-                        start_run = 0;
-                    }
-                }
 
                 for (i=66; i<size*SIZE_BITS_UINT_8T; i++){
 
@@ -1084,19 +508,18 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
 
                         ann_inf->last_added = i-2;
 
-                        //tmp = get_nb_bytes_power2_annot(i-2);
                         if (ann_inf->last_added >= pow2_imin){
                             pow2_imin = round_up_next_highest_power2(ann_inf->last_added);
                             tmp2 = (tmp = get_nb_bytes_power2_annot_bis(ann_inf->last_added, pow2_imin));
                         }
 
                         tot_size_ids_flag2 += tmp;
-                        tot_size_ids_flag1 += (start_run == 0) * tmp;
-                        start_run = 1;
+                        tot_size_ids_flag1 += (start_run == false) * tmp;
+                        start_run = true;
                     }
                     else {
-                        if (start_run == 1){
-                            //tot_size_ids_flag1 += get_nb_bytes_power2_annot(i-2);
+                        if (start_run){
+
                             if (i-2 >= pow2_imin){
                                 pow2_imin = round_up_next_highest_power2(i-2);
                                 tmp2 = get_nb_bytes_power2_annot_bis(i-2, pow2_imin);
@@ -1105,11 +528,11 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
                             tot_size_ids_flag1 += tmp2;
                         }
 
-                        start_run = 0;
+                        start_run = false;
                     }
                 }
 
-                if (start_run == 1){
+                if (start_run){
                     if (ann_inf->last_added < 0x40) tot_size_ids_flag1++;
                     else tot_size_ids_flag1 += tmp;
                 }
@@ -1118,6 +541,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
         else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
 
             if (ann_inf->comp_annot <= 0){
+
                 while ((i<size) && (ann_inf->annotation[i] & 0x1)){
 
                     ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
@@ -1145,6 +569,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
                     tot_size_ids_flag2 += (ann_inf->id_stored[i+1] - ann_inf->id_stored[i] + 1) * ann_inf->size_id_stored[i];
                 }
                 else {
+
                     imin = ann_inf->id_stored[i];
                     imax = ann_inf->id_stored[i+1];
 
@@ -1199,8 +624,10 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
         else ERROR( "compute_best_mode(): mode 3, should not happen" )
     }
 
-    //Compute the new possible sizes of the annot after insertion of the genonme
-    new_sizes_mode[0] = CEIL(3+id_genome2insert, SIZE_BITS_UINT_8T);
+    //Compute the new possible sizes of the annot after insertion of the genome
+    if (ann_inf->disabled_flags & MASK_POWER_8[0]) new_sizes_mode[0] = INT_MAX;
+    else new_sizes_mode[0] = CEIL(3+id_genome2insert, SIZE_BITS_UINT_8T);
+
     new_sizes_mode[1] = tot_size_ids_flag1;
     new_sizes_mode[2] = tot_size_ids_flag2;
 
@@ -1239,10 +666,11 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
     ASSERT_NULL_PTR(ann_inf, "modify_mode_annotation()")
     ASSERT_NULL_PTR(annot, "modify_mode_annotation()")
 
-    int z = 0;
-    int i = 0;
+    int z = 0, i = 0, it_annot = 0;
 
-    int it_annot = 0;
+    int pos_cell;
+    int start_run, stop_run;
+
     int size = size_annot;
     int size_current_annot = size_annot;
 
@@ -1260,15 +688,15 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
             memcpy(annot, ann_inf->annotation, size_annot*sizeof(uint8_t));
             if (annot_sup != NULL) memcpy(annot_sup, &(ann_inf->annotation[size_annot]), size_annot_sup*sizeof(uint8_t));
 
-            int pos_cell = (id_genome2insert+2)/SIZE_BITS_UINT_8T;
+            pos_cell = (id_genome2insert+2)/SIZE_BITS_UINT_8T;
 
             if (pos_cell < size_annot) annot[pos_cell] |= MASK_POWER_8[(id_genome2insert+2)%SIZE_BITS_UINT_8T];
             else annot_sup[pos_cell-size_annot] |= MASK_POWER_8[(id_genome2insert+2-(size_annot*SIZE_BITS_UINT_8T))%SIZE_BITS_UINT_8T];
         }
         else if (ann_inf->min_mode == 1){ // Mode with min size is 1
 
-            int start_run = -1;
-            int stop_run = -1;
+            start_run = -1;
+            stop_run = -1;
 
             for (z=0; z<=ann_inf->last_added; z++){
 
@@ -1392,7 +820,7 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
         }
         else{ // Mode with min size is 2
 
-            while (i<ann_inf->nb_id_stored){
+            while (i < ann_inf->nb_id_stored){
 
                 for (z = ann_inf->id_stored[i]; z <= ann_inf->id_stored[i+1]; z++)
                     modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, z, -1, 2, 1);
@@ -1483,7 +911,7 @@ void modify_mode_annotation(annotation_inform* ann_inf, uint8_t* annot, int size
                 while ((it_annot < size_current_annot) && ((current_annot[it_annot] & 0x3) != 0)) it_annot++;
             }
 
-            OUT_HERE:modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, id_genome2insert, size_id_genome, 2, 1);
+            OUT_HERE: modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, id_genome2insert, size_id_genome, 2, 1);
         }
     }
 
@@ -1504,6 +932,10 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
 
     annotation_array_elem* annot_list = NULL;
 
+    int bits_per_byte_checksum = SIZE_BITS_UINT_8T-1;
+
+    //uint32_t tot_size;
+
     uint32_t next_id = 0;
     uint32_t next_id_tmp = 0;
     uint32_t tmp = 0;
@@ -1517,8 +949,7 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
     uint32_t i = 0;
     uint32_t size_annot_list = 0;
     uint32_t pos_annot_list = 0;
-    //uint32_t tot_cell_index = SIZE_MAX_BYTE_ANNOT + CEIL(SIZE_MAX_BYTE_ANNOT, SIZE_BITS_UINT_8T) + 4;
-    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, SIZE_BITS_UINT_8T-1) + 4;
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, bits_per_byte_checksum) + 4;
     uint32_t length_index;
 
     //uint32_t nb_annot_with_first_size;
@@ -1534,7 +965,7 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
     uint8_t* it_index = malloc(tot_cell_index * sizeof(uint8_t));
     ASSERT_NULL_PTR(it_index, "sort_annotations()");
 
-    uint8_t* first_index;
+    uint8_t* first_index = NULL;
     uint8_t* it_index_tmp;
     uint8_t* it_index_start;
 
@@ -1609,9 +1040,11 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
 
             #if defined (_WORDx64)
                 decomp_size = it_sizes & 0xffffffff;
-            #endif // defined
+            //    tot_size = it_sizes >> 32;
+            #endif
 
             if (next_id_tmp_nb_bytes_power2 >= decomp_size) *PValue_sizes = UINT32_MAX;
+            //else if (next_id_tmp_nb_bytes_power2 * (tot_size/decomp_size) + decomp_size > tot_size) *PValue_sizes = UINT32_MAX;
             else {
                 *PValue_sizes = next_id;
                 next_id += tmp;
@@ -1646,13 +1079,17 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
             #else
                 PValue_annot_tmp = *PValue_annot;
                 JLG(PValue_sizes, PArray_sizes, *PValue_annot_tmp >> 32);
+
+                if (*PValue_sizes == UINT32_MAX) free(PValue_annot_tmp);
             #endif
 
-            if (*PValue_sizes == UINT32_MAX) *PValue_annot_tmp = UINT32_MAX;
+            if (*PValue_sizes == UINT32_MAX){
+                JSLD(PValue_annot, *JArray_annot, it_index);
+                //*PValue_annot_tmp = UINT32_MAX;
+            }
             else{
-                //nb_annot_with_first_size++;
 
-                i = -1;
+                /*i = -1;
                 it_index_start = &(annot_list[pos_annot_list].annot_array[((*PValue_sizes)-old_id) * real_size]);
                 it_index_tmp = it_index_start-1;
 
@@ -1662,6 +1099,22 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
                     i = it_index_tmp - it_index_start;
                     if ((it_index[real_size + 3 + i/(SIZE_BITS_UINT_8T-1)] & MASK_POWER_8[i % (SIZE_BITS_UINT_8T-1) + 1]) != 0)
                         *it_index_tmp = 0;
+                }*/
+
+                i = 0;
+                it_index_start = &(annot_list[pos_annot_list].annot_array[((*PValue_sizes)-old_id) * real_size]);
+                it_index_tmp = it_index_start + real_size;
+
+                memcpy(it_index_start, &it_index[3], real_size * sizeof(uint8_t));
+
+                while (it_index_start < it_index_tmp){
+
+                    if (*it_index_start == 254){
+                        if (it_index[real_size + 3 + i/bits_per_byte_checksum] & MASK_POWER_8[i % bits_per_byte_checksum + 1]) *it_index_start = 0;
+                        i++;
+                    }
+
+                    it_index_start++;
                 }
 
                 *PValue_annot_tmp = *PValue_sizes;
@@ -1687,7 +1140,7 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
     }
 
     if (next_id == 0){
-        free_annotation_array_elem(annot_list, *size_array);
+        free_annotation_array_elem(&annot_list, size_array);
         *size_array = 0;
     }
 
@@ -1695,6 +1148,635 @@ annotation_array_elem* sort_annotations(Pvoid_t* JArray_annot, int* size_array, 
     free(it_index);
 
     return annot_list;
+}
+
+void sort_annotations2(char* filename_annot_array_elem, Pvoid_t* JArray_annot, annotation_array_elem** root_comp_set_colors,
+                       int* length_root_comp_set_colors, uint32_t longest_annot){
+
+    ASSERT_NULL_PTR(filename_annot_array_elem, "write_annotation_array_elem()\n")
+
+    FILE* file = fopen(filename_annot_array_elem, "wb");
+    ASSERT_NULL_PTR(file, "sort_annotations2()\n")
+
+    PWord_t PValue_annot;
+    PWord_t PValue_annot_tmp;
+    PWord_t PValue_sizes;
+    Word_t Rc_word;
+    Word_t it_sizes;
+
+    Pvoid_t PArray_sizes = (Pvoid_t) NULL;
+
+    annotation_array_elem* annot_list = calloc(1, sizeof(annotation_array_elem));
+    ASSERT_NULL_PTR(annot_list, "sort_annotations()")
+
+    int j;
+    int shift_mode_3;
+
+    int size_annot_list = 0;
+    int bits_per_byte_checksum = SIZE_BITS_UINT_8T - 1;
+
+    uint32_t position;
+
+    uint32_t next_id = 0;
+    uint32_t next_id_tmp = 0;
+    uint32_t tmp = 0;
+
+    uint32_t next_id_highest_power2 = 1;
+    uint32_t next_id_nb_bytes_power2 = 1;
+    uint32_t next_id_tmp_nb_bytes_power2 = 1;
+
+    uint32_t prev_id = 0;
+
+    uint32_t i = 0;
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, bits_per_byte_checksum) + 4;
+    uint32_t length_index;
+
+    uint32_t real_size = 1;
+    uint32_t decomp_size = 1;
+
+    uint64_t size_annot_array;
+
+    uint8_t it0_first_size;
+    uint8_t it1_first_size;
+    uint8_t it2_first_size;
+
+    uint8_t* it_index = malloc(tot_cell_index * sizeof(uint8_t));
+    ASSERT_NULL_PTR(it_index, "sort_annotations()");
+
+    uint8_t* first_index = calloc(tot_cell_index, sizeof(uint8_t));
+    ASSERT_NULL_PTR(first_index, "sort_annotations()");
+
+    uint8_t* it_index_tmp;
+    uint8_t* it_index_start;
+
+    memset(it_index, 0xff, tot_cell_index * sizeof(uint8_t));
+    it_index[tot_cell_index-1] = '\0';
+
+    PValue_annot = (PWord_t)JArray_annot;
+
+    fseek(file, sizeof(int), SEEK_SET);
+
+    while (PValue_annot != NULL){
+
+        JSLL(PValue_annot, *JArray_annot, it_index);
+
+        real_size = (((it_index[0]-3) << 8) | ((it_index[1]-3) << 2) | ((it_index[2]) >> 4));
+
+        decomp_size = 0;
+
+        it0_first_size = it_index[0];
+        it1_first_size = it_index[1];
+        it2_first_size = it_index[2];
+
+        //length_index = ((uint8_t*)memchr(it_index, '\0', tot_cell_index)) - it_index;
+        length_index = strlen((char*) it_index);
+
+        for (j = 0; j < *length_root_comp_set_colors; j++){
+
+            if ((*root_comp_set_colors)[j].size_annot > real_size){
+
+                if ((*root_comp_set_colors)[j].annot_array != NULL){
+                    free((*root_comp_set_colors)[j].annot_array);
+                    (*root_comp_set_colors)[j].annot_array = NULL;
+                }
+            }
+            else break;
+        }
+
+        memcpy(first_index, it_index, (length_index + 1) * sizeof(uint8_t));
+
+        while ((PValue_annot != NULL) && (it_index[0] == it0_first_size) && (it_index[1] == it1_first_size) && (it_index[2] == it2_first_size)){
+
+            #if defined (_WORDx64)
+                JLI(PValue_sizes, PArray_sizes, *PValue_annot);
+            #else
+                JLI(PValue_sizes, PArray_sizes, **((uint64_t**)PValue_annot) >> 32);
+                decomp_size = MAX(decomp_size, **((uint64_t**)PValue_annot) & 0xffffffff);
+            #endif
+
+            (*PValue_sizes)++;
+
+            JSLP(PValue_annot, *JArray_annot, it_index);
+        }
+
+        it_sizes = -1;
+        tmp = 0;
+        size_annot_array = 0;
+
+        JLL(PValue_sizes, PArray_sizes, it_sizes);
+
+        while (PValue_sizes != NULL){
+
+            tmp = *PValue_sizes;
+            next_id_tmp = next_id + tmp + 1;
+
+            if (next_id_tmp > next_id_highest_power2)
+                next_id_tmp_nb_bytes_power2 = get_nb_bytes_power2_comp(round_up_next_highest_power2(next_id_tmp));
+
+            #if defined (_WORDx64)
+                decomp_size = it_sizes & 0xffffffff;
+            #endif
+
+            if (next_id_tmp_nb_bytes_power2 >= decomp_size) *PValue_sizes = UINT32_MAX;
+            else {
+                *PValue_sizes = next_id;
+                next_id += tmp;
+                size_annot_array += tmp * real_size;
+
+                if (next_id+1 > next_id_highest_power2){
+                    next_id_highest_power2 = round_up_next_highest_power2(next_id+1);
+                    next_id_nb_bytes_power2 = get_nb_bytes_power2_comp(next_id_highest_power2);
+                }
+            }
+
+            next_id_tmp_nb_bytes_power2 = next_id_nb_bytes_power2;
+
+            JLP(PValue_sizes, PArray_sizes, it_sizes);
+        }
+
+        memcpy(it_index, first_index, (length_index + 1) * sizeof(uint8_t));
+
+        annot_list->annot_array = calloc(size_annot_array, sizeof(uint8_t));
+        ASSERT_NULL_PTR(annot_list->annot_array, "sort_annotations2()\n")
+
+        JSLL(PValue_annot, *JArray_annot, it_index);
+
+        while ((PValue_annot != NULL) && (it_index[0] == it0_first_size) && (it_index[1] == it1_first_size) && (it_index[2] == it2_first_size)){
+
+            #if defined (_WORDx64)
+                PValue_annot_tmp = PValue_annot;
+                JLG(PValue_sizes, PArray_sizes, *PValue_annot_tmp);
+            #else
+                PValue_annot_tmp = *PValue_annot;
+                JLG(PValue_sizes, PArray_sizes, *PValue_annot_tmp >> 32);
+
+                if (*PValue_sizes == UINT32_MAX) free(PValue_annot_tmp);
+            #endif
+
+            if (*PValue_sizes == UINT32_MAX){
+                JSLD(PValue_annot, *JArray_annot, it_index);
+            }
+            else{
+
+                it_index_start = &annot_list->annot_array[(*PValue_sizes - prev_id) * real_size];
+
+                if ((it_index[3] & 0x3) != 3){
+
+                    i = 0;
+                    it_index_tmp = it_index_start + real_size;
+
+                    memcpy(it_index_start, &it_index[3], real_size * sizeof(uint8_t));
+
+                    while (it_index_start < it_index_tmp){
+
+                        if (*it_index_start == 0xfe){
+                            if (it_index[real_size + 3 + i/bits_per_byte_checksum] & MASK_POWER_8[i % bits_per_byte_checksum + 1]) *it_index_start = 0;
+                            i++;
+                        }
+
+                        it_index_start++;
+                    }
+                }
+                else{
+
+                    j = 4;
+                    shift_mode_3 = 5;
+                    position = it_index[3] >> 2;
+
+                    while (j < strlen((char*) it_index)){
+                        position |= ((uint32_t)(it_index[j] & 0xfe)) << shift_mode_3;
+                        shift_mode_3 += 7;
+                        j++;
+                    }
+
+                    it_index_tmp = extract_from_annotation_array_elem(*root_comp_set_colors, position, &shift_mode_3);
+                    memcpy(it_index_start, it_index_tmp, shift_mode_3 * sizeof(uint8_t));
+                }
+
+                *PValue_annot_tmp = *PValue_sizes;
+                *PValue_sizes += 1;
+            }
+
+            JSLP(PValue_annot, *JArray_annot, it_index);
+        }
+
+        prev_id = next_id;
+
+        JLFA(Rc_word, PArray_sizes);
+
+        if (annot_list->annot_array != NULL){
+
+            annot_list->last_index = next_id - 1;
+            annot_list->size_annot = real_size;
+
+            if (fwrite(&annot_list->last_index, sizeof(int64_t), 1, file) != 1) ERROR("sort_annotations2() 1")
+            if (fwrite(&annot_list->size_annot, sizeof(int), 1, file) != 1) ERROR("sort_annotations2() 2")
+
+            if (fwrite(annot_list->annot_array, sizeof(uint8_t), size_annot_array, file) != size_annot_array) ERROR("sort_annotations2() 3")
+
+            free(annot_list->annot_array);
+
+            size_annot_list++;
+        }
+    }
+
+    rewind(file);
+
+    if (fwrite(&size_annot_list, sizeof(int), 1, file) != 1) ERROR("sort_annotations2() 4")
+
+    fclose(file);
+
+    printf("Number of compressed annotations = %d\n", next_id);
+
+    free(annot_list);
+
+    free_annotation_array_elem(root_comp_set_colors, length_root_comp_set_colors);
+
+    free(first_index);
+    free(it_index);
+
+    return;
+}
+
+void sort_annotations3(Pvoid_t* JArray_annot, uint32_t longest_annot){
+
+    ASSERT_NULL_PTR(JArray_annot, "write_annotation_array_elem()\n")
+
+    PWord_t PValue_annot;
+    PWord_t PValue_annot_tmp;
+    PWord_t PValue_sizes;
+    Word_t Rc_word;
+    Word_t it_sizes;
+
+    Pvoid_t PArray_sizes = (Pvoid_t) NULL;
+
+    int bits_per_byte_checksum = SIZE_BITS_UINT_8T - 1;
+
+    uint32_t next_id = 0;
+    uint32_t next_id_tmp = 0;
+    uint32_t tmp = 0;
+
+    uint32_t next_id_highest_power2 = 1;
+    uint32_t next_id_nb_bytes_power2 = 1;
+    uint32_t next_id_tmp_nb_bytes_power2 = 1;
+
+    uint32_t decomp_size = 1;
+
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, bits_per_byte_checksum) + 4;
+
+    uint32_t length_index;
+
+    uint8_t it0_first_size;
+    uint8_t it1_first_size;
+    uint8_t it2_first_size;
+
+    uint8_t* it_index = malloc(tot_cell_index * sizeof(uint8_t));
+    ASSERT_NULL_PTR(it_index, "sort_annotations()");
+
+    uint8_t* first_index = calloc(tot_cell_index, sizeof(uint8_t));
+    ASSERT_NULL_PTR(first_index, "sort_annotations()");
+
+    memset(it_index, 0xff, tot_cell_index * sizeof(uint8_t));
+    it_index[tot_cell_index-1] = '\0';
+
+    PValue_annot = (PWord_t)JArray_annot;
+
+    while (PValue_annot != NULL){
+
+        JSLL(PValue_annot, *JArray_annot, it_index);
+
+        decomp_size = 0;
+
+        it0_first_size = it_index[0];
+        it1_first_size = it_index[1];
+        it2_first_size = it_index[2];
+
+        length_index = strlen((char*) it_index);
+
+        memcpy(first_index, it_index, (length_index + 1) * sizeof(uint8_t));
+
+        while ((PValue_annot != NULL) && (it_index[0] == it0_first_size) && (it_index[1] == it1_first_size) && (it_index[2] == it2_first_size)){
+
+            #if defined (_WORDx64)
+                JLI(PValue_sizes, PArray_sizes, *PValue_annot);
+            #else
+                JLI(PValue_sizes, PArray_sizes, **((uint64_t**)PValue_annot) >> 32);
+                decomp_size = MAX(decomp_size, **((uint64_t**)PValue_annot) & 0xffffffff);
+            #endif
+
+            (*PValue_sizes)++;
+
+            JSLP(PValue_annot, *JArray_annot, it_index);
+        }
+
+        it_sizes = -1;
+        tmp = 0;
+
+        JLL(PValue_sizes, PArray_sizes, it_sizes);
+
+        while (PValue_sizes != NULL){
+
+            tmp = *PValue_sizes;
+            next_id_tmp = next_id + tmp + 1;
+
+            if (next_id_tmp > next_id_highest_power2)
+                next_id_tmp_nb_bytes_power2 = get_nb_bytes_power2_comp(round_up_next_highest_power2(next_id_tmp));
+
+            #if defined (_WORDx64)
+                decomp_size = it_sizes & 0xffffffff;
+            #endif
+
+            if (next_id_tmp_nb_bytes_power2 >= decomp_size) *PValue_sizes = UINT32_MAX;
+            else {
+
+                *PValue_sizes = next_id;
+                next_id += tmp;
+
+                if (next_id+1 > next_id_highest_power2){
+                    next_id_highest_power2 = round_up_next_highest_power2(next_id+1);
+                    next_id_nb_bytes_power2 = get_nb_bytes_power2_comp(next_id_highest_power2);
+                }
+            }
+
+            next_id_tmp_nb_bytes_power2 = next_id_nb_bytes_power2;
+
+            JLP(PValue_sizes, PArray_sizes, it_sizes);
+        }
+
+        memcpy(it_index, first_index, (length_index + 1) * sizeof(uint8_t));
+
+        JSLL(PValue_annot, *JArray_annot, it_index);
+
+        while ((PValue_annot != NULL) && (it_index[0] == it0_first_size) && (it_index[1] == it1_first_size) && (it_index[2] == it2_first_size)){
+
+            #if defined (_WORDx64)
+                PValue_annot_tmp = PValue_annot;
+                JLG(PValue_sizes, PArray_sizes, *PValue_annot_tmp);
+            #else
+                PValue_annot_tmp = *PValue_annot;
+                JLG(PValue_sizes, PArray_sizes, *PValue_annot_tmp >> 32);
+
+                if (*PValue_sizes == UINT32_MAX) free(PValue_annot_tmp);
+            #endif
+
+            if (*PValue_sizes == UINT32_MAX) JSLD(PValue_annot, *JArray_annot, it_index)
+            else{
+                *PValue_annot_tmp = *PValue_sizes;
+                *PValue_sizes += 1;
+            }
+
+            JSLP(PValue_annot, *JArray_annot, it_index);
+        }
+
+        JLFA(Rc_word, PArray_sizes);
+    }
+
+    printf("Number of compressed annotations = %d\n", next_id);
+
+    free(first_index);
+    free(it_index);
+
+    return;
+}
+
+void replace_annots_comp(annotation_array_elem* comp_colors, Pvoid_t* JArray_annot, char* filename_new_comp_colors, uint32_t longest_annot){
+
+    ASSERT_NULL_PTR(filename_new_comp_colors, "replace_annots_comp()\n")
+
+    PWord_t PValue_annot;
+
+    int j;
+    int shift_mode_3;
+    int bits_per_byte_checksum = SIZE_BITS_UINT_8T - 1;
+
+    int size_new_comp_colors;
+    int pos_new_comp_colors = -1;
+    int size_annot_read = INT_MAX;
+    int size_annot_comp = 0;
+
+    uint8_t it0_first_size = 0;
+    uint8_t it1_first_size = 0;
+    uint8_t it2_first_size = 0;
+
+    uint32_t pos = 0;
+    int64_t last_id = 0;
+    int64_t prev_id = -1;
+
+    uint32_t position;
+
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, bits_per_byte_checksum) + 4;
+
+    off_t curr_pos_file = 0;
+
+    int file = open(filename_new_comp_colors, O_RDWR);
+    if (file == -1) ERROR("replace_annots_comp()\n")
+
+    uint8_t* index = malloc(tot_cell_index * sizeof(uint8_t));
+    ASSERT_NULL_PTR(index, "replace_annots_comp()\n");
+
+    uint8_t* index_tmp;
+
+    memset(index, 0xff, tot_cell_index * sizeof(uint8_t));
+    index[tot_cell_index-1] = '\0';
+
+    if (read(file, &size_new_comp_colors, sizeof(int)) == -1)
+        ERROR("replace_annots_comp(): Could not read the file.\n");
+
+    JSLL(PValue_annot, *JArray_annot, index);
+
+    while (PValue_annot != NULL){
+
+        if ((index[0] != it0_first_size) || (index[1] != it1_first_size) || (index[2] != it2_first_size)){
+
+            size_annot_comp = (((index[0]-3) << 8) | ((index[1]-3) << 2) | ((index[2]) >> 4));
+
+            while (size_annot_read > size_annot_comp){
+
+                if (pos_new_comp_colors != -1){
+
+                    if (lseek(file, (last_id - prev_id) * size_annot_read * sizeof(uint8_t), SEEK_CUR) == -1)
+                        ERROR("replace_annots_comp(): Could not seek the file.\n");
+
+                    prev_id = last_id;
+                }
+
+                pos_new_comp_colors++;
+
+                if (pos_new_comp_colors < size_new_comp_colors){
+
+                    if (read(file, &last_id, sizeof(int64_t)) == -1)
+                        ERROR("replace_annots_comp(): Could not read the file.\n");
+
+                    if (read(file, &size_annot_read, sizeof(int)) == -1)
+                        ERROR("replace_annots_comp(): Could not read the file.\n");
+                }
+                else break;
+            }
+
+            if (pos_new_comp_colors >= size_new_comp_colors) break;
+
+            if ((curr_pos_file = lseek(file, 0, SEEK_CUR)) == -1)
+                ERROR("replace_annots_comp(): Could not seek the file.\n");
+
+            it0_first_size = index[0];
+            it1_first_size = index[1];
+            it2_first_size = index[2];
+        }
+
+        if ((index[3] & 0x3) == 3){
+
+            pos = (uint32_t) *PValue_annot;
+
+            j = 4;
+            shift_mode_3 = 5;
+            position = index[3] >> 2;
+
+            while (j < strlen((char*) index)){
+                position |= ((uint32_t)(index[j] & 0xfe)) << shift_mode_3;
+                shift_mode_3 += 7;
+                j++;
+            }
+
+            index_tmp = extract_from_annotation_array_elem(comp_colors, position, &size_annot_comp);
+
+            if (pwrite(file, index_tmp, size_annot_comp, (pos - prev_id - 1) * size_annot_comp + curr_pos_file) == -1)
+                ERROR("replace_annots_comp(): Could not write at the specific offset.\n");
+        }
+
+        JSLP(PValue_annot, *JArray_annot, index);
+    }
+
+    close(file);
+
+    free(index);
+
+    return;
+}
+
+void write_partial_comp_set_colors(char* filename_annot_array_elem, Pvoid_t* JArray_annot, uint32_t longest_annot){
+
+    ASSERT_NULL_PTR(filename_annot_array_elem, "write_partial_comp_set_colors()\n")
+
+    PWord_t PValue_annot;
+
+    uint8_t it0_first_size = 0;
+    uint8_t it1_first_size = 0;
+    uint8_t it2_first_size = 0;
+
+    int64_t last_id = 0;
+    int64_t prev_id = -1;
+
+    uint32_t pos = 0;
+    uint32_t size_annot = 0;
+
+    int i = 0;
+    int size_annot_array_elem = 0;
+    int bits_per_byte_checksum = SIZE_BITS_UINT_8T - 1;
+
+    uint32_t tot_cell_index = longest_annot + CEIL(longest_annot, bits_per_byte_checksum) + 4;
+
+    off_t curr_pos_file = 0;
+
+    int file = open(filename_annot_array_elem, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+    if (file == -1) ERROR("write_partial_comp_set_colors()\n")
+
+    uint8_t* index = malloc(tot_cell_index * sizeof(uint8_t));
+    ASSERT_NULL_PTR(index, "write_partial_comp_set_colors()");
+
+    uint8_t* index_cpy = malloc(tot_cell_index * sizeof(uint8_t));
+    ASSERT_NULL_PTR(index_cpy, "write_partial_comp_set_colors()");
+
+    uint8_t* it_index_start;
+    uint8_t* it_index_end;
+
+    memset(index, 0xff, tot_cell_index * sizeof(uint8_t));
+    index[tot_cell_index-1] = '\0';
+
+    if (lseek(file, sizeof(int), SEEK_SET) == -1)
+        ERROR("write_partial_comp_set_colors(): Could not seek the file.\n");
+
+    JSLL(PValue_annot, *JArray_annot, index);
+
+    while (PValue_annot != NULL){
+
+        if ((index[0] != it0_first_size) || (index[1] != it1_first_size) || (index[2] != it2_first_size)){
+
+            if (it0_first_size || it1_first_size || it2_first_size){
+
+                if (write(file, &last_id, sizeof(int64_t)) == -1)
+                    ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+                if (write(file, &size_annot, sizeof(int)) == -1)
+                    ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+                if (lseek(file, (last_id - prev_id) * size_annot * sizeof(uint8_t), SEEK_CUR) == -1)
+                    ERROR("write_partial_comp_set_colors(): Could not seek the file.\n");
+
+                size_annot_array_elem++;
+                prev_id = last_id;
+            }
+
+            size_annot = (((index[0]-3) << 8) | ((index[1]-3) << 2) | ((index[2]) >> 4));
+
+            it0_first_size = index[0];
+            it1_first_size = index[1];
+            it2_first_size = index[2];
+
+            if ((curr_pos_file = lseek(file, 0, SEEK_CUR)) == -1)
+                ERROR("write_partial_comp_set_colors(): Could not seek the file.\n");
+
+            curr_pos_file += sizeof(int64_t) + sizeof(int);
+        }
+
+        pos = (uint32_t) *PValue_annot;
+        last_id = MAX(last_id, pos);
+
+        if ((index[3] & 0x3) != 3){
+
+            i = 0;
+            it_index_start = index_cpy;
+            it_index_end = index_cpy + size_annot;
+
+            memcpy(index_cpy, &index[3], size_annot * sizeof(uint8_t));
+
+            while (it_index_start < it_index_end){
+
+                if (*it_index_start == 0xfe){
+                    if (index[size_annot + 3 + i/bits_per_byte_checksum] & MASK_POWER_8[i % bits_per_byte_checksum + 1]) *it_index_start = 0x0;
+                    i++;
+                }
+
+                it_index_start++;
+            }
+        }
+        else memset(index_cpy, 0, size_annot * sizeof(uint8_t));
+
+        if (pwrite(file, index_cpy, size_annot * sizeof(uint8_t), (pos - prev_id - 1) * size_annot + curr_pos_file) == -1)
+            ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+        JSLP(PValue_annot, *JArray_annot, index);
+    }
+
+    if (it0_first_size || it1_first_size || it2_first_size){
+
+        if (write(file, &last_id, sizeof(int64_t)) == -1)
+            ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+        if (write(file, &size_annot, sizeof(int)) == -1)
+            ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+        size_annot_array_elem++;
+    }
+
+    if (pwrite(file, &size_annot_array_elem, sizeof(int), 0) == -1)
+        ERROR("write_partial_comp_set_colors(): Could not write at the specific offset.\n");
+
+    close(file);
+
+    free(index);
+    free(index_cpy);
+
+    return;
 }
 
 int comp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, uint8_t* annot_sup, int size_annot_sup){
@@ -1714,6 +1796,8 @@ int comp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, 
 
     uint8_t flag1 = 1;
     uint8_t flag2 = 2;
+
+    uint32_t nb_id_stored = 0;
 
     uint8_t* current_annot = annot;
 
@@ -1735,23 +1819,22 @@ int comp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot, 
 
     while ((i<size) && (ann_inf->annotation[i] & flag1)){
 
-        ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
+        ann_inf->id_stored[nb_id_stored] = ann_inf->annotation[i] >> 2;
         i++;
 
         while ((i<size) && (ann_inf->annotation[i] & flag2)){
-            ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6)
-                                                            | (ann_inf->annotation[i] >> 2);
+            ann_inf->id_stored[nb_id_stored] = (ann_inf->id_stored[nb_id_stored] << 6) | (ann_inf->annotation[i] >> 2);
             i++;
         }
 
-        ann_inf->nb_id_stored++;
+        nb_id_stored++;
     }
 
-    for (i = ann_inf->nb_id_stored - 1; i > 0; i--) ann_inf->id_stored[i] -= ann_inf->id_stored[i-1];
+    for (i = nb_id_stored - 1; i > 0; i--) ann_inf->id_stored[i] -= ann_inf->id_stored[i-1];
 
-    for (i = 0; i < ann_inf->nb_id_stored; i++){
+    for (i = 0; i < nb_id_stored; i++){
         final_size += modify_annot_bis(&current_annot, annot_sup, &it_annot, &size_current_annot, ann_inf->id_stored[i],
-                         get_nb_bytes_power2_annot(ann_inf->id_stored[i]), flag1, flag2);
+                                       get_nb_bytes_power2_annot(ann_inf->id_stored[i]), flag1, flag2);
     }
 
     reinit_annotation_inform(ann_inf);
@@ -1774,6 +1857,7 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
 
     uint32_t pow2 = 0;
     uint32_t tmp = 1;
+    uint32_t nb_id_stored = 0;
 
     uint8_t flag1 = 1;
     uint8_t flag2 = 2;
@@ -1781,12 +1865,10 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
     ann_inf->comp_annot = 1;
     ann_inf->current_mode = annot[0] & 0x3;
 
-    memcpy(ann_inf->annotation, annot, size_annot * sizeof(uint8_t));
-    //memset(annot, 0, size_annot * sizeof(uint8_t));
+    memmove(ann_inf->annotation, annot, size_annot * sizeof(uint8_t));
 
     if (annot_sup != NULL){
-        memcpy(&(ann_inf->annotation[size_annot]), annot_sup, size_annot_sup * sizeof(uint8_t));
-        //memset(annot_sup, 0, size_annot_sup * sizeof(uint8_t));
+        memmove(&(ann_inf->annotation[size_annot]), annot_sup, size_annot_sup * sizeof(uint8_t));
         size += size_annot_sup;
     }
 
@@ -1799,16 +1881,16 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
 
     while ((i<size) && (ann_inf->annotation[i] & flag1)){
 
-        ann_inf->id_stored[ann_inf->nb_id_stored] = ann_inf->annotation[i] >> 2;
+        ann_inf->id_stored[nb_id_stored] = ann_inf->annotation[i] >> 2;
         i++;
 
         while ((i<size) && (ann_inf->annotation[i] & flag2)){
-            ann_inf->id_stored[ann_inf->nb_id_stored] = (ann_inf->id_stored[ann_inf->nb_id_stored] << 6)
+            ann_inf->id_stored[nb_id_stored] = (ann_inf->id_stored[nb_id_stored] << 6)
                                                         | (ann_inf->annotation[i] >> 2);
             i++;
         }
 
-        ann_inf->nb_id_stored++;
+        nb_id_stored++;
     }
 
     if (get_sizes > 0){
@@ -1821,7 +1903,7 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
         ann_inf->size_id_stored[0] = tmp;
         size_return = tmp;
 
-        for (i = 1; i < ann_inf->nb_id_stored; i++){
+        for (i = 1; i < nb_id_stored; i++){
 
             ann_inf->id_stored[i] += ann_inf->id_stored[i-1];
 
@@ -1835,10 +1917,11 @@ int decomp_annotation(annotation_inform* ann_inf, uint8_t* annot, int size_annot
         }
     }
     else{
-        for (i = 1; i < ann_inf->nb_id_stored; i++) ann_inf->id_stored[i] += ann_inf->id_stored[i-1];
+        for (i = 1; i < nb_id_stored; i++) ann_inf->id_stored[i] += ann_inf->id_stored[i-1];
     }
 
-    ann_inf->last_added = ann_inf->id_stored[ann_inf->nb_id_stored - 1];
+    ann_inf->last_added = ann_inf->id_stored[nb_id_stored - 1];
+    ann_inf->nb_id_stored = nb_id_stored;
 
     return size_return;
 }
@@ -2008,7 +2091,7 @@ void printAnnotation_CSV(FILE* file_output, uint8_t* annot, int size_annot, uint
 void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot, int size_annot,
                                uint8_t* annot_sup, int size_annot_sup){
 
-    ASSERT_NULL_PTR(ann_inf,"get_id_genomes_from_annot()\n")
+    ASSERT_NULL_PTR(ann_inf, "get_id_genomes_from_annot()\n")
 
     int size;
 
@@ -2037,7 +2120,7 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
             memcpy(ann_inf->annotation, annot_tmp, size*sizeof(uint8_t));
 
             i = decomp_annotation(ann_inf, annot_tmp, size, NULL, 0, 1);
-            if (i != 0) size = i;
+            if (i) size = i;
         }
         else{
             size = size_annot;
@@ -2055,14 +2138,14 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
 
         if (ann_inf->current_mode == 0){ //Bitwize mode
 
-                for (i=2; i<size*SIZE_BITS_UINT_8T; i++){
+            for (i=2; i<size*SIZE_BITS_UINT_8T; i++){
 
-                    if (ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]){
+                if (ann_inf->annotation[i/SIZE_BITS_UINT_8T] & MASK_POWER_8[i%SIZE_BITS_UINT_8T]){
 
-                        ann_inf->id_stored[ann_inf->nb_id_stored] = i-2;
-                        ann_inf->nb_id_stored++;
-                    }
+                    ann_inf->id_stored[ann_inf->nb_id_stored] = i-2;
+                    ann_inf->nb_id_stored++;
                 }
+            }
         }
         else if (ann_inf->current_mode == 1){ //<Present everywhere from x to y> mode
 
@@ -2099,6 +2182,7 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
                 }
             }
             else {
+
                 uint32_t pow2 = 0;
                 uint32_t tmp = 1;
 
@@ -2112,6 +2196,7 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
                 for (i = 0; i < ann_inf->nb_id_stored; i++){
 
                     if (i%2){
+
                         for (uint32_t z = id_stored_cpy[i-1]+1; z <= id_stored_cpy[i]; z++){
 
                             ann_inf->id_stored[nb_id_stored_cpy] = z;

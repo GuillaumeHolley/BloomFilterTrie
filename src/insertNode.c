@@ -1,4 +1,4 @@
-#include "./../lib/insertNode.h"
+#include "insertNode.h"
 
 /* ---------------------------------------------------------------------------------------------------------------
 *  insertKmers(root, array_kmers, size_kmers, nb_kmers, id_genome, info_per_lvl, ann_inf, res, annot_sorted)
@@ -54,7 +54,6 @@ void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffi
     annotation_array_elem* annot_sorted = root->comp_set_colors;
 
     //We search for the first prefix of the suffix contained in the parameter kmer
-    //We want to start the search at the beginning of the node so 4th argument is 0
     presenceKmer(node, root, suffix, size_suffix, pos_CC_start_search, 1, res);
 
     //If the prefix is present, we insert the suffix into the corresponding child
@@ -90,8 +89,7 @@ void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffi
             //Shift the suffix to delete the prefix of length NB_CHAR_SUF_PREF (this one is already resent in a container)
             int j=0;
 
-            int nb_cell_to_delete = 2;
-            if (size_suffix == 45) nb_cell_to_delete++;
+            int nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
 
             for (j=0; j < nb_cell - nb_cell_to_delete; j++){
                 suffix[j] = suffix[j+2] >> 2;
@@ -389,8 +387,8 @@ Node* insertKmer_Node_special(BFT_Root*  root, int lvl_cont, uint8_t*  suffix, i
             }
 
             //Shift suffixes+annotations, insert the suffix, create the annotation
-            memcpy(&(uc->suffixes[pos_sub_size_line]), suffix, nb_cell*sizeof(uint8_t));
-            memset(&(uc->suffixes[pos_sub_size_line+nb_cell]), 0, uc->size_annot*sizeof(uint8_t));
+            memcpy(&(uc->suffixes[pos_sub_size_line]), suffix, nb_cell * sizeof(uint8_t));
+            memset(&(uc->suffixes[pos_sub_size_line+nb_cell]), 0, uc->size_annot * sizeof(uint8_t));
 
             if ((pos == 0) && (root->info_per_lvl[lvl_cont].level_min == 0)
                 && ((uc->suffixes[pos_sub_size_line + size_line + nb_cell - 1] >> 7) == 1)){

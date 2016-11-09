@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.9.1"/>
-<title>Bloom Filter Trie: lib/snippets.h File Reference</title>
+<title>Bloom Filter Trie: include/snippets.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -80,7 +80,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_97aefd0d527b934f1d99a682da8fe6a9.html">lib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">include</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -111,64 +111,64 @@ Functions</h2></td></tr>
 <tr><td colspan="2"><div class="groupText"><p>These functions extract k-mers stored in a BFT to disk.</p>
 <p>The last argument of <a class="el" href="snippets_8h.html#a174cb48bca3f18405fc4521bd727b23a" title="Function extracting pan-genome (core/dispensable/singleton) k-mers from a BFT to disk. ">extract_pangenome_kmers_to_disk()</a> is of type BFT_func_ptr, you can use <a class="el" href="snippets_8h.html#ae4b980179cbfacc3a110de78b8d401a9" title="Function of type BFT_func_ptr extracting a core k-mer to disk. ">extract_core_kmers()</a>, <a class="el" href="snippets_8h.html#a9966b1f0c27a512aa3f27d811906be78" title="Function of type BFT_func_ptr extracting a dispensable k-mer to disk. ">extract_dispensable_kmers()</a> or <a class="el" href="snippets_8h.html#aeaa91fe987a5724ffaf8089b8927474e" title="Function of type BFT_func_ptr extracting a singleton k-mer to disk. ">extract_singleton_kmers()</a> to extract core, dispensable or singleton k-mers. </p>
 </div></td></tr>
-<tr class="memitem:ae4b980179cbfacc3a110de78b8d401a9"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae4b980179cbfacc3a110de78b8d401a9">extract_core_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:ae4b980179cbfacc3a110de78b8d401a9"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae4b980179cbfacc3a110de78b8d401a9">extract_core_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:ae4b980179cbfacc3a110de78b8d401a9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr extracting a core k-mer to disk.  <a href="#ae4b980179cbfacc3a110de78b8d401a9">More...</a><br /></td></tr>
 <tr class="separator:ae4b980179cbfacc3a110de78b8d401a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9966b1f0c27a512aa3f27d811906be78"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a9966b1f0c27a512aa3f27d811906be78">extract_dispensable_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a9966b1f0c27a512aa3f27d811906be78"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a9966b1f0c27a512aa3f27d811906be78">extract_dispensable_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a9966b1f0c27a512aa3f27d811906be78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr extracting a dispensable k-mer to disk.  <a href="#a9966b1f0c27a512aa3f27d811906be78">More...</a><br /></td></tr>
 <tr class="separator:a9966b1f0c27a512aa3f27d811906be78"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeaa91fe987a5724ffaf8089b8927474e"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#aeaa91fe987a5724ffaf8089b8927474e">extract_singleton_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:aeaa91fe987a5724ffaf8089b8927474e"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#aeaa91fe987a5724ffaf8089b8927474e">extract_singleton_kmers</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:aeaa91fe987a5724ffaf8089b8927474e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr extracting a singleton k-mer to disk.  <a href="#aeaa91fe987a5724ffaf8089b8927474e">More...</a><br /></td></tr>
 <tr class="separator:aeaa91fe987a5724ffaf8089b8927474e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a174cb48bca3f18405fc4521bd727b23a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a174cb48bca3f18405fc4521bd727b23a">extract_pangenome_kmers_to_disk</a> (<a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, char *filename_output, <a class="el" href="interface_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a> f)</td></tr>
+<tr class="memitem:a174cb48bca3f18405fc4521bd727b23a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a174cb48bca3f18405fc4521bd727b23a">extract_pangenome_kmers_to_disk</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, char *filename_output, <a class="el" href="bft_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a> f)</td></tr>
 <tr class="memdesc:a174cb48bca3f18405fc4521bd727b23a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function extracting pan-genome (core/dispensable/singleton) k-mers from a BFT to disk.  <a href="#a174cb48bca3f18405fc4521bd727b23a">More...</a><br /></td></tr>
 <tr class="separator:a174cb48bca3f18405fc4521bd727b23a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr><td colspan="2"><div class="groupHeader">Path extraction functions</div></td></tr>
 <tr><td colspan="2"><div class="groupText"><p>These functions extract simple (non branching) paths of k-mers stored in a BFT to disk. </p>
 </div></td></tr>
-<tr class="memitem:a8068a236c9a0559e078b44a3b6381180"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a8068a236c9a0559e078b44a3b6381180">extract_simple_paths</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a8068a236c9a0559e078b44a3b6381180"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a8068a236c9a0559e078b44a3b6381180">extract_simple_paths</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a8068a236c9a0559e078b44a3b6381180"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr extracting from a non-branching k-mer the simple (non branching) path in which it is.  <a href="#a8068a236c9a0559e078b44a3b6381180">More...</a><br /></td></tr>
 <tr class="separator:a8068a236c9a0559e078b44a3b6381180"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac13451da7da5cf908fa38b781f24ab7f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ac13451da7da5cf908fa38b781f24ab7f">extract_simple_paths_to_disk</a> (<a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, char *filename_output)</td></tr>
+<tr class="memitem:ac13451da7da5cf908fa38b781f24ab7f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ac13451da7da5cf908fa38b781f24ab7f">extract_simple_paths_to_disk</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, char *filename_output)</td></tr>
 <tr class="memdesc:ac13451da7da5cf908fa38b781f24ab7f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function extracting from a colored de Bruijn graph stored as a BFT all simple (non branching) paths.  <a href="#ac13451da7da5cf908fa38b781f24ab7f">More...</a><br /></td></tr>
 <tr class="separator:ac13451da7da5cf908fa38b781f24ab7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a662c94e8e8a222268807cd4cd207ff34"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a662c94e8e8a222268807cd4cd207ff34">extract_core_simple_paths</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a662c94e8e8a222268807cd4cd207ff34"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a662c94e8e8a222268807cd4cd207ff34">extract_core_simple_paths</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a662c94e8e8a222268807cd4cd207ff34"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr extracting from a non-branching core k-mer the simple (non branching) path in which it is.  <a href="#a662c94e8e8a222268807cd4cd207ff34">More...</a><br /></td></tr>
 <tr class="separator:a662c94e8e8a222268807cd4cd207ff34"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0da3b5767ecdb4e988af764739313e0a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a0da3b5767ecdb4e988af764739313e0a">extract_simple_core_paths_to_disk</a> (<a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, double core_ratio, char *filename_output)</td></tr>
+<tr class="memitem:a0da3b5767ecdb4e988af764739313e0a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a0da3b5767ecdb4e988af764739313e0a">extract_simple_core_paths_to_disk</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, double core_ratio, char *filename_output)</td></tr>
 <tr class="memdesc:a0da3b5767ecdb4e988af764739313e0a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function extracting from a colored de Bruijn graph stored as a BFT all simple (non branching) core paths.  <a href="#a0da3b5767ecdb4e988af764739313e0a">More...</a><br /></td></tr>
 <tr class="separator:a0da3b5767ecdb4e988af764739313e0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr><td colspan="2"><div class="groupHeader">Graph traversal functions</div></td></tr>
 <tr><td colspan="2"><div class="groupText"><p>These functions iterate over a colored de Bruijn graph stored as a BFT. </p>
 </div></td></tr>
-<tr class="memitem:a779a1c7c7f4c236a2da64b8a18970b01"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a779a1c7c7f4c236a2da64b8a18970b01">BFS</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a779a1c7c7f4c236a2da64b8a18970b01"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a779a1c7c7f4c236a2da64b8a18970b01">BFS</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a779a1c7c7f4c236a2da64b8a18970b01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr starting a Breadth-First Search traversal from a k-mer.  <a href="#a779a1c7c7f4c236a2da64b8a18970b01">More...</a><br /></td></tr>
 <tr class="separator:a779a1c7c7f4c236a2da64b8a18970b01"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ad89b6e2e3d031a693f83922b9ad6e1"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a8ad89b6e2e3d031a693f83922b9ad6e1">BFS_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a8ad89b6e2e3d031a693f83922b9ad6e1"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a8ad89b6e2e3d031a693f83922b9ad6e1">BFS_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a8ad89b6e2e3d031a693f83922b9ad6e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr starting a Breadth-First Search traversal from a k-mer that is part of a subgraph.  <a href="#a8ad89b6e2e3d031a693f83922b9ad6e1">More...</a><br /></td></tr>
 <tr class="separator:a8ad89b6e2e3d031a693f83922b9ad6e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a81bd0dcd92628563b61c855e26b12cc4"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a81bd0dcd92628563b61c855e26b12cc4">DFS</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a81bd0dcd92628563b61c855e26b12cc4"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a81bd0dcd92628563b61c855e26b12cc4">DFS</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a81bd0dcd92628563b61c855e26b12cc4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr starting a Depth-First Search traversal from a k-mer.  <a href="#a81bd0dcd92628563b61c855e26b12cc4">More...</a><br /></td></tr>
 <tr class="separator:a81bd0dcd92628563b61c855e26b12cc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae751661ce6ad13867dd4b56d311573dc"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae751661ce6ad13867dd4b56d311573dc">DFS_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:ae751661ce6ad13867dd4b56d311573dc"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae751661ce6ad13867dd4b56d311573dc">DFS_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:ae751661ce6ad13867dd4b56d311573dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr starting a Depth-First Search traversal from a k-mer that is part of a subgraph.  <a href="#ae751661ce6ad13867dd4b56d311573dc">More...</a><br /></td></tr>
 <tr class="separator:ae751661ce6ad13867dd4b56d311573dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae3ea127efe630db3f15cd239e15713a8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae3ea127efe630db3f15cd239e15713a8">is_in_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, int nb_id_genomes, const va_list args)</td></tr>
+<tr class="memitem:ae3ea127efe630db3f15cd239e15713a8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#ae3ea127efe630db3f15cd239e15713a8">is_in_subgraph</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, int nb_id_genomes, const va_list args)</td></tr>
 <tr class="memdesc:ae3ea127efe630db3f15cd239e15713a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function computing if a k-mer is part of a subgraph.  <a href="#ae3ea127efe630db3f15cd239e15713a8">More...</a><br /></td></tr>
 <tr class="separator:ae3ea127efe630db3f15cd239e15713a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53366d800519c7b8dcb527ec99470654"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a53366d800519c7b8dcb527ec99470654">cdbg_traversal</a> (<a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, <a class="el" href="interface_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a> f,...)</td></tr>
+<tr class="memitem:a53366d800519c7b8dcb527ec99470654"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a53366d800519c7b8dcb527ec99470654">cdbg_traversal</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, <a class="el" href="bft_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a> f,...)</td></tr>
 <tr class="memdesc:a53366d800519c7b8dcb527ec99470654"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function traversing a colored de Bruijn graph stored as a BFT.  <a href="#a53366d800519c7b8dcb527ec99470654">More...</a><br /></td></tr>
 <tr class="separator:a53366d800519c7b8dcb527ec99470654"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9e84035e77676c83842320d1e0888457"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a9e84035e77676c83842320d1e0888457">nb_connected_components</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
+<tr class="memitem:a9e84035e77676c83842320d1e0888457"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a9e84035e77676c83842320d1e0888457">nb_connected_components</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *kmer, <a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph, va_list args)</td></tr>
 <tr class="memdesc:a9e84035e77676c83842320d1e0888457"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function of type BFT_func_ptr calling a traversal method (DFS/BFS, DFS_subgraph/BFS_subgraph) on a k-mer to determine if it is in a new connected component.  <a href="#a9e84035e77676c83842320d1e0888457">More...</a><br /></td></tr>
 <tr class="separator:a9e84035e77676c83842320d1e0888457"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a95f78bc79f2acd976cca694413c5a452"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a95f78bc79f2acd976cca694413c5a452">get_nb_connected_component</a> (<a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph,...)</td></tr>
+<tr class="memitem:a95f78bc79f2acd976cca694413c5a452"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="snippets_8h.html#a95f78bc79f2acd976cca694413c5a452">get_nb_connected_component</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *graph,...)</td></tr>
 <tr class="memdesc:a95f78bc79f2acd976cca694413c5a452"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the number of connected components in a colored de-Bruijn graph.  <a href="#a95f78bc79f2acd976cca694413c5a452">More...</a><br /></td></tr>
 <tr class="separator:a95f78bc79f2acd976cca694413c5a452"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Code snippets using a BFT. </p>
-<p>The purpose of this file is to give examples of how to use the functions of the BFT API (<a class="el" href="interface_8h.html" title="Interface containing all functions to use a BFT. ">interface.h</a>). </p>
+<p>The purpose of this file is to give examples of how to use the functions of the BFT API (<a class="el" href="bft_8h.html" title="Interface containing all functions to use a BFT. ">bft.h</a>). </p>
 </div><h2 class="groupheader">Macro Definition Documentation</h2>
 <a class="anchor" id="abeb188df21ec971c69153463711c533b"></a>
 <div class="memitem">
@@ -212,7 +212,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -255,7 +255,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -292,13 +292,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void cdbg_traversal </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a>&#160;</td>
           <td class="paramname"><em>f</em>, </td>
         </tr>
         <tr>
@@ -340,7 +340,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -383,7 +383,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -426,7 +426,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -468,7 +468,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -510,7 +510,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -546,7 +546,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void extract_pangenome_kmers_to_disk </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -558,7 +558,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#aac9ee38523fda7ab4f8eb1238e98d315">BFT_func_ptr</a>&#160;</td>
           <td class="paramname"><em>f</em>&#160;</td>
         </tr>
         <tr>
@@ -588,7 +588,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void extract_simple_core_paths_to_disk </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -636,7 +636,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -672,7 +672,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void extract_simple_paths_to_disk </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -713,7 +713,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -749,7 +749,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void get_nb_connected_component </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -790,7 +790,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -840,7 +840,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="interface_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *&#160;</td>
           <td class="paramname"><em>graph</em>, </td>
         </tr>
         <tr>
@@ -872,7 +872,7 @@ Functions</h2></td></tr>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Feb 22 2016 23:32:37 for Bloom Filter Trie by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Nov 9 2016 17:22:01 for Bloom Filter Trie by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.9.1
 </small></address>

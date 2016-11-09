@@ -1,59 +1,112 @@
-# BloomFilterTrie
+# BFT: Bloom Filter Trie
 
-This repository contains the source code of the Bloom Filter Trie (BFT) version 0.6 for Linux and Mac OS X systems.
+This repository contains the source code of the Bloom Filter Trie (BFT) library. The BFT is an alignment-free, reference-free and incremental succinct data structure for colored de Bruijn graphs. It is based on the *burst trie* and use Bloom filters for efficient trie and graph traversals. The data structure indexes k-mers and their colors based on a new representation of trie vertices that
+compress and index shared substrings. A typical application of the BFT is pan-genome indexing.
 
-The BFT library depends on two external libraries that are required to compile and use the library: Judy Arrays (http://judy.sourceforge.net) and Jemalloc (http://www.canonware.com/jemalloc). Both can be downloaded and installed by following instructions on their respective websites.
+## Dependencies
 
-Both can be easily downloaded and installed on Ubuntu/Debian via their packages:
+In order to compile and use the BFT, you need a machine running a 64 bits Linux or Mac OS operating system, POSIX compliant and accepting SSE4 instructions.
+
+The library depends on two external libraries: Judy Arrays (http://judy.sourceforge.net) and Jemalloc (http://www.canonware.com/jemalloc).
+
+Both can be downloaded and installed by following the instructions on their respective websites. It is however most likely that at least few of them are available via a package manager for your operating system.
+
+If you operating system is Ubuntu or Debian:
 ```
-sudo apt-get install libjemalloc1 libjemalloc-dev
-sudo apt-get install libjudydebian1 libjudy-dev
+sudo apt-get install libjudydebian1 libjudy-dev libjemalloc1 libjemalloc-dev
 ```
 
-For Mac OS X, Jemalloc can be downloaded and installed via Homebrew:
+If you operating system is Mac OS, Jemalloc can be easily downloaded and installed via Homebrew:
 ```
 brew install jemalloc
 ```
 
-The BFT library compiles with GNU GCC and G++. Compatibility with Clang LLVM is in preparation.
+## Compilation and installation
 
-On Ubuntu/Debian, you can verify their presences on your system with:
+The library compiles with GNU GCC and G++ (compatibility with Clang is in preparation). It successfully compiles and runs on Ubuntu 14.04 and 15.04.
+
+### Linux
+
+On Linux, you can verify the presence of gcc and g++ on your system with:
 ```
 gcc -v
 g++ -v
 ```
 
-If not present, they can be installed with:
+If not present (unlikely), they can be installed for Ubuntu or Debian with:
 ```
 sudo apt-get install build-essential
 ```
 
-For Mac OS X, GCC and G++ can be installed via Homebrew:
+Compiling the library should then be as simple as:
 ```
-brew install gcc-5
-brew install g++-5
+cd <BFT_directory>
+./configure
+make
+make install
 ```
 
-The code can be then compiled with:
+You can also install it in a specific directory (for example because you are not root on the machine you are using) with:
 ```
-cd <BFT directory>
+cd <BFT_directory>
+./configure --prefix=<a_directory>
 make
+make install
+
+Make sure that your environment variables are all set with <a_directory>.
+
+### Mac OS
+
+For Mac OS, you will need the "real" GCC and G++, not the Clang interface that is called when you use GCC or G++. Both can be installed via Homebrew:
+```
+brew install gcc-x
+brew install g++-x
+```
+
+in which *x* is the latest major version of GCC and G++.
+
+Compiling the library should then be as simple as:
+```
+cd <BFT_directory>
+./configure CC=gcc-x
+make
+make install
+```
+
+in which *x* is the version of GCC and G++ that you installed via Homebrew or other.
+
+To install the BFT library in a specific directory, see Linux compilation and installation.
+
+## API Usage
+
+Using the BFT library is very simple. Once the library is installed on your system, just use
+```
+\#include<bft/bft.h>
+```
+in your C or C++ code. Then, compile your code with the flag
+```
+-lbft
 ```
 
 ## API documentation:
 
-Documentation for the BFT library is available in the /doc/doxygen folder (HTML and Latex).
+Documentation for the BFT library is available in the /doc/doxygen folder (HTML).
 
 The following command regenerates the documentation:
 ```
-cd <BFT directory>
+cd <BFT_directory>
 doxygen Doxyfile
 ```
 
+The documentation contains a description of all the functions and structure of the library as well as code snippets.
+
 ## Binary usage:
+
+Installing the BFT library also produce a binary that shows what it is possible to do with the library. Therefore, the binary can perform a limited number of operations described in the following.
+
 ```
-./bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]
-./bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]
+bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]
+bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]
 
 Options:
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
@@ -61,7 +114,7 @@ Options:
 [-extract_kmers {kmers|kmers_comp} kmers_file]
 
 Version:
-./bft --version
+bft --version
 ```
 ### Commands
 
@@ -95,17 +148,17 @@ Example: ACTTGTCTG -> 11110100 11011110 00000010
 
 If you want to cite the Bloom Filter Trie, please use:
 ```
-@inproceedings{holley2015bloom,
-  title="{Bloom Filter Trie--A Data Structure for Pan-Genome Storage}",
+@article{holley2016bloom,
+  title="{Bloom Filter Trie: an alignment-free and reference-free data structure for pan-genome storage}",
   author={Holley, Guillaume and Wittler, Roland and Stoye, Jens},
-  booktitle={Proceedings of 15th International Workshop on Algorithms in Bioinformatics},
-  volume={9289},
-  pages={217-230},
-  year={2015},
-  publisher={Springer}
+  journal={Algorithm. Mol. Biol.},
+  volume={11},
+  number={1},
+  pages={1},
+  year={2016}
 }
 ```
 
 ## Contact
 
-For any question, feedback or problem, please contact me at gholley{at}cebitec{dot}uni-bielefeld{dot}de
+For any question, feedback or problem, please contact me at gholley[At]cebitec[D0t]uni-bielefeld[D0t]de

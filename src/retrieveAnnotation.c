@@ -1,4 +1,4 @@
-#include "./../lib/retrieveAnnotation.h"
+#include "retrieveAnnotation.h"
 
 /*annotation_array_elem* retrieve_annotation_right(BFT_Root* root, uint8_t* kmer_start, uint8_t* kmer_start_tmp, int size_kmer_root, int size_kmer_array,
                                                  int shifting_suffix, uint32_t id_genome_avoid, uint16_t** skip_node_root,
