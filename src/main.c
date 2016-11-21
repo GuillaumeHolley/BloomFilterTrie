@@ -19,7 +19,9 @@ int main(int argc, char *argv[])
     int binary_files = 0;
     int nb_files_2_read = 0;
 
-    const char csv_ext[5] = ".csv\0";
+    double threshold;
+
+    const char* csv_ext = ".csv";
 
     char buffer[2048];
 
@@ -36,6 +38,7 @@ int main(int argc, char *argv[])
               "./bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]\n"
               "./bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]\n"
               "\nOptions:\n"
+              "[-query_sequences threshold list_sequence_files]\n"
               "[-query_kmers {kmers|kmers_comp} list_kmer_files]\n"
               "[-query_branching {kmers|kmers_comp} list_kmer_files]\n"
               "[-extract_kmers {kmers|kmers_comp} compressed_kmers_file]\n\n")
@@ -74,31 +77,40 @@ int main(int argc, char *argv[])
 
             fclose(file_input);
 
-            for (i=7; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
+            for (i = 7; i < argc; i += 3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-                //User wants to query the BFT for k-mers
-                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){
+                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) ||
+                    (strcmp("-query_sequences", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){
 
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
-                        if (strcmp("-query_kmers", argv[i]) == 0){
-                            ERROR("Unrecognized type of input files for -query_kmers.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
-                        }
-                        else if (strcmp("-query_branching", argv[i]) == 0){
-                            ERROR("Unrecognized type of input files for -query_branching.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
-                        }
-                        else if (strcmp("-extract_kmers", argv[i]) == 0){
-                            ERROR("Unrecognized type of output files for -extract_kmers.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){
+
+                        if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
+
+                            if (strcmp("-query_kmers", argv[i]) == 0){
+                                ERROR("Unrecognized type of input files for -query_kmers.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                            }
+                            else if (strcmp("-query_branching", argv[i]) == 0){
+                                ERROR("Unrecognized type of input files for -query_branching.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                            }
+                            else if (strcmp("-extract_kmers", argv[i]) == 0){
+                                ERROR("Unrecognized type of output files for -extract_kmers.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                            }
                         }
                     }
+                    else {
 
-                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+                        threshold = atof(argv[i+1]);
+                        if (threshold == 0) ERROR("Could not parse threshold for command -query_sequences.\n");
+                    }
+
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid input file.\n")
 
                     while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        buffer[strcspn(buffer, "\r\n")] = '\0';
 
                         if ((file_tmp = fopen(buffer, "r")) == NULL){
                             fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
@@ -141,8 +153,6 @@ int main(int argc, char *argv[])
 
             fclose(file_input);
 
-            //Read and test if the type of input files is valid
-            //Insert k-mers of the input files in the BFT
             if (strcmp("kmers_comp", argv[4]) == 0){
 
                 root = createBFT_Root(size_kmer, atoi(argv[3]), 0);
@@ -165,7 +175,7 @@ int main(int argc, char *argv[])
 
             //printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
 
-            for (i=7; i<argc; i+=3){
+            for (i = 7; i < argc; i += 3){
 
                 binary_files = 0;
 
@@ -186,8 +196,31 @@ int main(int argc, char *argv[])
                         if ((dot = strrchr(filename_output, '.')) != NULL) strcpy(dot, csv_ext);
                         else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
 
-                        //Query the BFT for presence of k-mer queries
                         printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output));
+
+                        free(filename_output);
+                    }
+
+                    fclose(file_input);
+                }
+                else if (strcmp("-query_sequences", argv[i]) == 0){
+
+                    threshold = atof(argv[i+1]);
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid sequence query file list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = '\0';
+
+                        filename_output = malloc((strlen(basename(buffer))+4) * sizeof(char));
+                        ASSERT_NULL_PTR(filename_output, "main()")
+
+                        strcpy(filename_output, basename(buffer));
+
+                        if ((dot = strrchr(filename_output, '.')) != NULL) strcpy(dot, csv_ext);
+                        else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
+
+                        query_sequences_outputCSV(root, buffer, filename_output, threshold);
 
                         free(filename_output);
                     }
@@ -202,7 +235,6 @@ int main(int argc, char *argv[])
                     while (fgets(buffer, 2048, file_input)){
 
                         buffer[strcspn(buffer, "\r\n")] = 0;
-                        //Query the BFT for the number of k-mer queries that are branching vertices
                         printf("\nNb branching k-mers = %d\n", queryBFT_kmerBranching_from_KmerFiles(root, buffer, binary_files));
                     }
 
@@ -219,7 +251,7 @@ int main(int argc, char *argv[])
             }
 
             if (paths_and_names != NULL){
-                for (int i=0; i<root->nb_genomes; i++) free(paths_and_names[i]);
+                for (int i = 0; i<root->nb_genomes; i++) free(paths_and_names[i]);
                 free(paths_and_names);
             }
 
@@ -235,34 +267,50 @@ int main(int argc, char *argv[])
 
             printf("Memory used by external colors = %f\n", getTotalSize_annotation_array_elem(root->comp_set_colors, root->length_comp_set_colors));
 
-            for (i=3; i<argc; i+=3){ //Test if we can open the files for querying the k-mers/branching vertices
+            for (i = 3; i < argc; i += 3){ //Test if we can open the files for querying the k-mers/branching vertices
 
-                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){ //User wants to query the BFT for k-mers
+                if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) ||
+                    (strcmp("-query_sequences", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){
 
-                    if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
-                        if (strcmp("-query_kmers", argv[i]) == 0){
-                            ERROR("Unrecognized type of input files for -query_kmers.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    if ((strcmp("-query_kmers", argv[i]) == 0) || (strcmp("-query_branching", argv[i]) == 0) || (strcmp("-extract_kmers", argv[i]) == 0)){
 
-                            if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+                        if ((strcmp("kmers_comp", argv[i+1]) != 0) && (strcmp("kmers", argv[i+1]) != 0)){
+
+                            if (strcmp("-query_kmers", argv[i]) == 0){
+
+                                ERROR("Unrecognized type of input files for -query_kmers.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+
+                                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+                            }
+                            else if (strcmp("-query_branching", argv[i]) == 0){
+
+                                ERROR("Unrecognized type of input files for -query_branching.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+
+                                if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
+                            }
+                            else if (strcmp("-extract_kmers", argv[i]) == 0){
+
+                                ERROR("Unrecognized type of output files for -extract_kmers.\n"
+                                      "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                            }
                         }
-                        else if (strcmp("-query_branching", argv[i]) == 0){
-                            ERROR("Unrecognized type of input files for -query_branching.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
+                    }
+                    else {
 
-                            if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid k-mer queries file.\n")
-                        }
-                        else if (strcmp("-extract_kmers", argv[i]) == 0){
-                            ERROR("Unrecognized type of output files for -extract_kmers.\n"
-                                  "Choice must be 'kmers' for k-mers files or 'kmers_comp' for compressed k-mers files.\n")
-                        }
+                        threshold = atof(argv[i+1]);
+                        if (threshold == 0) ERROR("Could not parse threshold for command -query_sequences.\n");
+
+                        if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid sequence query file list.\n")
                     }
 
 
                     if (file_input != NULL){
+
                         while (fgets(buffer, 2048, file_input)){ //Test if the input files can be opened and read
 
-                            buffer[strcspn(buffer, "\r\n")] = 0;
+                            buffer[strcspn(buffer, "\r\n")] = '\0';
 
                             if ((file_tmp = fopen(buffer, "r")) == NULL){
                                 fprintf(stderr, "Invalid input file at line %d of the list of k-mer queries files.\n", cpt);
@@ -318,7 +366,7 @@ int main(int argc, char *argv[])
 
                     while (fgets(buffer, 2048, file_input)){
 
-                        buffer[strcspn(buffer, "\r\n")] = 0;
+                        buffer[strcspn(buffer, "\r\n")] = '\0';
 
                         filename_output = malloc((strlen(basename(buffer))+5) * sizeof(char));
                         ASSERT_NULL_PTR(filename_output, "main()")
@@ -330,6 +378,30 @@ int main(int argc, char *argv[])
 
                         //Query the BFT for presence of k-mer queries
                         printf("\nNb k-mers present = %d\n", queryBFT_kmerPresences_from_KmerFiles(root, buffer, binary_files, filename_output));
+
+                        free(filename_output);
+                    }
+
+                    fclose(file_input);
+                }
+                else if (strcmp("-query_sequences", argv[i]) == 0){
+
+                    threshold = atof(argv[i+1]);
+                    if ((file_input = fopen(argv[i+2], "r")) == NULL) ERROR("Invalid sequence query file list.\n")
+
+                    while (fgets(buffer, 2048, file_input)){
+
+                        buffer[strcspn(buffer, "\r\n")] = '\0';
+
+                        filename_output = malloc((strlen(basename(buffer))+4) * sizeof(char));
+                        ASSERT_NULL_PTR(filename_output, "main()")
+
+                        strcpy(filename_output, basename(buffer));
+
+                        if ((dot = strrchr(filename_output, '.')) != NULL) strcpy(dot, csv_ext);
+                        else strcpy(&(filename_output[strlen(filename_output)]), csv_ext);
+
+                        query_sequences_outputCSV(root, buffer, filename_output, threshold);
 
                         free(filename_output);
                     }
@@ -393,15 +465,18 @@ int main(int argc, char *argv[])
                     i++;
                 }
                 else if (strcmp("-extract_kmers", argv[i]) == 0){
+
                     write_kmers_2disk(root, argv[i+2], strcmp("kmers_comp", argv[i+1]) == 0);
                 }
                 else{
+
                     fprintf(stderr, "Unrecognized command %s.\n", argv[i]);
                     exit(EXIT_FAILURE);
                 }
             }
 
             if (paths_and_names != NULL){
+
                 for (int i=0; i<nb_files_2_read; i++) free(paths_and_names[i]);
                 free(paths_and_names);
             }

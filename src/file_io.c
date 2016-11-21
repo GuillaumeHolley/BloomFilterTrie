@@ -1215,3 +1215,114 @@ int queryBFT_kmerBranching_from_KmerFiles(BFT_Root* root, char* query_filename, 
 
     return;
 }*/
+
+void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* output_filename, double threshold){
+
+    ASSERT_NULL_PTR(root, "query_sequences_outputCSV()\n")
+    ASSERT_NULL_PTR(query_filename, "query_sequences_outputCSV()\n")
+    ASSERT_NULL_PTR(output_filename, "query_sequences_outputCSV()\n");
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
+
+    if (threshold <= 0) ERROR("query_sequences_outputCSV(): the threshold must be superior to 0.\n");
+    if (threshold > 1) ERROR("query_sequences_outputCSV(): the threshold must be inferior or equal to 1.\n");
+
+    const char nl = '\n';
+    const char comma = ',';
+
+    const char* not_present = "0,";
+    const char* present = "1,";
+
+    int64_t nb_kmers_query;
+    int64_t nb_kmers_query_min;
+
+    uint64_t nb_queries = 0;
+
+    size_t size_buffer_queries = SIZE_BUFFER;
+
+    uint32_t i, it_annot;
+
+    uint32_t* ids_present = NULL;
+
+    char* buffer_queries = calloc(size_buffer_queries, sizeof(char));
+    ASSERT_NULL_PTR(buffer_queries,"query_sequences_outputCSV()\n");
+
+    FILE* file_query = fopen(query_filename, "r");
+    ASSERT_NULL_PTR(file_query,"query_sequences_outputCSV()\n")
+
+    FILE* file_output = fopen(output_filename, "w");
+    ASSERT_NULL_PTR(file_output,"query_sequences_outputCSV()\n")
+
+    prepare_shuffling_dictionary();
+
+    for (i = 0; i < root->nb_genomes - 1; i++){
+
+        fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+        fwrite(&comma, sizeof(char), 1, file_output);
+    }
+
+    fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+    if (fwrite(&nl, sizeof(char), 1, file_output) != 1)
+        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+    while (getline(&buffer_queries, &size_buffer_queries, file_query) != -1){
+
+        buffer_queries[strcspn(buffer_queries, "\r\n")] = '\0';
+
+        ids_present = query_sequence(root, buffer_queries, threshold);
+
+        if (ids_present != NULL){
+
+            for (it_annot = 1; it_annot <= ids_present[0]; it_annot++){
+
+                for (i = 0; i < ids_present[it_annot] - (it_annot == 1 ? 0 : ids_present[it_annot - 1] + 1); i++){
+
+                    if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
+                        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+                }
+
+                if (fwrite(present, sizeof(char), 2, file_output) != 2)
+                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+            }
+
+            for (it_annot = ids_present[ids_present[0]] + 1; it_annot < root->nb_genomes; it_annot++){
+
+                if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
+                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+            }
+
+            free(ids_present);
+        }
+        else{
+
+            for (it_annot = 0; it_annot < root->nb_genomes; it_annot++){
+
+                if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
+                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+            }
+        }
+
+        fseek(file_output, 0 - ((long int) sizeof(char)), SEEK_CUR);
+
+        if (fwrite(&nl, sizeof(char), 1, file_output) != 1)
+            ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+        nb_queries++;
+    }
+
+    free(buffer_queries);
+
+    fclose(file_query);
+    fclose(file_output);
+
+    gettimeofday(&tval_after, NULL);
+    time_spent(&tval_before, &tval_after, &tval_result);
+
+    printf("\nFile %s has been processed.\n", query_filename);
+    printf("Elapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+    printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
+    printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
+
+    return;
+}

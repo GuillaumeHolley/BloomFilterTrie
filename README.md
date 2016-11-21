@@ -110,6 +110,7 @@ bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_fil
 bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]
 
 Options:
+[-query_sequences threshold list_sequence_files]
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
 [-query_branching {kmers|kmers_comp} list_kmer_files]
 [-extract_kmers {kmers|kmers_comp} kmers_file]
@@ -133,6 +134,7 @@ Command **load** loads a BFT from file *file_bft*.
 ### Options
 
 * **-add_genomes** adds the genomes listed in *list_genome_files* to the BFT stored in *file_bft*, the new BFT is written in *output_file*
+* **-query_sequences** queries the BFT for the sequences written in the files of *list_sequence_files*. For each file of *list_sequence_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried sequences, the intersection of a column and a row is a binary value indicating if the sequence represented by the row is present in the genome represented by the column. Threshold is a float (0 < threshold <= 1) indicating the percentage of *k*-mers from each query sequence that must occur in sample *x* to be reported present in sample *x*.
 * **-query_kmers** queries the BFT for *k*-mers written in the files of *list_kmer_files*. For each file of *list_kmer_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried *k*-mers, the intersection of a column and a row is a binary value indicating if the *k*-mer represented by the row is present in the genome represented by the column.
 * **-query_branching** queries the BFT for the number of *k*-mers written in the files of *list_kmer_files* that are branching in the colored de-Bruijn graph represented by the BFT.
 * **-extract_kmers** extracts the *k*-mers stored in the BFT and writes them to a *k*-mers file named *kmers_file* (see below for input file types).

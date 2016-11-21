@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['res',['res',['../structBFT__kmer.html#aab6ab4e17d069ebb9e5c467d8fee5002',1,'BFT_kmer']]]
+  ['query_5fsequence',['query_sequence',['../bft_8h.html#aa6c30881d62f797a766d5ad9e1548b21',1,'bft.c']]]
 ];

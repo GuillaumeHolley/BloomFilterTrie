@@ -51,23 +51,23 @@ uint32_t* intersection_uint32(uint32_t* list_a, uint32_t* list_b){
     ASSERT_NULL_PTR(list_a, "is_intersecting_uint32()\n")
     ASSERT_NULL_PTR(list_b, "is_intersecting_uint32()\n")
 
-    uint32_t i = 1, j = 1;
+    uint32_t i = 1, j = 1, it = 0;
     uint32_t size_a = list_a[0]+1, size_b = list_b[0]+1;
 
     uint32_t* list_c = malloc(MIN(size_a, size_b) * sizeof(uint32_t));
     ASSERT_NULL_PTR(list_c, "union_lists_uint32() 1\n")
 
-    list_c[0] = 0;
-
     while (i < size_a && j < size_b){
         if (list_a[i] > list_b[j]) j++;
         else if (list_b[j] > list_a[i]) i++;
         else {
-            list_c[0]++;
-            list_c[list_c[0]] = list_a[i];
+            it++;
+            list_c[it] = list_a[i];
             i++; j++;
         }
     }
+
+    list_c[it] = 0;
 
     return list_c;
 }
@@ -140,8 +140,6 @@ uint32_t* intersection_uint32_SIMD(uint32_t* list_a, uint32_t* list_b) {
         count += _mm_popcnt_u32(mask);
         //]
     }
-
-    //qsort(C, count, sizeof(uint32_t), comp_uint32);
 
     // intersect the tail using scalar intersection
     while (i_a < list_a[0] && i_b < list_b[0]) {
@@ -345,44 +343,43 @@ uint32_t* union_lists_uint32(uint32_t* list_a, uint32_t* list_b){
     ASSERT_NULL_PTR(list_a, "union_lists_uint32()\n")
     ASSERT_NULL_PTR(list_b, "union_lists_uint32()\n")
 
-    int i = 1, j = 1;
-
+    uint32_t i = 1, j = 1, it = 0;
     uint32_t size_a = list_a[0], size_b = list_b[0];
 
-    uint32_t* list_c = malloc((size_a + size_b) * sizeof(uint32_t));
+    uint32_t* list_c = malloc((size_a + size_b + 1) * sizeof(uint32_t));
     ASSERT_NULL_PTR(list_c, "union_lists_uint32() 1\n")
-
-    list_c[0] = 0;
 
     while (i <= size_a && j <= size_b){
 
-        list_c[0]++;
+        it++;
 
         if (list_a[i] > list_b[j]){
-            list_c[list_c[0]] = list_b[j];
+            list_c[it] = list_b[j];
             j++;
         }
         else if (list_b[j] > list_a[i]){
-            list_c[list_c[0]] = list_a[i];
+            list_c[it] = list_a[i];
             i++;
         }
         else {
-            list_c[list_c[0]] = list_a[i];
+            list_c[it] = list_a[i];
             i++; j++;
         }
     }
 
     while (i <= size_a){
-        list_c[0]++;
-        list_c[list_c[0]] = list_a[i];
+        it++;
+        list_c[it] = list_a[i];
         i++;
     }
 
     while (j <= size_b){
-        list_c[0]++;
-        list_c[list_c[0]] = list_b[j];
+        it++;
+        list_c[it] = list_b[j];
         j++;
     }
+
+    list_c[0] = it;
 
     list_c = realloc(list_c, (list_c[0] + 1) * sizeof(uint32_t));
     ASSERT_NULL_PTR(list_c, "union_lists_uint32() 2\n")

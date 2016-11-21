@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['write_5fbft',['write_BFT',['../bft_8h.html#a51347017832238592f50046c47903aeb',1,'bft.c']]],
-  ['write_5fkmer_5fascii_5fto_5fdisk',['write_kmer_ascii_to_disk',['../bft_8h.html#a76832aa3bffe26b997a562f56ce4fcba',1,'bft.c']]],
-  ['write_5fkmer_5fcomp_5fto_5fdisk',['write_kmer_comp_to_disk',['../bft_8h.html#a77a802e5edc240a7a6a705ef6593799d',1,'bft.c']]]
+  ['v_5fiterate_5fover_5fkmers',['v_iterate_over_kmers',['../bft_8h.html#aa616e55874abfd5811c8854586718c35',1,'bft.c']]],
+  ['v_5fnot_5fvisited',['V_NOT_VISITED',['../snippets_8h.html#abeb188df21ec971c69153463711c533b',1,'snippets.h']]],
+  ['v_5fvisited',['V_VISITED',['../snippets_8h.html#aaaef815ed6556662f874b106601e7343',1,'snippets.h']]]
 ];

@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
-//#include "UC_annotation.h"
+#include "intersection.h"
 #include "insertNode.h"
 #include "branchingNode.h"
 #include "fasta.h"
@@ -82,8 +82,6 @@ BFT_kmer* create_kmer(const char* kmer, int k);
 BFT_kmer* create_empty_kmer();
 void free_BFT_kmer(BFT_kmer* bft_kmer, int nb_bft_kmer);
 void free_BFT_kmer_content(BFT_kmer* bft_kmer, int nb_bft_kmer);
-BFT_kmer* get_kmer(const char* kmer, BFT* bft);
-bool is_kmer_in_cdbg(BFT_kmer* bft_kmer);
 void extract_kmers_to_disk(BFT* bft, char* filename_output, bool compressed_output);
 size_t write_kmer_ascii_to_disk(BFT_kmer* bft_kmer, BFT* bft, va_list args);
 size_t write_kmer_comp_to_disk(BFT_kmer* bft_kmer, BFT* bft, va_list args);
@@ -119,6 +117,24 @@ uint32_t get_count_id_genomes(BFT_annotation* bft_annot, BFT* bft);
 uint32_t* intersection_list_id_genomes(uint32_t* list_a, uint32_t* list_b);
 ///@}
 
+/** @name Query functions
+ *  These functions query for k-mers or sequences.
+ */
+
+///@{
+BFT_kmer* get_kmer(const char* kmer, BFT* bft);
+bool is_kmer_in_cdbg(BFT_kmer* bft_kmer);
+uint32_t* query_sequence(BFT* bft, char* sequence, double threshold);
+///@}
+
+/** @name Pattern matching functions
+ *  These functions provide pattern matching functionalities over the k-mers or paths of a colored de Bruijn graph stored as a BFT.
+ */
+
+///@{
+bool prefix_matching(BFT* bft, char* prefix, BFT_func_ptr f, ...);
+///@}
+
 /** @name Marking functions
  *  These functions allow to mark k-mers of a colored de Bruijn graph with flags.
  */
@@ -149,14 +165,6 @@ BFT_kmer* get_successors(BFT_kmer* bft_kmer, BFT* bft);
 ///@{
 void iterate_over_kmers(BFT* bft, BFT_func_ptr f, ... );
 void v_iterate_over_kmers(BFT* bft, BFT_func_ptr f, va_list args);
-///@}
-
-/** @name Pattern matching functions
- *  These functions provide pattern matching functionalities over the k-mers or paths of a colored de Bruijn graph stored as a BFT.
- */
-
-///@{
-bool prefix_matching(BFT* bft, char* prefix, BFT_func_ptr f, ...);
 ///@}
 
 /** @name Disk I/O functions
