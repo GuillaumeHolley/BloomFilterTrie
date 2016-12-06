@@ -2,12 +2,6 @@
 
 const uint8_t MASK_POWER_8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 
-const int MultiplyDeBruijnBitPosition_power2[32] =
-{
-  0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
-  31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
-};
-
 extern inline annotation_inform* create_annotation_inform(int nb_id_genomes, bool disable_flag_0);
 extern inline void reinit_annotation_inform(annotation_inform* ann_inf);
 extern inline void free_annotation_inform(annotation_inform* ann_inf);
@@ -482,7 +476,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
 
         if (ann_inf->current_mode == 0){ //Bitwize mode
 
-            if (size*SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]) lim_flag0 = size*SIZE_BITS_UINT_8T;
+            if (size * SIZE_BITS_UINT_8T - 2 < MASK_POWER_8[6]) lim_flag0 = size * SIZE_BITS_UINT_8T;
             else lim_flag0 = 66;
 
             for (i=2; i < lim_flag0; i++){
@@ -499,7 +493,7 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
                 }
             }
 
-            if (size*SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]) tot_size_ids_flag1 += start_run == true;
+            if (size * SIZE_BITS_UINT_8T-2 < MASK_POWER_8[6]) tot_size_ids_flag1 += start_run == true;
             else{
 
                 for (i=66; i<size*SIZE_BITS_UINT_8T; i++){
@@ -632,9 +626,10 @@ void compute_best_mode(annotation_inform* ann_inf, annotation_array_elem* annot_
     new_sizes_mode[2] = tot_size_ids_flag2;
 
     if (id_genome2insert != ann_inf->last_added){
+
         if (id_genome2insert != ann_inf->last_added+1) new_sizes_mode[1] += size_id_genome * 2;
         else if (ann_inf->current_mode == 0) new_sizes_mode[1] += size_id_genome - tmp;
-        else  new_sizes_mode[1] += size_id_genome - ann_inf->size_id_stored[ann_inf->nb_id_stored-1];
+        else new_sizes_mode[1] += size_id_genome - ann_inf->size_id_stored[ann_inf->nb_id_stored-1];
     }
 
     if (id_genome2insert != ann_inf->last_added) new_sizes_mode[2] += size_id_genome;

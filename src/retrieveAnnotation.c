@@ -252,8 +252,9 @@ void modify_annotations(BFT_Root* root, UC* uc, int size_substring, int nb_child
 
     if (res_get_annotation == 1){
 
-        if (size_annot_cplx != 0) compute_best_mode(ann_inf, annot_sorted, annot_cplx,
-                                                    size_annot_cplx, NULL, 0, id_genome, size_id_genome);
+        if (size_annot_cplx){
+            compute_best_mode(ann_inf, annot_sorted, annot_cplx, size_annot_cplx, NULL, 0, id_genome, size_id_genome);
+        }
         else compute_best_mode(ann_inf, annot_sorted, annot, size_annot, annot_ext, 1, id_genome, size_id_genome);
     }
     else{
@@ -276,7 +277,7 @@ void modify_annotations(BFT_Root* root, UC* uc, int size_substring, int nb_child
 
     if (ann_inf->last_added != id_genome){
 
-        if (size_annot_cplx != 0){
+        if (size_annot_cplx){
 
             if (ann_inf->min_size > size_annot_cplx){
                 increase_size_annot_cplx_nodes(uc, size_substring, nb_children, ann_inf->min_size, 1);

@@ -4,7 +4,7 @@ int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
     ASSERT_NULL_PTR(line,"parseKmerCount()")
     ASSERT_NULL_PTR(tab,"parseKmerCount()")
 
-    uint8_t* tab_tmp = &(tab[pos_tab]);
+    uint8_t* tab_tmp = &tab[pos_tab];
 
     int pos_car = 0;
     for (; pos_car < size_kmer; pos_car++){

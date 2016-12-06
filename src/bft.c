@@ -66,8 +66,8 @@ void insert_kmers_new_genome(int nb_kmers, char** kmers, char* genome_name, BFT*
 
                 memset(kmer_comp, 0, nb_bytes_kmer_comp * sizeof(uint8_t));
 
-                if (parseKmerCount(kmers[i], bft->k, kmer_comp, 0))
-                    insertKmers(bft, kmer_comp, 1, bft->nb_genomes-1, size_id_genome);
+                if (parseKmerCount(kmers[i], bft->k, kmer_comp, 0)) insertKmers(bft, kmer_comp, 1, bft->nb_genomes-1, size_id_genome);
+                else ERROR("insert_kmers_new_genome(): could not insert k-mer in graph, it probably contains unvalid characters.\n")
             }
 
             free(kmer_comp);
@@ -107,8 +107,8 @@ void insert_kmers_last_genome(int nb_kmers, char** kmers, BFT* bft){
 
                     memset(kmer_comp, 0, nb_bytes_kmer_comp * sizeof(uint8_t));
 
-                    if (parseKmerCount(kmers[i], bft->k, kmer_comp, 0))
-                        insertKmers(bft, kmer_comp, 1, bft->nb_genomes-1, size_id_genome);
+                    if (parseKmerCount(kmers[i], bft->k, kmer_comp, 0)) insertKmers(bft, kmer_comp, 1, bft->nb_genomes-1, size_id_genome);
+                    else ERROR("insert_kmers_last_genome(): could not insert k-mer in graph, it probably contains unvalid characters.\n")
                 }
 
                 free(kmer_comp);

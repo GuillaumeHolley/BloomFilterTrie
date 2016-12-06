@@ -1453,6 +1453,7 @@ void presenceKmer(Node* node, BFT_Root* root, uint8_t* kmer, int size_kmer, int 
                         else res->posFilter3 = imin+1;
                     }
                     else {
+
                         suffix = ((res->substring[1] & 0x3) << 2) | (res->substring[2] >> 6);
                         tmp = 0;
 

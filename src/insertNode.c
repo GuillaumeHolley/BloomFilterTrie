@@ -101,6 +101,7 @@ void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffi
             if (res->children_type_leaf == 0){ //If the container of result_presence is not a leaf (basically, a CC->children array)
                 // If it is not a UC also, we continue insertion of the suffix into the child container, which can only be a node
                 if (res->container_is_UC == 0){
+
                     insertKmer_Node((Node*)res->link_child, root, lvl_node-1, suffix, size_suffix-NB_CHAR_SUF_PREF, kmer,
                                     id_genome, size_id_genome, 0);
                 }
@@ -108,8 +109,7 @@ void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffi
                     uc = (UC*)res->container;
                     nb_elem = uc->nb_children >> 1;
 
-                    modify_annotations(root, uc, nb_cell, nb_elem, res->pos_sub_bucket, id_genome,
-                                       size_id_genome, kmer, 1);
+                    modify_annotations(root, uc, nb_cell, nb_elem, res->pos_sub_bucket, id_genome, size_id_genome, kmer, 1);
                 }
             }
             else{ //If the container of result_resence is a leaf (basically, a CC->children array), we modify it
@@ -179,6 +179,7 @@ void insertKmer_Node(Node*  node, BFT_Root*  root, int lvl_node, uint8_t*  suffi
                     transform_Filter2n3((CC*)res->container, 14, 4, &(root->info_per_lvl[lvl_node]));
             }
             else{
+
                 insertKmer_UC(&(node->UC_array), suffix, id_genome, size_id_genome,
                               size_suffix, res->pos_sub_bucket, ann_inf, annot_sorted);
             }
