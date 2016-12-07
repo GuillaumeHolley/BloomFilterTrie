@@ -22,7 +22,7 @@
 #include "popcnt.h"
 #include "annotation.h"
 
-const uint64_t MASK_POWER_16[19];
+extern const uint64_t MASK_POWER_16[19];
 
 /* ===================================================================================================================================
 *  STRUCTURES DECLARATION

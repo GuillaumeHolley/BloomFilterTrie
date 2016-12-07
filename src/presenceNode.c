@@ -1308,6 +1308,9 @@ void presenceKmer(Node* node, BFT_Root* root, uint8_t* kmer, int size_kmer, int 
     res->node = node;
     res->level_node = size_kmer/NB_CHAR_SUF_PREF - 1;
 
+    //printf("%" PRIu8 " %" PRIu8 " %" PRIu8 "\n", kmer[0], kmer[1], kmer[2]);
+    //printf("%" PRIu8 " %" PRIu8 " %" PRIu8 "\n", reverse_word_8(kmer[0]), reverse_word_8(kmer[1]), reverse_word_8(kmer[2]));
+
     //Keep in resultPresence->substring only the prefix we are looking for
     res->substring[0] = reverse_word_8(kmer[0]);
     res->substring[1] = reverse_word_8(kmer[1]);

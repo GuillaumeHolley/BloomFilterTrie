@@ -23,7 +23,7 @@
 #include "log2.h"
 #include "quicksort.h"
 
-const uint8_t MASK_POWER_8[8];
+extern const uint8_t MASK_POWER_8[8];
 
 typedef struct {
     //Represent the genomes IDs stored in the annotation, doesn't matter if they are present or not
