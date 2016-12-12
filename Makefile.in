@@ -3,9 +3,9 @@ LD=@CC@
 LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
 CFLAGS=@CFLAGS@
+PREFIX=@prefix@
 
 DESTDIR		?=
-PREFIX 		?= /usr/local
 BINDIR 		= $(PREFIX)/bin
 LIBDIR 		= $(PREFIX)/lib
 SRCDIR		= $(PREFIX)/src
