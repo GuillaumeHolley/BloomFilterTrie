@@ -107,6 +107,7 @@ void insert_Genomes_from_KmerFiles(BFT_Root* root, int nb_files, char** filename
 
     int i = 0, j = 0, k = 0;
     int size_id_genome = 0;
+    int nb_genomes_before = root->nb_genomes;
     int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
     int nb_bytes_kmer = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
@@ -189,7 +190,8 @@ void insert_Genomes_from_KmerFiles(BFT_Root* root, int nb_files, char** filename
         //if (root->treshold_compression && (root->nb_genomes - 1 > 5) && ((root->nb_genomes - 1) % root->treshold_compression == 0))
         //compress_annotations_disk(root, filename_bft);
 
-        if (root->nb_genomes == nb_files) compress_annotations_disk(root, filename_bft);
+        if (root->treshold_compression && (root->nb_genomes - 1 > 5) && (root->nb_genomes == nb_genomes_before + nb_files))
+            compress_annotations_disk(root, filename_bft);
 
         gettimeofday(&tval_after, NULL);
 
