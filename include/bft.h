@@ -124,7 +124,7 @@ uint32_t* intersection_list_id_genomes(uint32_t* list_a, uint32_t* list_b);
 ///@{
 BFT_kmer* get_kmer(const char* kmer, BFT* bft);
 bool is_kmer_in_cdbg(BFT_kmer* bft_kmer);
-uint32_t* query_sequence(BFT* bft, char* sequence, double threshold);
+uint32_t* query_sequence(BFT* bft, char* sequence, double threshold, bool canonical_search);
 ///@}
 
 /** @name Pattern matching functions

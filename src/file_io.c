@@ -108,7 +108,6 @@ void insert_Genomes_from_KmerFiles(BFT_Root* root, int nb_files, char** filename
     int i = 0, j = 0, k = 0;
     int size_id_genome = 0;
     int nb_genomes_before = root->nb_genomes;
-    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
     int nb_bytes_kmer = CEIL(root->k*2, SIZE_BITS_UINT_8T);
     int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
 
@@ -207,10 +206,6 @@ void insert_Genomes_from_KmerFiles(BFT_Root* root, int nb_files, char** filename
         tval_last = tval_after;
     }
 
-    memory_Used* mem = printMemoryUsedFromNode(&(root->node), lvl_root, root->k, root->info_per_lvl);
-    printMemory(mem);
-
-    free(mem);
     free(line);
     free(array_kmers);
 
@@ -404,7 +399,7 @@ void insert_Genomes_from_FASTxFiles(BFT_Root* root, int nb_files, char** filenam
     return;
 }
 
-int queryBFT_kmerPresences_from_KmerFiles(BFT_Root* root, char* query_filename, int binary_file, char* output_filename){
+/*int queryBFT_kmerPresences_from_KmerFiles(BFT_Root* root, char* query_filename, int binary_file, char* output_filename){
 
     ASSERT_NULL_PTR(root,"queryBFT_kmerPresences_from_KmerFiles()")
     ASSERT_NULL_PTR(query_filename,"queryBFT_kmerPresences_from_KmerFiles()")
@@ -641,6 +636,255 @@ int queryBFT_kmerPresences_from_KmerFiles(BFT_Root* root, char* query_filename, 
     free(array_kmers);
     free(annot_res);
     free(line);
+
+    gettimeofday(&tval_after, NULL);
+    time_spent(&tval_before, &tval_after, &tval_result);
+
+    printf("\nElapsed time: %ld.%06ld s\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+    printf("Peak of memory: %llu mb\n", ((unsigned long long int)getPeakRSS())/1024);
+    printf("Current memory: %llu mb\n", ((unsigned long long int)getCurrentRSS())/1024);
+
+    return nb_kmers_present;
+}*/
+
+int queryBFT_kmerPresences_from_KmerFiles(BFT_Root* root, char* query_filename, int binary_file, char* output_filename){
+
+    ASSERT_NULL_PTR(root,"queryBFT_kmerPresences_from_KmerFiles()")
+    ASSERT_NULL_PTR(query_filename,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
+
+    const char nl = '\n';
+    const char eol = '\0';
+    const char csv_sep = ',';
+    const char not_present = '0';
+    const char present = '1';
+
+    int j = 0, k = 0;
+    int res_parseKmerCount;
+    int nb_kmers_present = 0;
+    int nb_bytes_kmer = CEIL(root->k * 2, SIZE_BITS_UINT_8T);
+    int nb_kmer_in_buf = SIZE_BUFFER/nb_bytes_kmer;
+    int lvl_root = (root->k / NB_CHAR_SUF_PREF) - 1;
+
+    ssize_t res_get_line;
+    size_t return_fread;
+    size_t size_buffer_queries = SIZE_BUFFER;
+
+    uint32_t i, it_annot, it_csv_line_res;
+
+    uint32_t* ids_present;
+
+    uint64_t kmers_read = 0;
+
+    BFT_kmer* bft_kmer;
+    BFT_annotation* bft_annot;
+
+    bool* is_iupac;
+
+    char* buffer_queries = calloc(size_buffer_queries, sizeof(char));
+    ASSERT_NULL_PTR(buffer_queries,"query_sequences_outputCSV()\n");
+
+    char* csv_line_res = calloc(root->nb_genomes * 2, sizeof(char));
+    ASSERT_NULL_PTR(csv_line_res,"query_sequences_outputCSV()\n");
+
+    uint8_t* array_kmers = calloc(SIZE_BUFFER, sizeof(uint8_t));
+    ASSERT_NULL_PTR(array_kmers,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    FILE* file_query = fopen(query_filename, "r");
+    ASSERT_NULL_PTR(file_query,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    FILE* file_output = fopen(output_filename, "w");
+    ASSERT_NULL_PTR(file_output,"queryBFT_kmerPresences_from_KmerFiles()")
+
+    bft_kmer = create_empty_kmer();
+
+    printf("\nQuerying BFT for k-mers in %s\n\n", query_filename);
+
+    for (i = 0; i < root->nb_genomes - 1; i++){
+
+        fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+        fwrite(&csv_sep, sizeof(char), 1, file_output);
+
+        csv_line_res[i * 2 + 1] = csv_sep;
+    }
+
+    csv_line_res[root->nb_genomes * 2 - 1] = nl;
+
+    fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+
+    if (fwrite(&nl, sizeof(char), 1, file_output) != 1)
+        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+    if (binary_file){
+
+        if (fgets(buffer_queries, 100, file_query) == NULL) ERROR("Cannot read header of the queries file")
+        if (fgets(buffer_queries, 100, file_query) == NULL) ERROR("Cannot read header of the queries file")
+
+        while ((!ferror(file_query)) && (!feof(file_query))){
+
+            return_fread = fread(array_kmers, (size_t)nb_bytes_kmer, (size_t)nb_kmer_in_buf, file_query);
+
+            for (k = 0; k < (int)return_fread; k++){
+
+                bft_kmer->res = isKmerPresent(&(root->node), root, lvl_root, &(array_kmers[k * nb_bytes_kmer]), root->k);
+
+                it_csv_line_res = 0;
+
+                if (is_kmer_in_cdbg(bft_kmer)){
+
+                    nb_kmers_present++;
+
+                    bft_annot = get_annotation(bft_kmer);
+                    ids_present = get_list_id_genomes(bft_annot, root);
+                    free_BFT_annotation(bft_annot);
+
+                    for (it_annot = 1; it_annot <= ids_present[0]; it_annot++){
+
+                        for (i = 0; i < ids_present[it_annot] - (it_annot == 1 ? 0 : ids_present[it_annot - 1] + 1); i++, it_csv_line_res += 2)
+                            csv_line_res[it_csv_line_res] = not_present;
+
+                        csv_line_res[it_csv_line_res] = present;
+                        it_csv_line_res += 2;
+                    }
+
+                    for (it_annot = ids_present[ids_present[0]] + 1; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                        csv_line_res[it_csv_line_res] = not_present;
+
+                    free(ids_present);
+                }
+                else{
+
+                    for (it_annot = 0; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                        csv_line_res[it_csv_line_res] = not_present;
+                }
+
+                if (fwrite(csv_line_res, sizeof(char), root->nb_genomes * 2, file_output) != root->nb_genomes * 2)
+                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+                free(bft_kmer->res);
+            }
+
+            kmers_read += return_fread;
+
+            memset(array_kmers, 0, SIZE_BUFFER*sizeof(uint8_t));
+        }
+    }
+    else{
+
+        is_iupac = malloc(nb_kmer_in_buf * sizeof(bool));
+        ASSERT_NULL_PTR(is_iupac, "queryBFT_kmerPresences_from_KmerFiles()")
+
+        res_get_line = getline(&buffer_queries, &size_buffer_queries, file_query);
+
+        while ((res_get_line != -1) || j){
+
+            if (res_get_line != -1){
+
+                buffer_queries[strcspn(buffer_queries, "\r\n")] = '\0';
+
+                if (strlen(buffer_queries) != root->k)
+                    fprintf(stderr, "K-mer %s is not of length k=%d, only the first k symbols are considered.\n", buffer_queries, root->k);
+
+                kmers_read++;
+
+                res_parseKmerCount = parseKmerCount(buffer_queries, root->k, array_kmers, k);
+            }
+            else res_parseKmerCount = 1;
+
+            if (res_parseKmerCount == 1){
+
+                if (res_get_line != -1){
+
+                    is_iupac[j] = false;
+
+                    k += nb_bytes_kmer;
+                    j++;
+                }
+
+                if ((res_get_line == -1) || (j == nb_kmer_in_buf)){
+
+                    for (k = 0; k < j; k++){
+
+                        if (!is_iupac[k]){
+
+                            bft_kmer->res = isKmerPresent(&(root->node), root, lvl_root, &array_kmers[k * nb_bytes_kmer], root->k);
+
+                            it_csv_line_res = 0;
+
+                            if (is_kmer_in_cdbg(bft_kmer)){
+
+                                nb_kmers_present++;
+
+                                bft_annot = get_annotation(bft_kmer);
+                                ids_present = get_list_id_genomes(bft_annot, root);
+                                free_BFT_annotation(bft_annot);
+
+                                for (it_annot = 1; it_annot <= ids_present[0]; it_annot++){
+
+                                    for (i = 0; i < ids_present[it_annot] - (it_annot == 1 ? 0 : ids_present[it_annot - 1] + 1); i++, it_csv_line_res += 2)
+                                        csv_line_res[it_csv_line_res] = not_present;
+
+                                    csv_line_res[it_csv_line_res] = present;
+                                    it_csv_line_res += 2;
+                                }
+
+                                for (it_annot = ids_present[ids_present[0]] + 1; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                                    csv_line_res[it_csv_line_res] = not_present;
+
+                                free(ids_present);
+                            }
+                            else{
+
+                                for (it_annot = 0; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                                    csv_line_res[it_csv_line_res] = not_present;
+                            }
+
+                            free(bft_kmer->res);
+                        }
+                        else {
+
+                            it_csv_line_res = 0;
+
+                            for (it_annot = 0; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                                csv_line_res[it_csv_line_res] = not_present;
+                        }
+
+                        if (fwrite(csv_line_res, sizeof(char), root->nb_genomes * 2, file_output) != root->nb_genomes * 2)
+                            ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+                    }
+
+                    j = 0;
+                    k = 0;
+
+                    memset(array_kmers, 0, SIZE_BUFFER * sizeof(uint8_t));
+                }
+            }
+            else is_iupac[j] = true;
+
+            //if ((kmers_read%PRINT_EVERY_X_KMERS) > ((kmers_read+nb_kmer_in_buf)%PRINT_EVERY_X_KMERS))
+            //    printf("%" PRIu64 " kmers read\n", kmers_read+nb_kmer_in_buf);
+
+            res_get_line = getline(&buffer_queries, &size_buffer_queries, file_query);
+        }
+
+        free(is_iupac);
+    }
+
+    fseek(file_output, 0 - ((long int) sizeof(char)), SEEK_CUR);
+
+    if (fwrite(&eol, sizeof(char), 1, file_output) != 1)
+        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+    fclose(file_query);
+    fclose(file_output);
+
+    free(bft_kmer);
+    free(array_kmers);
+    free(buffer_queries);
+    free(csv_line_res);
 
     gettimeofday(&tval_after, NULL);
     time_spent(&tval_before, &tval_after, &tval_result);
@@ -1220,7 +1464,7 @@ int queryBFT_kmerBranching_from_KmerFiles(BFT_Root* root, char* query_filename, 
     return;
 }*/
 
-void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* output_filename, double threshold){
+void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* output_filename, double threshold, bool canonical_search){
 
     ASSERT_NULL_PTR(root, "query_sequences_outputCSV()\n")
     ASSERT_NULL_PTR(query_filename, "query_sequences_outputCSV()\n")
@@ -1233,24 +1477,24 @@ void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* outpu
     if (threshold > 1) ERROR("query_sequences_outputCSV(): the threshold must be inferior or equal to 1.\n");
 
     const char nl = '\n';
-    const char comma = ',';
-
-    const char* not_present = "0,";
-    const char* present = "1,";
-
-    int64_t nb_kmers_query;
-    int64_t nb_kmers_query_min;
+    const char eol = '\0';
+    const char csv_sep = ',';
+    const char not_present = '0';
+    const char present = '1';
 
     uint64_t nb_queries = 0;
 
     size_t size_buffer_queries = SIZE_BUFFER;
 
-    uint32_t i, it_annot;
+    uint32_t i, it_annot, it_csv_line_res;
 
-    uint32_t* ids_present = NULL;
+    uint32_t* ids_present;
 
     char* buffer_queries = calloc(size_buffer_queries, sizeof(char));
     ASSERT_NULL_PTR(buffer_queries,"query_sequences_outputCSV()\n");
+
+    char* csv_line_res = calloc(root->nb_genomes * 2, sizeof(char));
+    ASSERT_NULL_PTR(csv_line_res,"query_sequences_outputCSV()\n");
 
     FILE* file_query = fopen(query_filename, "r");
     ASSERT_NULL_PTR(file_query,"query_sequences_outputCSV()\n")
@@ -1258,63 +1502,64 @@ void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* outpu
     FILE* file_output = fopen(output_filename, "w");
     ASSERT_NULL_PTR(file_output,"query_sequences_outputCSV()\n")
 
-    prepare_shuffling_dictionary();
+    //prepare_shuffling_dictionary();
 
     for (i = 0; i < root->nb_genomes - 1; i++){
 
         fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
-        fwrite(&comma, sizeof(char), 1, file_output);
+        fwrite(&csv_sep, sizeof(char), 1, file_output);
+
+        csv_line_res[i * 2 + 1] = csv_sep;
     }
 
+    csv_line_res[root->nb_genomes * 2 - 1] = nl;
+
     fwrite(root->filenames[i], sizeof(char), strlen(root->filenames[i]), file_output);
+
     if (fwrite(&nl, sizeof(char), 1, file_output) != 1)
         ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
 
     while (getline(&buffer_queries, &size_buffer_queries, file_query) != -1){
 
         buffer_queries[strcspn(buffer_queries, "\r\n")] = '\0';
+        it_csv_line_res = 0;
 
-        ids_present = query_sequence(root, buffer_queries, threshold);
+        ids_present = query_sequence(root, buffer_queries, threshold, canonical_search);
 
-        if (ids_present != NULL){
+        if ((ids_present != NULL) && ids_present[0]){
 
             for (it_annot = 1; it_annot <= ids_present[0]; it_annot++){
 
-                for (i = 0; i < ids_present[it_annot] - (it_annot == 1 ? 0 : ids_present[it_annot - 1] + 1); i++){
+                for (i = 0; i < ids_present[it_annot] - (it_annot == 1 ? 0 : ids_present[it_annot - 1] + 1); i++, it_csv_line_res += 2)
+                    csv_line_res[it_csv_line_res] = not_present;
 
-                    if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
-                        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
-                }
-
-                if (fwrite(present, sizeof(char), 2, file_output) != 2)
-                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+                csv_line_res[it_csv_line_res] = present;
+                it_csv_line_res += 2;
             }
 
-            for (it_annot = ids_present[ids_present[0]] + 1; it_annot < root->nb_genomes; it_annot++){
-
-                if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
-                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
-            }
-
-            free(ids_present);
+            for (it_annot = ids_present[ids_present[0]] + 1; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                csv_line_res[it_csv_line_res] = not_present;
         }
         else{
 
-            for (it_annot = 0; it_annot < root->nb_genomes; it_annot++){
-
-                if (fwrite(not_present, sizeof(char), 2, file_output) != 2)
-                    ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
-            }
+            for (it_annot = 0; it_annot < root->nb_genomes; it_annot++, it_csv_line_res += 2)
+                csv_line_res[it_csv_line_res] = not_present;
         }
 
-        fseek(file_output, 0 - ((long int) sizeof(char)), SEEK_CUR);
-
-        if (fwrite(&nl, sizeof(char), 1, file_output) != 1)
+        if (fwrite(csv_line_res, sizeof(char), root->nb_genomes * 2, file_output) != root->nb_genomes * 2)
             ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+        if (ids_present != NULL) free(ids_present);
 
         nb_queries++;
     }
 
+    fseek(file_output, 0 - ((long int) sizeof(char)), SEEK_CUR);
+
+    if (fwrite(&eol, sizeof(char), 1, file_output) != 1)
+        ERROR("query_sequences_outputCSV(): could not write output to CSV file.\n");
+
+    free(csv_line_res);
     free(buffer_queries);
 
     fclose(file_query);

@@ -1,6 +1,7 @@
 #include "fasta.h"
 
 int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
+
     ASSERT_NULL_PTR(line,"parseKmerCount()")
     ASSERT_NULL_PTR(tab,"parseKmerCount()")
 
@@ -41,9 +42,9 @@ int parseKmerCount(const char* line, int size_kmer, uint8_t* tab, int pos_tab){
             case 'v':
             case 'V':
             case 'n':
-            case 'N': memset(tab_tmp, 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
-            case '\n': break;
-            default: memset(tab_tmp, 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
+            case 'N': //memset(tab_tmp, 0, ((pos_car+1)/4)*sizeof(uint8_t)); goto END_LOOP;
+            case '\n': //break;
+            default: memset(tab_tmp, 0, ((pos_car+1)/4) * sizeof(uint8_t)); goto END_LOOP;
         }
     }
 
@@ -146,11 +147,9 @@ void parseSequenceBuffer(char* buf, uint8_t* tab, int* nb_kmers, int size_kmers,
                 case 'v':
                 case 'V':
                 case 'n':
-                case 'N': memset(&(tab[k]), 0, (pos_car+1)/4); goto END_LOOP;
-                case '\n': break;
-                default: {  memset(&(tab[k]), 0, (pos_car+1)/4);
-                            goto END_LOOP;
-                        }
+                case 'N': //memset(&tab[k], 0, (pos_car+1)/4); goto END_LOOP;
+                case '\n': //break;
+                default: memset(&tab[k], 0, ((pos_car+1)/4) * sizeof(uint8_t)); goto END_LOOP;
             }
         }
 
@@ -209,10 +208,8 @@ int parseKmerCount_IUPAC(char* line, int size_kmer, uint8_t* tab, int pos_tab){
             case 'N': tab[pos_tab + pos_car/2] |= MASK_INSERT_IUPAC[13][pos_car%2]; break;
             case '.':
             case '-': tab[pos_tab + pos_car/2] |= MASK_INSERT_IUPAC[14][pos_car%2]; break;
-            case '\n': break;
-            default: {  memset(&(tab[pos_tab]), 0, ((pos_car+1)/2)*sizeof(uint8_t));
-                        goto END_LOOP;
-                    }
+            case '\n': //break;
+            default: memset(&tab[pos_tab], 0, ((pos_car+1)/2) * sizeof(uint8_t)); goto END_LOOP;
         }
     }
 
@@ -268,10 +265,8 @@ void parseSequenceBuffer_IUPAC(char* buf, uint8_t* tab, int* nb_kmers, int size_
                 case 'N': tab[k + pos_car/2] |= MASK_INSERT_IUPAC[13][pos_car%2]; break;
                 case '.':
                 case '-': tab[k + pos_car/2] |= MASK_INSERT_IUPAC[14][pos_car%2]; break;
-                case '\n': break;
-                default: {  memset(&(tab[k]), 0, ((pos_car+1)/2)*sizeof(uint8_t));
-                            goto END_LOOP;
-                        }
+                case '\n': //break;
+                default: memset(&tab[k], 0, ((pos_car+1)/2) * sizeof(uint8_t)); goto END_LOOP;
             }
         }
 
@@ -327,10 +322,8 @@ int parseKmerCount_IUPAC_rev(char* line, int size_kmer, uint8_t* tab, int pos_ta
             case 'N': tab[pos_tab + pos_car/2] |= MASK_INSERT_IUPAC_REV[13][pos_car%2]; break;
             case '.':
             case '-': tab[pos_tab + pos_car/2] |= MASK_INSERT_IUPAC_REV[14][pos_car%2]; break;
-            case '\n': break;
-            default: {  memset(&(tab[pos_tab]), 0, ((pos_car+1)/2)*sizeof(uint8_t));
-                        goto END_LOOP;
-                    }
+            case '\n': //break;
+            default: memset(&tab[pos_tab], 0, ((pos_car+1)/2) * sizeof(uint8_t)); goto END_LOOP;
         }
     }
 
@@ -413,8 +406,8 @@ void reverse_complement(const char* s1, char* s2, int length){
             case 'n': s2[i] = 'n'; break;
             case 'N': s2[i] = 'N'; break;
             default: {
-                printf("%s\n", s1);
-                ERROR("reverse_complement(): encountered an non-IUPAC character");
+                fprintf(stderr, "%s\n", s1);
+                ERROR("reverse_complement(): encountered an non-IUPAC character\n");
             }
         }
     }
@@ -461,8 +454,8 @@ char reverse_complement_char(char c){
         case 'n': return 'n';
         case 'N': return 'N';
         default: {
-            printf("%c\n", c);
-            ERROR("reverse_complement(): encountered an non-IUPAC character");
+            fprintf(stderr, "%c\n", c);
+            ERROR("reverse_complement(): encountered an non-IUPAC character\n");
         }
     }
 

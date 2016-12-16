@@ -210,9 +210,9 @@ uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><b>intersection_li
 <tr class="memitem:a170137e867f0ba24423badc9e1db872b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bft_8h.html#a170137e867f0ba24423badc9e1db872b">is_kmer_in_cdbg</a> (<a class="el" href="structBFT__kmer.html">BFT_kmer</a> *bft_kmer)</td></tr>
 <tr class="memdesc:a170137e867f0ba24423badc9e1db872b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function testing if a k-mer is in a BFT.  <a href="#a170137e867f0ba24423badc9e1db872b">More...</a><br /></td></tr>
 <tr class="separator:a170137e867f0ba24423badc9e1db872b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa6c30881d62f797a766d5ad9e1548b21"><td class="memItemLeft" align="right" valign="top">uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bft_8h.html#aa6c30881d62f797a766d5ad9e1548b21">query_sequence</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *bft, char *sequence, double threshold)</td></tr>
-<tr class="memdesc:aa6c30881d62f797a766d5ad9e1548b21"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function querying a BFT for a sequence.  <a href="#aa6c30881d62f797a766d5ad9e1548b21">More...</a><br /></td></tr>
-<tr class="separator:aa6c30881d62f797a766d5ad9e1548b21"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9806cafe5d6941638f125d59db61fa8"><td class="memItemLeft" align="right" valign="top">uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bft_8h.html#aa9806cafe5d6941638f125d59db61fa8">query_sequence</a> (<a class="el" href="bft_8h.html#a2db0a80fe662d044625641531e5ce292">BFT</a> *bft, char *sequence, double threshold, bool canonical_search)</td></tr>
+<tr class="memdesc:aa9806cafe5d6941638f125d59db61fa8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Function querying a BFT for a sequence.  <a href="#aa9806cafe5d6941638f125d59db61fa8">More...</a><br /></td></tr>
+<tr class="separator:aa9806cafe5d6941638f125d59db61fa8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr><td colspan="2"><div class="groupHeader">Pattern matching functions</div></td></tr>
 <tr><td colspan="2"><div class="groupText"><p>These functions provide pattern matching functionalities over the k-mers or paths of a colored de Bruijn graph stored as a BFT. </p>
 </div></td></tr>
@@ -1232,7 +1232,7 @@ uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><b>intersection_li
 
 </div>
 </div>
-<a class="anchor" id="aa6c30881d62f797a766d5ad9e1548b21"></a>
+<a class="anchor" id="aa9806cafe5d6941638f125d59db61fa8"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -1252,7 +1252,13 @@ uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><b>intersection_li
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">double&#160;</td>
-          <td class="paramname"><em>threshold</em>&#160;</td>
+          <td class="paramname"><em>threshold</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>canonical_search</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1268,6 +1274,7 @@ uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><b>intersection_li
     <tr><td class="paramname">bft</td><td>is a BFT to be queried. </td></tr>
     <tr><td class="paramname">sequence</td><td>is a string to query. </td></tr>
     <tr><td class="paramname">threshold</td><td>is a float (0 &lt; threshold &lt;= 1) indicating the minimum percentage of k-mers from the queried sequence that must be present in a genome to have the queried sequence reported present in this genome. </td></tr>
+    <tr><td class="paramname">canonical_search</td><td>is a boolean indicating if the searched k-mers of the queried sequence must be canonical (lexicographically smaller one between a k-mer and its reverse-complement) or not. </td></tr>
   </table>
   </dd>
 </dl>
@@ -1670,7 +1677,7 @@ uint32_t *&#160;</td><td class="memItemRight" valign="bottom"><b>intersection_li
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Nov 21 2016 17:45:16 for Bloom Filter Trie by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Fri Dec 16 2016 17:41:56 for Bloom Filter Trie by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.11
 </small></address>

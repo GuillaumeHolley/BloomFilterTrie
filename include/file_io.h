@@ -27,7 +27,7 @@ int queryBFT_kmerBranching_from_KmerFiles(BFT_Root* root, char* query_filename, 
 
 void compress_annotations_disk(BFT_Root* bft, char* filename_bft);
 
-void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* output_filename, double threshold);
+void query_sequences_outputCSV(BFT_Root* root, char* query_filename, char* output_filename, double threshold, bool canonical_search);
 
 /*void par_insert_Genomes_from_KmerFiles(int nb_files, char** filenames, int binary_files, int size_kmer,
                                        int treshold_compression, char* prefix_output, int cut_lvl, int memory_limit);*/

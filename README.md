@@ -106,11 +106,11 @@ The documentation contains a description of all the functions and structures of 
 Installing the BFT library also produces a binary that shows what it is possible to do with the library. Therefore, the binary can perform a limited number of operations described in the following.
 
 ```
-bft build k treshold_compression {kmers|kmers_comp} list_genome_files output_file [Options]
+bft build k {kmers|kmers_comp} list_genome_files output_file [Options]
 bft load file_bft [-add_genomes {kmers|kmers_comp} list_genome_files output_file] [Options]
 
 Options:
-[-query_sequences threshold list_sequence_files]
+[-query_sequences threshold {canonical|non_canonical} list_sequence_files]
 [-query_kmers {kmers|kmers_comp} list_kmer_files]
 [-query_branching {kmers|kmers_comp} list_kmer_files]
 [-extract_kmers {kmers|kmers_comp} kmers_file]
@@ -123,7 +123,6 @@ bft --version
 Command **build** creates the BFT for the files listed in *list_genome_files* and writes the BFT in file *output_file*.
 
 * *k*: length of *k*-mers
-* *treshold_compression*: number of genomes inserted that triggers a compression of the BFT's colors sets. This compression step will be triggered every *treshold_compression* genomes inserted and on the last genome inserted but does not start before insertion of 7 genomes. A *treshold_compression* equals to 0 means no compression of the BFT's colors sets. Example: if *treshold_compression* = 2 and 10 genomes have to be inserted, the compression step will be triggered after insertion of the 8th and 10th genomes.
 * *list_genome_files*: file that contains a list of files (one path and name per line) to be inserted in the BFT.
 * *output_file*: file where to write the BFT.
 
@@ -134,7 +133,7 @@ Command **load** loads a BFT from file *file_bft*.
 ### Options
 
 * **-add_genomes** adds the genomes listed in *list_genome_files* to the BFT stored in *file_bft*, the new BFT is written in *output_file*
-* **-query_sequences** queries the BFT for the sequences written in the files of *list_sequence_files*. For each file of *list_sequence_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried sequences, the intersection of a column and a row is a binary value indicating if the sequence represented by the row is present in the genome represented by the column. Threshold is a float (0 < threshold <= 1) indicating the percentage of *k*-mers from each query sequence that must occur in sample *x* to be reported present in sample *x*.
+* **-query_sequences** queries the BFT for the sequences written in the files of *list_sequence_files*. For each file of *list_sequence_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried sequences, the intersection of a column and a row is a binary value indicating if the sequence represented by the row is present in the genome represented by the column. *threshold* is a float (0 < *threshold* <= 1) indicating the percentage of *k*-mers from each query sequence that must occur in sample *x* to be reported present in sample *x*. *canonical* indicates that only the canonical *k*-mers of the queries are searched (the lexicographically smaller one between a k-mer and its reverse-complement). To the contrary, *non_canonical* indicates that the *k*-mers of the queries are searched as they are in the query.
 * **-query_kmers** queries the BFT for *k*-mers written in the files of *list_kmer_files*. For each file of *list_kmer_files* is output a CSV file: columns are the genomes represented in the BFT, rows are the queried *k*-mers, the intersection of a column and a row is a binary value indicating if the *k*-mer represented by the row is present in the genome represented by the column.
 * **-query_branching** queries the BFT for the number of *k*-mers written in the files of *list_kmer_files* that are branching in the colored de-Bruijn graph represented by the BFT.
 * **-extract_kmers** extracts the *k*-mers stored in the BFT and writes them to a *k*-mers file named *kmers_file* (see below for input file types).

@@ -95,7 +95,7 @@ size\+\_\+t \hyperlink{bft_8h_a77a802e5edc240a7a6a705ef6593799d}{write\+\_\+kmer
 \begin{DoxyCompactList}\small\item\em Function searching for a k-\/mer in a B\+FT. \end{DoxyCompactList}\item 
 bool \hyperlink{bft_8h_a170137e867f0ba24423badc9e1db872b}{is\+\_\+kmer\+\_\+in\+\_\+cdbg} (\hyperlink{structBFT__kmer}{B\+F\+T\+\_\+kmer} $\ast$bft\+\_\+kmer)
 \begin{DoxyCompactList}\small\item\em Function testing if a k-\/mer is in a B\+FT. \end{DoxyCompactList}\item 
-uint32\+\_\+t $\ast$ \hyperlink{bft_8h_aa6c30881d62f797a766d5ad9e1548b21}{query\+\_\+sequence} (\hyperlink{bft_8h_a2db0a80fe662d044625641531e5ce292}{B\+FT} $\ast$bft, char $\ast$sequence, double threshold)
+uint32\+\_\+t $\ast$ \hyperlink{bft_8h_aa9806cafe5d6941638f125d59db61fa8}{query\+\_\+sequence} (\hyperlink{bft_8h_a2db0a80fe662d044625641531e5ce292}{B\+FT} $\ast$bft, char $\ast$sequence, double threshold, bool canonical\+\_\+search)
 \begin{DoxyCompactList}\small\item\em Function querying a B\+FT for a sequence. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \end{Indent}
 \begin{Indent}{\bf Pattern matching functions}\par
@@ -723,13 +723,14 @@ a boolean indicating the presence (true) or absence (false) of the k-\/mer in a 
 \end{DoxyReturn}
 \index{bft.\+h@{bft.\+h}!query\+\_\+sequence@{query\+\_\+sequence}}
 \index{query\+\_\+sequence@{query\+\_\+sequence}!bft.\+h@{bft.\+h}}
-\subsubsection[{\texorpdfstring{query\+\_\+sequence(\+B\+F\+T $\ast$bft, char $\ast$sequence, double threshold)}{query_sequence(BFT *bft, char *sequence, double threshold)}}]{\setlength{\rightskip}{0pt plus 5cm}uint32\+\_\+t$\ast$ query\+\_\+sequence (
+\subsubsection[{\texorpdfstring{query\+\_\+sequence(\+B\+F\+T $\ast$bft, char $\ast$sequence, double threshold, bool canonical\+\_\+search)}{query_sequence(BFT *bft, char *sequence, double threshold, bool canonical_search)}}]{\setlength{\rightskip}{0pt plus 5cm}uint32\+\_\+t$\ast$ query\+\_\+sequence (
 \begin{DoxyParamCaption}
 \item[{{\bf B\+FT} $\ast$}]{bft, }
 \item[{char $\ast$}]{sequence, }
-\item[{double}]{threshold}
+\item[{double}]{threshold, }
+\item[{bool}]{canonical\+\_\+search}
 \end{DoxyParamCaption}
-)}\hypertarget{bft_8h_aa6c30881d62f797a766d5ad9e1548b21}{}\label{bft_8h_aa6c30881d62f797a766d5ad9e1548b21}
+)}\hypertarget{bft_8h_aa9806cafe5d6941638f125d59db61fa8}{}\label{bft_8h_aa9806cafe5d6941638f125d59db61fa8}
 
 
 Function querying a B\+FT for a sequence. 
@@ -741,6 +742,8 @@ Function querying a B\+FT for a sequence.
 {\em sequence} & is a string to query. \\
 \hline
 {\em threshold} & is a float (0 $<$ threshold $<$= 1) indicating the minimum percentage of k-\/mers from the queried sequence that must be present in a genome to have the queried sequence reported present in this genome. \\
+\hline
+{\em canonical\+\_\+search} & is a boolean indicating if the searched k-\/mers of the queried sequence must be canonical (lexicographically smaller one between a k-\/mer and its reverse-\/complement) or not. \\
 \hline
 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}

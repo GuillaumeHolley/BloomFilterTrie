@@ -1229,12 +1229,14 @@ BFT* load_BFT(char* filename_and_path){
 * @param sequence is a string to query.
 * @param threshold is a float (0 < threshold <= 1) indicating the minimum percentage of k-mers from the queried
 *           sequence that must be present in a genome to have the queried sequence reported present in this genome.
+* @param canonical_search is a boolean indicating if the searched k-mers of the queried sequence must be canonical
+            (lexicographically smaller one between a k-mer and its reverse-complement) or not.
 * @return a pointer to a sorted array of genome identifiers in which the queried sequence occurs (according to
 *           parameter threshold) or NULL if the queried sequence is not present in at least one genome
 *           (according to parameter threshold). The first element of the array (position 0) indicates how many
 *           ids are in this array.
 */
-uint32_t* query_sequence(BFT* bft, char* sequence, double threshold){
+uint32_t* query_sequence(BFT* bft, char* sequence, double threshold, bool canonical_search){
 
     ASSERT_NULL_PTR(bft, "query_sequence()\n")
     ASSERT_NULL_PTR(sequence, "query_sequence()\n")
@@ -1250,29 +1252,43 @@ uint32_t* query_sequence(BFT* bft, char* sequence, double threshold){
     int64_t nb_kmers_colors_set;
     int64_t nb_kmers_query_min;
 
-    uint32_t it_annot, it_annot_tmp;
+    uint32_t it_annot, it_colors;
+    uint32_t nb_colors = 0;
 
-    uint32_t* union_annot = NULL;
-    uint32_t* union_annot_tmp = NULL;
-    uint32_t* union_annot_count = NULL;
+    uint32_t* colors_set;
 
-    uint32_t** colors_set = NULL;
+    uint32_t* count_colors = calloc(bft->nb_genomes, sizeof(uint32_t));
+    ASSERT_NULL_PTR(count_colors, "query_sequence()\n");
 
-    char* kmer = malloc((bft->k + 1) * sizeof(char));
-    ASSERT_NULL_PTR(kmer,"query_sequence()\n");
+    char* kmer;
+
+    char* kmer_not_rev_comp = malloc((bft->k + 1) * sizeof(char));
+    ASSERT_NULL_PTR(kmer_not_rev_comp, "query_sequence()\n");
+
+    char* kmer_rev_comp = malloc((bft->k + 1) * sizeof(char));
+    ASSERT_NULL_PTR(kmer_rev_comp, "query_sequence()\n");
+
+    kmer_not_rev_comp[bft->k] = '\0';
+    kmer_rev_comp[bft->k] = '\0';
 
     nb_kmers_colors_set = strlen(sequence) - bft->k + 1;
     if (nb_kmers_colors_set < 0) printf("query_sequence(): query %s is too small and must be at least of length k.\n", sequence);
 
     nb_kmers_query_min = (int64_t) ceil(nb_kmers_colors_set * threshold);
 
-    colors_set = malloc(nb_kmers_colors_set * sizeof(uint32_t*));
-    ASSERT_NULL_PTR(colors_set,"query_sequence()\n")
+    kmer = kmer_not_rev_comp;
 
     for (it_kmers_query = 0, nb_kmers_found = 0; it_kmers_query < nb_kmers_colors_set; it_kmers_query++){
 
-        memcpy(kmer, &sequence[it_kmers_query], bft->k * sizeof(char));
-        kmer[bft->k] = '\0';
+        memcpy(kmer_not_rev_comp, &sequence[it_kmers_query], bft->k * sizeof(char));
+
+        if (canonical_search){
+
+            reverse_complement(kmer_not_rev_comp, kmer_rev_comp, bft->k);
+
+            if (strcmp(kmer_not_rev_comp, kmer_rev_comp) >= 0) kmer = kmer_rev_comp;
+            else kmer = kmer_not_rev_comp;
+        }
 
         if (!is_substring_IUPAC(kmer)){
 
@@ -1283,92 +1299,51 @@ uint32_t* query_sequence(BFT* bft, char* sequence, double threshold){
                 nb_kmers_found++;
 
                 bft_annot = get_annotation(bft_kmer);
-                colors_set[it_kmers_query] = get_list_id_genomes(bft_annot, bft);
+                colors_set = get_list_id_genomes(bft_annot, bft);
                 free_BFT_annotation(bft_annot);
 
-                if (union_annot != NULL){
+                for (it_annot = 1; it_annot <= colors_set[0]; it_annot++){
 
-                    union_annot_tmp = union_lists_uint32(union_annot, colors_set[it_kmers_query]);
-                    free(union_annot);
-                    union_annot = union_annot_tmp;
+                    nb_colors += (count_colors[colors_set[it_annot]] == 0);
+                    count_colors[colors_set[it_annot]]++;
                 }
-                else {
 
-                    union_annot = malloc((colors_set[it_kmers_query][0] + 1) * sizeof(uint32_t));
-                    ASSERT_NULL_PTR(union_annot, "query_sequence()\n");
-
-                    memcpy(union_annot, colors_set[it_kmers_query], (colors_set[it_kmers_query][0] + 1) * sizeof(uint32_t));
-                }
+                free(colors_set);
             }
-            else colors_set[it_kmers_query] = NULL;
 
             free_BFT_kmer(bft_kmer, 1);
         }
-        else colors_set[it_kmers_query] = NULL;
 
-        if (nb_kmers_found + nb_kmers_colors_set - it_kmers_query < nb_kmers_query_min){
+        if (nb_kmers_found + nb_kmers_colors_set - it_kmers_query < nb_kmers_query_min) break;
+    }
 
-            free(union_annot);
-            union_annot = NULL;
-            nb_kmers_colors_set = it_kmers_query + 1;
-            break;
+    colors_set = malloc((nb_colors + 1) * sizeof(uint32_t));
+    ASSERT_NULL_PTR(colors_set, "query_sequence()\n");
+
+    it_colors = 0;
+
+    for (it_annot = 0; (it_annot < bft->nb_genomes) && nb_colors; it_annot++){
+
+        if (count_colors[it_annot]){
+
+            nb_colors--;
+
+            if (count_colors[it_annot] >= nb_kmers_query_min){
+
+                it_colors++;
+                colors_set[it_colors] = it_annot;
+            }
         }
     }
 
-    if (union_annot != NULL){
+    colors_set[0] = it_colors;
 
-        union_annot_count = calloc(union_annot[0], sizeof(uint32_t));
-        ASSERT_NULL_PTR(union_annot_count, "query_sequence()\n");
+    colors_set = realloc(colors_set, (it_colors + 1) * sizeof(uint32_t));
+    ASSERT_NULL_PTR(colors_set, "query_sequence()\n");
 
-        for (it_kmers_query = 0; it_kmers_query < nb_kmers_colors_set; it_kmers_query++){
+    free(kmer_not_rev_comp);
+    free(kmer_rev_comp);
+    free(count_colors);
 
-            if (colors_set[it_kmers_query] != NULL){
-
-                it_annot = 1;
-                it_annot_tmp = 1;
-
-                while (it_annot <= colors_set[it_kmers_query][0]){
-
-                    if (union_annot[it_annot_tmp] > colors_set[it_kmers_query][it_annot]) it_annot++;
-                    else if (colors_set[it_kmers_query][it_annot] > union_annot[it_annot_tmp]) it_annot_tmp++;
-                    else{
-                        union_annot_count[it_annot_tmp - 1]++;
-                        it_annot++; it_annot_tmp++;
-                    }
-                }
-            }
-        }
-
-        it_annot_tmp = 1;
-
-        for (it_annot = 1; it_annot <= union_annot[0]; it_annot++){
-
-            if (union_annot_count[it_annot - 1] >= nb_kmers_query_min){
-                union_annot[it_annot_tmp] = union_annot[it_annot];
-                it_annot_tmp++;
-            }
-        }
-
-        if (it_annot_tmp == 1){
-
-            free(union_annot);
-            union_annot = NULL;
-        }
-        else{
-
-            union_annot[0] = it_annot_tmp - 1;
-
-            union_annot = realloc(union_annot, it_annot_tmp * sizeof(uint32_t));
-            ASSERT_NULL_PTR(union_annot, "query_sequence()\n");
-        }
-
-        free(union_annot_count);
-    }
-
-    for (it_kmers_query = 0; it_kmers_query < nb_kmers_colors_set; it_kmers_query++) free(colors_set[it_kmers_query]);
-    free(colors_set);
-
-    free(kmer);
-
-    return union_annot;
+    return colors_set;
 }
