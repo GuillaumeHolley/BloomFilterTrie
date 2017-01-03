@@ -43,7 +43,7 @@ $(BFT_FILES_O): %.o: %.c
 	$(CC) $(BFT_FLAGS) -c $< -o $@
 
 install:
-	@install -d -m 755 $(DESTDIR)$(INCLUDEDIR)/ $(DESTDIR)$(INCLUDEDIR)/bft $(DESTDIR)$(SRCDIR)/bft
+	@install -d -m 755 $(DESTDIR)$(LIBDIR)/ $(DESTDIR)$(BINDIR)/ $(DESTDIR)$(INCLUDEDIR)/bft $(DESTDIR)$(SRCDIR)/bft
 	@install -m 755 libbft.$(EXT_SHARED) $(DESTDIR)$(LIBDIR)/libbft.$(EXT_SHARED)
 	@install -m 755 bft $(DESTDIR)$(BINDIR)/bft
 	@install -m 644 $(BFT_INC_DIR)/*.h $(DESTDIR)$(INCLUDEDIR)/bft
