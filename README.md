@@ -54,7 +54,7 @@ make
 make install
 ```
 
-Make sure that the environment variables PATH, LIBRARY_PATH, LD_LIBRARY_PATH and C_INCLUDE_PATH are set with *<some_directory>*.
+Make sure that the environment variables PATH, LIBRARY_PATH, LD_LIBRARY_PATH and C_INCLUDE_PATH are set with *\<some_directory\>*.
 
 ### Mac OS
 
