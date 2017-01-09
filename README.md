@@ -49,12 +49,12 @@ make install
 You can also install it in a specific directory (for example because you are not root on the machine you are using) with:
 ```
 cd <BFT_directory>
-./configure --prefix=<a_directory>
+./configure --prefix=<some_directory>
 make
 make install
 ```
 
-Make sure that your environment variables are all set with <a_directory>.
+Make sure that the environment variables PATH, LIBRARY_PATH, LD_LIBRARY_PATH and C_INCLUDE_PATH are set with <some_directory>.
 
 ### Mac OS
 
@@ -91,7 +91,7 @@ in your C or C++ code. Then, compile your code with the flag
 
 ## API documentation:
 
-Documentation for the BFT library is available in the /doc/doxygen folder (HTML).
+Documentation for the BFT library is available in the /doc/doxygen folder (HTML version, open index.html).
 
 The following command regenerates the documentation:
 ```
