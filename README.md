@@ -80,13 +80,32 @@ To install the BFT library in a specific directory, see Linux compilation and in
 
 ## API Usage
 
-Using the BFT library is very simple. Once the library is installed on your system, just use
+### C
+
+Once the library is installed on your system, just use
 ```
 #include <bft/bft.h>
 ```
-in your C or C++ code. Then, compile your code with the flag
+in your C code. Then, use the following flag for linking:
 ```
 -lbft
+```
+
+### C++
+
+Once the library is installed on your system, just use
+```
+extern "C" {
+	#include <bft/bft.h>
+}
+```
+in your C++ code. Then, use the following flag for linking:
+```
+-lbft
+```
+and the following flag for compiling:
+```
+-fpermissive
 ```
 
 ## API documentation:
