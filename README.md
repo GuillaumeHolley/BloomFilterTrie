@@ -169,13 +169,12 @@ Example: ACTTGTCTG -> 11110100 11011110 00000010
 
 If you want to cite the Bloom Filter Trie, please use:
 ```
-@article{holley2016bloom,
+@article{holley2016bft,
   title="{Bloom Filter Trie: an alignment-free and reference-free data structure for pan-genome storage}",
   author={Holley, Guillaume and Wittler, Roland and Stoye, Jens},
-  journal={Algorithm. Mol. Biol.},
+  journal={Algorithms Mol. Biol.},
   volume={11},
-  number={1},
-  pages={1},
+  pages={3},
   year={2016}
 }
 ```
