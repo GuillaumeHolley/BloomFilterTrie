@@ -2249,8 +2249,8 @@ void get_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem
     return;
 }
 
-int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted, uint8_t* annot, int size_annot,
-                                    uint8_t* annot_sup, int size_annot_sup){
+int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array_elem* annot_sorted,
+                                    uint8_t* annot, int size_annot, uint8_t* annot_sup, int size_annot_sup){
 
     ASSERT_NULL_PTR(ann_inf,"get_count_id_genomes_from_annot()\n")
 
@@ -2329,6 +2329,9 @@ int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array
                     it = !it;
                 }
             }
+            else {
+                for (i = 0; i < ann_inf->nb_id_stored; i+=2) count_ids += ann_inf->id_stored[i+1] - ann_inf->id_stored[i] + 1;
+            }
         }
         else if (ann_inf->current_mode == 2){ //<Present nowhere except in x> mode
 
@@ -2342,6 +2345,7 @@ int get_count_id_genomes_from_annot(annotation_inform* ann_inf, annotation_array
                     while ((i<size) && (ann_inf->annotation[i] & 0x1)) i++;
                 }
             }
+            else count_ids = ann_inf->nb_id_stored;
         }
         else ERROR( "get_count_id_genomes_from_annot(): mode 3, should not happen.\n" )
     }
