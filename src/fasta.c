@@ -354,12 +354,34 @@ int parseKmerCount_xIUPAC(char* line, int length_to_parse, uint8_t* kmers_arr_no
     return 0;
 }
 
-int is_substring_IUPAC(char* line){
+int is_substring_IUPAC(const char* line){
 
     ASSERT_NULL_PTR(line,"is_substring_IUPAC()\n")
 
     if (strpbrk(line, "rRyYsSwWkKmMbBdDhHvVnN.-") != NULL) return 1;
     return 0;
+}
+
+int is_substring_nonACGT(const char* str, int len, bool check_last_char_only){
+
+    ASSERT_NULL_PTR(str,"is_substring_nonACGT()\n")
+
+    char* tmp = str + len - 1;
+
+    if (check_last_char_only){
+
+        if ((*tmp != 'a') && (*tmp != 'A') && (*tmp != 'c') && (*tmp != 'C') && (*tmp != 'g') && (*tmp != 'G') && (*tmp != 't') && (*tmp != 'T'))
+            return len - 1;
+    }
+    else{
+
+        for (; tmp >= str; tmp--){
+            if ((*tmp != 'a') && (*tmp != 'A') && (*tmp != 'c') && (*tmp != 'C') && (*tmp != 'g') && (*tmp != 'G') && (*tmp != 't') && (*tmp != 'T'))
+                return tmp-str;
+        }
+    }
+
+    return -1;
 }
 
 void reverse_complement(const char* s1, char* s2, int length){
