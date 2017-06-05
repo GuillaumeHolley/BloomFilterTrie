@@ -372,7 +372,11 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
         set_flag_kmer(V_VISITED, kmer, graph); //Set the k-mer to visited
 
         curr_annot = get_annotation(kmer);
-        if (get_count_id_genomes(curr_annot, graph) < nb_genomes_core) return 1;
+
+        if (get_count_id_genomes(curr_annot, graph) < nb_genomes_core){
+            free_BFT_annotation(curr_annot);
+            return 1;
+        }
 
         succ = get_successors(kmer, graph); //Get the successors of the k-mer
         pred = get_predecessors(kmer, graph); //Get the predecessors of the k-mer
@@ -409,7 +413,7 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
                     free_BFT_kmer(pred, 4);
                     pred = get_predecessors(&succ[i], graph);
 
-                    for (j=0, nb_pred = 0; j < 4; j++) nb_pred += is_kmer_in_cdbg(&pred[j]);
+                    for (j = 0, nb_pred = 0; j < 4; j++) nb_pred += is_kmer_in_cdbg(&pred[j]);
 
                     if (nb_pred == 1){
 

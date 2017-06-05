@@ -691,8 +691,11 @@ void set_marking(BFT* bft){
 
     ASSERT_NULL_PTR(bft, "set_marking()\n")
 
-    create_marking_Node_4states(&(bft->node), (bft->k / NB_CHAR_SUF_PREF) - 1, bft->k, bft->info_per_lvl);
-    bft->marked |= 0x1;
+    if ((bft->marked & 0x1) == 0){
+
+        create_marking_Node_4states(&(bft->node), (bft->k / NB_CHAR_SUF_PREF) - 1, bft->k, bft->info_per_lvl);
+        bft->marked |= 0x1;
+    }
 
     return;
 }
@@ -704,10 +707,8 @@ void unset_marking(BFT* bft){
 
     ASSERT_NULL_PTR(bft, "unset_marking()\n")
 
-    if (bft->marked & 0x1){
-        delete_marking_Node_4states(&(bft->node), (bft->k / NB_CHAR_SUF_PREF) - 1, bft->k, bft->info_per_lvl);
-        bft->marked &= 0xfe;
-    }
+    delete_marking_Node_4states(&(bft->node), (bft->k / NB_CHAR_SUF_PREF) - 1, bft->k, bft->info_per_lvl);
+    bft->marked &= 0xfe;
 
     return;
 }
@@ -772,8 +773,11 @@ void set_neighbors_traversal(BFT* bft){
 
     ASSERT_NULL_PTR(bft, "set_neighbors_traversal()\n")
 
-    bft->skip_sp = build_skip_nodes(&(bft->node));
-    bft->marked |= 0x2;
+    if ((bft->marked & 0x2) == 0){
+
+        bft->skip_sp = build_skip_nodes(&(bft->node));
+        bft->marked |= 0x2;
+    }
 
     return;
 }
@@ -785,10 +789,8 @@ void unset_neighbors_traversal(BFT* bft){
 
     ASSERT_NULL_PTR(bft, "unset_neighbors_traversal()\n")
 
-    if (bft->marked & 0x2){
-        free_skip_nodes(&(bft->node), bft->skip_sp);
-        bft->marked &= 0xfd;
-    }
+    free_skip_nodes(&(bft->node), bft->skip_sp);
+    bft->marked &= 0xfd;
 
     return;
 }

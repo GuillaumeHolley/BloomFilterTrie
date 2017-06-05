@@ -2334,17 +2334,19 @@ void free_skip_nodes(Node* node, uint16_t** skp_nodes){
 
     ASSERT_NULL_PTR(node,"build_skip_nodes()")
     ASSERT_NULL_PTR(node->CC_array,"build_skip_nodes()")
-    ASSERT_NULL_PTR(skp_nodes,"build_skip_nodes()")
 
     int i = -1;
 
-    do {
-        i++;
-        free(skp_nodes[i]);
-    }
-    while (IS_EVEN(((CC*)node->CC_array)[i].type));
+    if (skp_nodes != NULL){
 
-    free(skp_nodes);
+        do {
+            i++;
+            free(skp_nodes[i]);
+        }
+        while (IS_EVEN(((CC*)node->CC_array)[i].type));
+
+        free(skp_nodes);
+    }
 
     return;
 
