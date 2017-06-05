@@ -386,7 +386,7 @@ void presenceNeighborsLeft(Node*  node, BFT_Root* root, uint8_t*  kmer, int size
                                         res[nuc2add].pos_extra_filter3 = k;
                                         res[nuc2add].pos_sub_bucket = k % info_per_lvl->nb_ucs_skp;
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket*uc->size_annot]);
-                                        res[nuc2add].container = uc;
+                                        res[nuc2add].container = /*uc*/cc;
                                         res[nuc2add].posFilter2 = 0;
                                         res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                         res[nuc2add].children_type_leaf = 1;
@@ -452,7 +452,7 @@ void presenceNeighborsLeft(Node*  node, BFT_Root* root, uint8_t*  kmer, int size
                                         res[nuc2add].pos_extra_filter3 = k;
                                         res[nuc2add].pos_sub_bucket = k%info_per_lvl->nb_ucs_skp;
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
-                                        res[nuc2add].container = uc;
+                                        res[nuc2add].container = /*uc*/cc;
                                         res[nuc2add].posFilter2 = 0;
                                         res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                         res[nuc2add].children_type_leaf = 1;
@@ -521,7 +521,7 @@ void presenceNeighborsLeft(Node*  node, BFT_Root* root, uint8_t*  kmer, int size
                                         res[nuc2add].pos_extra_filter3 = k;
                                         res[nuc2add].pos_sub_bucket = k%info_per_lvl->nb_ucs_skp;
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
-                                        res[nuc2add].container = uc;
+                                        res[nuc2add].container = /*uc*/cc;
                                         res[nuc2add].posFilter2 = 0;
                                         res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                         res[nuc2add].children_type_leaf = 1;
@@ -596,7 +596,7 @@ void presenceNeighborsLeft(Node*  node, BFT_Root* root, uint8_t*  kmer, int size
                                         res[nuc2add].pos_extra_filter3 = k;
                                         res[nuc2add].pos_sub_bucket = k%info_per_lvl->nb_ucs_skp;
                                         res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
-                                        res[nuc2add].container = uc;
+                                        res[nuc2add].container = /*uc*/cc;
                                         res[nuc2add].posFilter2 = 0;
                                         res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                         res[nuc2add].children_type_leaf = 1;
@@ -995,7 +995,7 @@ void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int siz
 
                                     res[nuc2add].pos_sub_bucket = k % info_per_lvl->nb_ucs_skp;
                                     res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
-                                    res[nuc2add].container = uc;
+                                    res[nuc2add].container = /*uc*/cc;
                                     res[nuc2add].posFilter2 = 0;
                                     res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                 }
@@ -1081,7 +1081,7 @@ void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int siz
 
                                     res[nuc2add].pos_sub_bucket = k % info_per_lvl->nb_ucs_skp;
                                     res[nuc2add].link_child = &(uc->suffixes[res[nuc2add].pos_sub_bucket * uc->size_annot]);
-                                    res[nuc2add].container = uc;
+                                    res[nuc2add].container = /*uc*/cc;
                                     res[nuc2add].posFilter2 = 0;
                                     res[nuc2add].posFilter3 = MIN(info_per_lvl->nb_ucs_skp, cc->nb_elem - res[nuc2add].bucket * info_per_lvl->nb_ucs_skp);
                                 }

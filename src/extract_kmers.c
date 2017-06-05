@@ -454,6 +454,7 @@ size_t iterate_over_kmers_from_node(Node* n, BFT_Root* root, int lvl_node, uint8
                                         else goto OUT_LOOP_S4;
                                     }
                                     else{
+
                                         if ((uc->suffixes[cpt_pv*size_line+nb_cell_children] < 0x80)  || (first_bit == 1)){
 
                                             first_bit=0;

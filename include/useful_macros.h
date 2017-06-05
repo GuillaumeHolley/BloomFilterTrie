@@ -5,6 +5,9 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -39,29 +42,7 @@ if( (_p) == NULL )                                                  \
      exit(EXIT_FAILURE);                                            \
 }
 
-/*#define FREE_5PTRS(_p1,_p2,_p3,_p4,_p5) \
-     if ( (_p1) != NULL){               \
-         free( (_p1) );                 \
-         (_p1) = NULL;                  \
-     }                                  \
-     if ( (_p2) != NULL){               \
-         free( (_p2) );                 \
-         (_p2) = NULL;                  \
-     }                                  \
-     if ( (_p3) != NULL){               \
-         free( (_p3) );                 \
-         (_p3) = NULL;                  \
-     }                                  \
-     if ( (_p4) != NULL){               \
-         free( (_p4) );                 \
-         (_p4) = NULL;                  \
-     }                                  \
-     if ( (_p5) != NULL){               \
-         free( (_p5) );                 \
-         (_p5) = NULL;                  \
-     }
-
-typedef struct{
+/*typedef struct{
     uint64_t elem1;
     int elem2;
 } Duo;
@@ -109,3 +90,5 @@ inline off_t fsize(const char *filename) {
 
     return -1;
 }
+
+int uint32_t_cmp(const void *a, const void *b);

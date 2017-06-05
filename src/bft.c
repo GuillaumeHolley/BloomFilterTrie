@@ -1347,3 +1347,336 @@ uint32_t* query_sequence(BFT* bft, char* sequence, double threshold, bool canoni
 
     return colors_set;
 }
+
+BFT* create_cdbg_from_bft_kmers(BFT_kmer** bft_kmers, uint32_t nb_bft_kmers, BFT* bft, bool add_colors){
+
+    ASSERT_NULL_PTR(bft, "create_sub_cdbg()\n")
+    ASSERT_NULL_PTR(bft_kmers, "create_sub_cdbg()\n")
+
+    int nb_bytes_kmer;
+    int size_suffix, current_level, nb_cell, nb_cell_to_delete;
+
+    uint32_t i, j;
+
+    uint8_t* substring;
+    uint8_t* substring_tmp;
+
+    uint32_t* list_id_genomes;
+
+    resultPresence* res;
+    resultPresence* res_tmp;
+
+    BFT_kmer* bft_kmer;
+    BFT_annotation* bft_annot;
+
+    BFT* sub_bft = create_cdbg(bft->k, bft->treshold_compression);
+
+    if (add_colors){
+
+        nb_bytes_kmer = CEIL(sub_bft->k * 2, SIZE_BITS_UINT_8T);
+
+        //res = create_resultPresence();
+
+        substring = malloc(nb_bytes_kmer * sizeof(uint8_t));
+        ASSERT_NULL_PTR(substring, "create_sub_cdbg()\n");
+
+        substring_tmp = malloc(nb_bytes_kmer * sizeof(uint8_t));
+        ASSERT_NULL_PTR(substring_tmp, "create_sub_cdbg()\n");
+
+        add_genomes_BFT_Root(bft->nb_genomes, bft->filenames, sub_bft);
+
+        for (i = 0; i < nb_bft_kmers; i++){
+
+            bft_annot = get_annotation(bft_kmers[i]);
+            list_id_genomes = get_list_id_genomes(bft_annot, bft);
+            free_BFT_annotation(bft_annot);
+
+            bft_kmer = get_kmer(bft_kmers[i]->kmer, sub_bft);
+
+            if (!is_kmer_in_cdbg(bft_kmer)){
+
+                size_suffix = sub_bft->k;
+                current_level = sub_bft->k / NB_CHAR_SUF_PREF - 1;
+                nb_cell = sub_bft->info_per_lvl[current_level].size_kmer_in_bytes;
+
+                memcpy(substring, bft_kmer->kmer_comp, nb_bytes_kmer * sizeof(uint8_t));
+
+                while (current_level > bft_kmer->res->level_node){
+
+                    nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
+
+                    for (j = 0; j < nb_cell - nb_cell_to_delete; j++){
+
+                        substring[j] = substring[j+2] >> 2;
+                        if (j+3 < nb_cell) substring[j] |= substring[j+3] << 6;
+                    }
+
+                    substring[j-1] &= sub_bft->info_per_lvl[current_level].mask_shift_kmer;
+
+                    current_level--;
+                    size_suffix -= NB_CHAR_SUF_PREF;
+                    nb_cell = sub_bft->info_per_lvl[current_level].size_kmer_in_bytes;
+                }
+
+                memcpy(substring_tmp, substring, nb_cell * sizeof(uint8_t));
+
+                insertKmer_Node(bft_kmer->res->node, sub_bft, bft_kmer->res->level_node, substring, size_suffix, bft_kmer->kmer_comp,
+                                list_id_genomes[1], get_nb_bytes_power2_annot(list_id_genomes[1]), bft_kmer->res->pos_container);
+
+                /*presenceKmer(bft_kmer->res->node, sub_bft, substring_tmp, size_suffix, bft_kmer->res->pos_container, 1, res);
+                res_tmp = bft_kmer->res;
+                bft_kmer->res = res;*/
+
+                free_BFT_kmer(bft_kmer, 1);
+
+                bft_kmer = get_kmer(bft_kmers[i]->kmer, sub_bft);
+            }
+            //else res_tmp = bft_kmer->res;
+
+            add_id_genomes(bft_kmer, NULL, sub_bft, list_id_genomes);
+
+            free(list_id_genomes);
+
+            //bft_kmer->res = res_tmp;
+            free_BFT_kmer(bft_kmer, 1);
+        }
+
+        //free(res);
+
+        free(substring);
+        free(substring_tmp);
+    }
+    else{
+
+        char** kmers = malloc(nb_bft_kmers * sizeof(char*));
+        ASSERT_NULL_PTR(kmers, "create_sub_cdbg()\n");
+
+        for (i = 0; i < nb_bft_kmers; i++) kmers[i] = bft_kmers[i]->kmer;
+
+        insert_kmers_new_genome(nb_bft_kmers, kmers, bft->filenames[0], sub_bft);
+
+        free(kmers);
+    }
+
+    return sub_bft;
+}
+
+void add_id_genomes(BFT_kmer* bft_kmer, BFT_annotation* bft_annot, BFT* bft, uint32_t* list_id_genomes){
+
+    ASSERT_NULL_PTR(bft_kmer, "add_id_genomes()\n")
+    ASSERT_NULL_PTR(bft, "add_id_genomes()\n")
+    ASSERT_NULL_PTR(list_id_genomes, "add_id_genomes()\n")
+
+    if (list_id_genomes[0] == 0) return;
+
+    UC* uc;
+
+    resultPresence* res = bft_kmer->res;
+
+    bool free_bft_annot = false;
+
+    int size, size_part_bytes;
+
+    uint32_t pow2_part = 0;
+    uint32_t i, j, k;
+
+    uint32_t current_part;
+
+    uint32_t* list_current_id_genomes;
+
+    if (bft_annot == NULL){
+
+        bft_annot = get_annotation(bft_kmer);
+        free_bft_annot = true;
+    }
+
+    if (res->posFilter2) uc = (UC*)res->container;
+    else uc = &(((UC*)((CC*)res->container)->children)[res->bucket]);
+
+    list_current_id_genomes = get_list_id_genomes(bft_annot, bft);
+
+    qsort(&list_id_genomes[1], list_id_genomes[0], sizeof(uint32_t), uint32_t_cmp);
+
+    for (j = list_id_genomes[0]; j >= 1; j--){
+
+        if (list_id_genomes[j] > bft->nb_genomes - 1){
+            ERROR("add_id_genomes(): An attempt to update a k-mer with a genome id that has not been inserted in the BFT yet has been made.\n")
+        }
+    }
+
+    if (list_id_genomes[1] < list_current_id_genomes[list_current_id_genomes[0]]){
+
+        if ((bft_annot->annot[0] & 0x3) == 0x3){
+
+            uint32_t pos = bft_annot->annot[0] >> 2;
+
+            i = 0;
+
+            while ((i < bft_annot->size_annot) && (IS_ODD(bft_annot->annot[i]))){
+
+                pos |= ((uint32_t)(bft_annot->annot[i] >> 1)) << (6 + (i-1) * 7);
+                i++;
+            }
+
+            if ((i >= bft_annot->size_annot) && (bft_annot->annot_ext != NULL)){
+
+                i = 0;
+
+                while ((i < 1) && (IS_ODD(bft_annot->annot_ext[i]))){
+
+                    pos |= ((uint32_t)(bft_annot->annot_ext[i] >> 1)) << (6 + (i + bft_annot->size_annot - 1) * 7);
+                    i++;
+                }
+            }
+
+            uint8_t* annot_tmp = extract_from_annotation_array_elem(bft->comp_set_colors, pos, &size);
+
+            memcpy(bft->ann_inf->annotation, annot_tmp, size * sizeof(uint8_t));
+
+            if ((i = decomp_annotation(bft->ann_inf, annot_tmp, size, NULL, 0, 1))) size = i;
+
+            if ((size > uc->size_annot) && ((bft_annot->annot_ext == NULL) || (size > uc->size_annot + 1)))
+                bft_annot->annot_ext = realloc_annotation(uc, res->posFilter2, res->posFilter3, size, 0, res->pos_sub_bucket);
+
+            memcpy(&(uc->suffixes[res->pos_sub_bucket * (res->posFilter2 + uc->size_annot) + res->posFilter2]), bft->ann_inf,
+                   (size - 1) * sizeof(uint8_t));
+
+            if (bft_annot->annot_ext != NULL) bft_annot->annot_ext[0] = bft->ann_inf->annotation[size - 1];
+            else uc->suffixes[res->pos_sub_bucket * (res->posFilter2 + uc->size_annot) + res->posFilter2 + size - 1] = bft->ann_inf->annotation[size - 1];
+
+            reinit_annotation_inform(bft->ann_inf);
+        }
+
+        i = 1, j = 0, k = 0;
+
+        if (bft_annot->annot[0] & 0x2){
+
+            for (; i <= list_current_id_genomes[0]; i++)
+                if (list_id_genomes[1] < list_current_id_genomes[i]) break;
+
+            while ((j < bft_annot->size_annot) && (bft_annot->annot[j] & 0x2) && (k != i-1)){
+
+                j++; k++;
+                while ((j < bft_annot->size_annot) && (bft_annot->annot[j] & 0x1)) j++;
+            }
+        }
+        else if (bft_annot->annot[0] & 0x1){
+
+            for (; i <= list_current_id_genomes[0]; i++)
+                if (list_id_genomes[1] < list_current_id_genomes[i]) break;
+
+            while ((i > 1) && (list_current_id_genomes[i] == (list_current_id_genomes[i-1] + 1))) i--;
+
+            while ((j < bft_annot->size_annot) && (bft_annot->annot[j] & 0x1) && (k != i-1)){
+
+                j++; k++;
+                while ((j < bft_annot->size_annot) && (bft_annot->annot[j] & 0x2)) j++;
+            }
+        }
+
+        memset(&bft_annot->annot[j], 0, (bft_annot->size_annot - j) * sizeof(uint8_t));
+        bft_annot->size_annot = j;
+
+        memset(bft_annot->annot_cplx, 0, bft_annot->size_annot_cplx * sizeof(uint8_t));
+        bft_annot->size_annot_cplx = 0;
+
+        if (bft_annot->annot_ext != NULL)
+            delete_extend_annots(uc, res->posFilter2, res->posFilter3, res->pos_sub_bucket, res->pos_sub_bucket, 0, 0, 1);
+
+        j = 1;
+
+        while ((i <= list_current_id_genomes[0]) || (j <= list_id_genomes[0])){
+
+            get_annot(uc, &bft_annot->annot, &bft_annot->annot_ext, &bft_annot->annot_cplx, &bft_annot->size_annot,
+                      &bft_annot->size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+
+            if (i > list_current_id_genomes[0]){
+                current_part = list_id_genomes[j];
+                j++;
+            }
+            else if (j > list_id_genomes[0]){
+                current_part = list_current_id_genomes[i];
+                i++;
+            }
+            else if (list_current_id_genomes[i] > list_id_genomes[j]){
+                current_part = list_id_genomes[j];
+                j++;
+            }
+            else if (list_id_genomes[j] > list_current_id_genomes[i]){
+                current_part = list_current_id_genomes[i];
+                i++;
+            }
+            else{
+                current_part = list_current_id_genomes[i];
+                i++; j++;
+            }
+
+            if (current_part >= pow2_part){
+                pow2_part = round_up_next_highest_power2(current_part);
+                size_part_bytes = get_nb_bytes_power2_annot_bis(current_part, pow2_part);
+            }
+
+            compute_best_mode(bft->ann_inf, bft->comp_set_colors, bft_annot->annot, bft_annot->size_annot, bft_annot->annot_ext,
+                              1, current_part, size_part_bytes);
+
+            if (bft->ann_inf->last_added != current_part){
+
+                if ((bft->ann_inf->min_size > uc->size_annot) && ((bft_annot->annot_ext == NULL) || (bft->ann_inf->min_size > uc->size_annot+1))){
+
+                    bft_annot->annot_ext = realloc_annotation(uc, res->posFilter2, res->posFilter3, bft->ann_inf->min_size,
+                                                              0, res->pos_sub_bucket);
+                }
+
+                modify_mode_annotation(bft->ann_inf,
+                                       &(uc->suffixes[res->pos_sub_bucket * (res->posFilter2 + uc->size_annot) + res->posFilter2]),
+                                       uc->size_annot, bft_annot->annot_ext, 1, current_part, size_part_bytes);
+
+                if ((bft_annot->annot_ext != NULL) && (bft_annot->annot_ext[0] == 0))
+                    delete_extend_annots(uc, res->posFilter2, res->posFilter3, res->pos_sub_bucket, res->pos_sub_bucket, 0, 0, 1);
+            }
+
+            reinit_annotation_inform(bft->ann_inf);
+        }
+    }
+    else{
+
+        for (j = 1; j <= list_id_genomes[0]; j++){
+
+            if (j > 1){
+
+                get_annot(uc, &bft_annot->annot, &bft_annot->annot_ext, &bft_annot->annot_cplx, &bft_annot->size_annot,
+                          &bft_annot->size_annot_cplx, res->posFilter2, res->posFilter3, res->pos_sub_bucket);
+            }
+
+            if (list_id_genomes[j] >= pow2_part){
+                pow2_part = round_up_next_highest_power2(list_id_genomes[j]);
+                size_part_bytes = get_nb_bytes_power2_annot_bis(list_id_genomes[j], pow2_part);
+            }
+
+            compute_best_mode(bft->ann_inf, bft->comp_set_colors, bft_annot->annot, bft_annot->size_annot, bft_annot->annot_ext, 1,
+                              list_id_genomes[j], size_part_bytes);
+
+            if (bft->ann_inf->last_added != list_id_genomes[j]){
+
+                if ((bft->ann_inf->min_size > uc->size_annot) && ((bft_annot->annot_ext == NULL) || (bft->ann_inf->min_size > uc->size_annot+1))){
+
+                    bft_annot->annot_ext = realloc_annotation(uc, res->posFilter2, res->posFilter3, bft->ann_inf->min_size,
+                                                              0, res->pos_sub_bucket);
+                }
+
+                modify_mode_annotation(bft->ann_inf, &(uc->suffixes[res->pos_sub_bucket * (res->posFilter2 + uc->size_annot) + res->posFilter2]),
+                                       uc->size_annot, bft_annot->annot_ext, 1, list_id_genomes[j], size_part_bytes);
+
+                if ((bft_annot->annot_ext != NULL) && (bft_annot->annot_ext[0] == 0))
+                    delete_extend_annots(uc, res->posFilter2, res->posFilter3, res->pos_sub_bucket, res->pos_sub_bucket, 0, 0, 1);
+            }
+
+            reinit_annotation_inform(bft->ann_inf);
+        }
+    }
+
+    free(list_current_id_genomes);
+    if (free_bft_annot) free_BFT_annotation(bft_annot);
+
+    return;
+}

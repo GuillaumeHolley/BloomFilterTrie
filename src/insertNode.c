@@ -15,7 +15,7 @@
 *  res: ptr to resultPresence structure, used to store information about the presence of a suffix prefix in a CC
 *  ---------------------------------------------------------------------------------------------------------------
 */
-void insertKmers(BFT_Root*  root, uint8_t*  array_kmers, int nb_kmers, uint32_t id_genome,
+void insertKmers(BFT_Root* root, uint8_t* array_kmers, int nb_kmers, uint32_t id_genome,
                  int size_id_genome){
 
     ASSERT_NULL_PTR(root,"insertKmers()")

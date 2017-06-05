@@ -175,3 +175,6 @@ void v_iterate_over_kmers(BFT* bft, BFT_func_ptr f, va_list args);
 void write_BFT(BFT* bft, char* filename, bool compress_annotations);
 BFT* load_BFT(char* filename);
 ///@}
+
+BFT* create_cdbg_from_bft_kmers(BFT_kmer** bft_kmers, uint32_t nb_bft_kmers, BFT* bft, bool add_colors);
+void add_id_genomes(BFT_kmer* bft_kmer, BFT_annotation* bft_annot, BFT* bft, uint32_t* list_id_genomes);

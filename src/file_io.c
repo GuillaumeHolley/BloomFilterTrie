@@ -785,9 +785,6 @@ int queryBFT_kmerPresences_from_KmerFiles(BFT_Root* root, char* query_filename, 
 
                 buffer_queries[strcspn(buffer_queries, "\r\n")] = '\0';
 
-                //if (strlen(buffer_queries) != root->k)
-                //    fprintf(stderr, "K-mer %s is not of length k=%d, only the first k symbols are considered.\n", buffer_queries, root->k);
-
                 kmers_read++;
 
                 res_parseKmerCount = parseKmerCount(buffer_queries, root->k, array_kmers, k);

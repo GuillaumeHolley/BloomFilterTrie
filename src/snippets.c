@@ -391,8 +391,10 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
 
             memcpy(simple_path, kmer->kmer, l_simple_path * sizeof(char));
 
-            for (i = 0; i < 4; i++)
-                if (is_kmer_in_cdbg(&succ[i])) break;
+            if (nb_succ){
+                for (i = 0; i < 4; i++)
+                    if (is_kmer_in_cdbg(&succ[i])) break;
+            }
 
             if ((nb_succ == 1) && (get_flag_kmer(&succ[i], graph) != V_VISITED)){
 
@@ -445,6 +447,7 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
                             }
                         }
 
+                        if (nb_succ == 0) break;
                         i = last;
                     }
                     else{
@@ -465,6 +468,10 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
                         break;
                     }
                 }
+            }
+            else if (nb_pred){
+                for (i = 0; i < 4; i++)
+                    if (is_kmer_in_cdbg(&pred[i])) break;
             }
 
             if ((nb_pred == 1) && (get_flag_kmer(&pred[i], graph) != V_VISITED)){
@@ -519,6 +526,7 @@ size_t extract_core_simple_paths(BFT_kmer* kmer, BFT* graph, va_list args){
                             }
                         }
 
+                        if (nb_pred == 0) break;
                         i = last;
                     }
                     else{

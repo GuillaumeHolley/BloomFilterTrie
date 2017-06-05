@@ -2404,7 +2404,7 @@ annotation_array_elem* cmp_annots(uint8_t* annot1, int size_annot1, uint8_t* ann
 
     if (annot2 != NULL){
 
-        if ((annot1[0] & 0x3) == 3){
+        if ((annot2[0] & 0x3) == 3){
 
             uint32_t position = annot2[0] >> 2;
 
