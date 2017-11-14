@@ -736,6 +736,7 @@ void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int siz
     i = -1;
 
     if ((CC*)node->CC_array != NULL){
+
         do {
             i++;
             cc = &(((CC*)node->CC_array)[i]);
@@ -1161,12 +1162,22 @@ void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int siz
 
     //If the prefix was not found in any CC Bloom filters, we search in the UC of the node
     if (node->UC_array.suffixes != NULL){
+
         int nb_cell = info_per_lvl->size_kmer_in_bytes;
         int size_line = nb_cell+node->UC_array.size_annot;
 
         int k;
+        uint8_t mask2;
+
         uint8_t bits_left = (size_kmer*2)%SIZE_BITS_UINT_8T;
-        uint8_t mask2 = MASK_POWER_8[bits_left] - MASK_POWER_8[bits_left-2];
+
+        if (bits_left == 0){
+
+            bits_left = 8;
+            mask2 = 0xc0; // 11000000
+        }
+        else mask2 = MASK_POWER_8[bits_left] - MASK_POWER_8[bits_left-2];
+
         uint8_t mask = info_per_lvl->mask_shift_kmer;
 
         if (mask == 0xff) mask = 0;
@@ -1181,6 +1192,7 @@ void presenceNeighborsRight(Node*  node, BFT_Root* root, uint8_t*  kmer, int siz
                 if ((node->UC_array.suffixes[k+nb_cell-1] & mask) == kmer[nb_cell-1]){
 
                     nuc2add = (node->UC_array.suffixes[k+nb_cell-1] & mask2) >> bits_left;
+
                     res[nuc2add].link_child = &(node->UC_array.suffixes[k]);
                     res[nuc2add].container = &(node->UC_array);
                     res[nuc2add].posFilter2 = nb_cell;

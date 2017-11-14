@@ -3009,7 +3009,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-CFLAGS="-O3 -Wall -std=c99 -Wno-unknown-pragmas -msse4.1 -mpopcnt"
+CFLAGS="-O3 -Wall -std=c99 -Wno-unknown-pragmas -msse4.1 -mpopcnt -DXXH_NAMESPACE=BFT_HASH_"
 
 LIBS="$LIBS -lm"
 

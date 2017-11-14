@@ -20,6 +20,11 @@
 #include "default_param.h"
 #include "useful_macros.h"
 #include "UC.h"
+
+#ifndef XXH_NAMESPACE
+#define XXH_NAMESPACE BFT_HASH_
+#endif
+
 #include "xxhash.h"
 
 /* ===================================================================================================================================

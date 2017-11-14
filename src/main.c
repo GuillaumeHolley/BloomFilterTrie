@@ -1,7 +1,7 @@
 #include <libgen.h>
 
 #include <jemalloc/jemalloc.h>
-const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
+//const char* malloc_conf = "narenas:1,tcache:false,lg_dirty_mult:8,lg_chunk:22";
 
 #include <Judy.h>
 
