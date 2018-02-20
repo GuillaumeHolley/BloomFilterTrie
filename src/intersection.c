@@ -67,7 +67,7 @@ uint32_t* intersection_uint32(uint32_t* list_a, uint32_t* list_b){
         }
     }
 
-    list_c[it] = 0;
+    list_c[0] = it;
 
     return list_c;
 }
