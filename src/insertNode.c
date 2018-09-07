@@ -265,7 +265,7 @@ Node* insertKmer_Node_special(BFT_Root*  root, int lvl_cont, uint8_t*  suffix, i
     int pos = 0;
     int inside = 1;
 
-    if (size_suffix == 36){
+    if ((size_suffix == 36) || (size_suffix == 72) || (size_suffix == 108)){
         pos = binary_search_UC_array((uint8_t*)pres->link_child, size_annot, 0, nb_elt - 1, suffix, nb_cell, 0xff);
         inside = memcmp(&(((uint8_t*)pres->link_child)[pos * size_line]), suffix, nb_cell * sizeof(uint8_t));
         if (inside < 0) pos++;
