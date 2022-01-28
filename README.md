@@ -3,6 +3,10 @@
 This repository contains the source code of the Bloom Filter Trie (BFT) library. The BFT is an alignment-free, reference-free and incremental succinct data structure for colored de Bruijn graphs. It is based on the burst trie and use Bloom filters for efficient trie and graph traversals. The data structure indexes *k*-mers and their colors based on a new representation of trie vertices that
 compress and index shared substrings. A typical application of the BFT is pan-genome indexing.
 
+## Warning
+
+This library is now outdated and is not maintained anymore. I strongly advise against using it in any new project.
+
 ## Dependencies
 
 In order to compile and use the BFT, you need a machine running a 64 bits Linux or Mac OS operating system, POSIX compliant and accepting SSE4 instructions.
