@@ -5,7 +5,9 @@ compress and index shared substrings. A typical application of the BFT is pan-ge
 
 ## Warning
 
-This library is now outdated and is not maintained anymore. I strongly advise against using it in any new project.
+This library is now outdated and not maintained anymore. I strongly advise against using it in any new project. I would recommend instead:
+- [Bifrost](https://github.com/pmelsted/bifrost), a dynamic de Bruijn graph library
+- [Data Structures to Represent a Set of k-long DNA Sequences](https://dl.acm.org/doi/pdf/10.1145/3445967) by Rayan Chikhi, Jan Holub and Paul Medvedev (2021)
 
 ## Dependencies
 
