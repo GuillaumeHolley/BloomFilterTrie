@@ -608,7 +608,7 @@ void transform2CC_from_arraySuffix(uint8_t*  array_suffix, CC*  cc, BFT_Root* ro
         else{
             int j=0;
 
-            if (size_suffix != 36) array_suffix[real_pos_i_uc+nb_cell-1] &= 0x7f;
+            if ((size_suffix != 36) && (size_suffix != 72) && (size_suffix != 108)) array_suffix[real_pos_i_uc+nb_cell-1] &= 0x7f;
 
             int nb_cell_to_delete = 2 + ((size_suffix == 45) || (size_suffix == 81) || (size_suffix == 117));
 
